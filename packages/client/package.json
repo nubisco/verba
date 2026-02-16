@@ -1,0 +1,22 @@
+{
+  "name": "@verba/client",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vue": "^3.4.19",
+    "vue-router": "^4.2.5",
+    "axios": "^1.6.7"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.4",
+    "typescript": "^5.3.3",
+    "vite": "^5.1.1",
+    "vue-tsc": "^1.8.27",
+    "sass": "^1.70.0"
+  }
+}

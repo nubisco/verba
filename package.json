@@ -1,0 +1,22 @@
+{
+  "name": "verba",
+  "version": "1.0.0",
+  "description": "A structured collaborative approval engine for text assets",
+  "private": true,
+  "scripts": {
+    "dev:server": "pnpm --filter @verba/server dev",
+    "dev:client": "pnpm --filter @verba/client dev",
+    "dev": "concurrently \"pnpm dev:server\" \"pnpm dev:client\"",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "prisma:generate": "pnpm --filter @verba/server prisma:generate",
+    "prisma:migrate": "pnpm --filter @verba/server prisma:migrate",
+    "prisma:studio": "pnpm --filter @verba/server prisma:studio"
+  },
+  "keywords": ["i18n", "localization", "translation", "collaboration"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
