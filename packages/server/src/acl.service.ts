@@ -1,4 +1,4 @@
-import { Role } from '@prisma/client';
+import { Role } from './types.js';
 import { prismaService } from './prisma.service.js';
 
 export class ACLService {

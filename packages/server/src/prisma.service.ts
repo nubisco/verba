@@ -1,4 +1,5 @@
-import { PrismaClient, Role, WorkflowState } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
+import { Role, WorkflowState } from './types.js';
 
 const prisma = new PrismaClient();
 
@@ -51,7 +52,7 @@ export class PrismaService {
     const member = await prisma.projectMember.findUnique({
       where: { projectId_userId: { projectId, userId } },
     });
-    return member?.role;
+    return member?.role as Role | null;
   }
 
   // Namespace methods
@@ -83,7 +84,7 @@ export class PrismaService {
     const access = await prisma.namespaceAccess.findUnique({
       where: { namespaceId_userId: { namespaceId, userId } },
     });
-    return access?.role;
+    return access?.role as Role | null;
   }
 
   // Locale methods

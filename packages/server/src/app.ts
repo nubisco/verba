@@ -6,7 +6,7 @@ import { hashPassword, comparePassword } from './auth.utils.js';
 import { prismaService } from './prisma.service.js';
 import { aclService } from './acl.service.js';
 import { importCSV, importXLSX, exportApprovedJSON } from './import-export.service.js';
-import { Role, WorkflowState } from '@prisma/client';
+import { Role, WorkflowState } from './types.js';
 
 const fastify = Fastify({ logger: true });
 
@@ -17,14 +17,14 @@ await fastify.register(jwt, {
 });
 await fastify.register(multipart);
 
-// Auth decorator
-fastify.decorate('authenticate', async (request: any, reply: any) => {
+// Auth middleware
+const authenticate = async (request: any, reply: any) => {
   try {
     await request.jwtVerify();
   } catch (err) {
     reply.code(401).send({ error: 'Unauthorized' });
   }
-});
+};
 
 // Routes
 
@@ -60,12 +60,12 @@ fastify.post('/api/auth/login', async (request, reply) => {
 });
 
 // Project routes
-fastify.get('/api/projects', { onRequest: [fastify.authenticate as any] }, async (request) => {
+fastify.get('/api/projects', { onRequest: [authenticate] }, async (request) => {
   const projects = await prismaService.listProjects();
   return { projects };
 });
 
-fastify.post('/api/projects', { onRequest: [fastify.authenticate as any] }, async (request, reply) => {
+fastify.post('/api/projects', { onRequest: [authenticate] }, async (request, reply) => {
   const { name, description } = request.body as any;
   const userId = (request.user as any).userId;
 
@@ -75,7 +75,7 @@ fastify.post('/api/projects', { onRequest: [fastify.authenticate as any] }, asyn
   reply.code(201).send({ project });
 });
 
-fastify.get('/api/projects/:id', { onRequest: [fastify.authenticate as any] }, async (request, reply) => {
+fastify.get('/api/projects/:id', { onRequest: [authenticate] }, async (request, reply) => {
   const { id } = request.params as any;
   const userId = (request.user as any).userId;
 
@@ -88,7 +88,7 @@ fastify.get('/api/projects/:id', { onRequest: [fastify.authenticate as any] }, a
   return { project };
 });
 
-fastify.post('/api/projects/:id/members', { onRequest: [fastify.authenticate as any] }, async (request, reply) => {
+fastify.post('/api/projects/:id/members', { onRequest: [authenticate] }, async (request, reply) => {
   const { id } = request.params as any;
   const { userId: targetUserId, role } = request.body as any;
   const userId = (request.user as any).userId;
@@ -103,7 +103,7 @@ fastify.post('/api/projects/:id/members', { onRequest: [fastify.authenticate as 
 });
 
 // Namespace routes
-fastify.get('/api/projects/:projectId/namespaces', { onRequest: [fastify.authenticate as any] }, async (request, reply) => {
+fastify.get('/api/projects/:projectId/namespaces', { onRequest: [authenticate] }, async (request, reply) => {
   const { projectId } = request.params as any;
   const userId = (request.user as any).userId;
 
@@ -116,7 +116,7 @@ fastify.get('/api/projects/:projectId/namespaces', { onRequest: [fastify.authent
   return { namespaces };
 });
 
-fastify.post('/api/projects/:projectId/namespaces', { onRequest: [fastify.authenticate as any] }, async (request, reply) => {
+fastify.post('/api/projects/:projectId/namespaces', { onRequest: [authenticate] }, async (request, reply) => {
   const { projectId } = request.params as any;
   const { name, description } = request.body as any;
   const userId = (request.user as any).userId;
@@ -139,7 +139,7 @@ fastify.post('/api/projects/:projectId/namespaces', { onRequest: [fastify.authen
   reply.code(201).send({ namespace });
 });
 
-fastify.get('/api/namespaces/:id', { onRequest: [fastify.authenticate as any] }, async (request, reply) => {
+fastify.get('/api/namespaces/:id', { onRequest: [authenticate] }, async (request, reply) => {
   const { id } = request.params as any;
   const userId = (request.user as any).userId;
 
@@ -152,7 +152,7 @@ fastify.get('/api/namespaces/:id', { onRequest: [fastify.authenticate as any] },
   return { namespace };
 });
 
-fastify.post('/api/namespaces/:id/access', { onRequest: [fastify.authenticate as any] }, async (request, reply) => {
+fastify.post('/api/namespaces/:id/access', { onRequest: [authenticate] }, async (request, reply) => {
   const { id } = request.params as any;
   const { userId: targetUserId, role } = request.body as any;
   const userId = (request.user as any).userId;
@@ -167,7 +167,7 @@ fastify.post('/api/namespaces/:id/access', { onRequest: [fastify.authenticate as
 });
 
 // Locale routes
-fastify.get('/api/projects/:projectId/locales', { onRequest: [fastify.authenticate as any] }, async (request, reply) => {
+fastify.get('/api/projects/:projectId/locales', { onRequest: [authenticate] }, async (request, reply) => {
   const { projectId } = request.params as any;
   const userId = (request.user as any).userId;
 
@@ -180,7 +180,7 @@ fastify.get('/api/projects/:projectId/locales', { onRequest: [fastify.authentica
   return { locales };
 });
 
-fastify.post('/api/projects/:projectId/locales', { onRequest: [fastify.authenticate as any] }, async (request, reply) => {
+fastify.post('/api/projects/:projectId/locales', { onRequest: [authenticate] }, async (request, reply) => {
   const { projectId } = request.params as any;
   const { code, name } = request.body as any;
   const userId = (request.user as any).userId;
@@ -195,7 +195,7 @@ fastify.post('/api/projects/:projectId/locales', { onRequest: [fastify.authentic
 });
 
 // Key routes
-fastify.get('/api/namespaces/:namespaceId/keys', { onRequest: [fastify.authenticate as any] }, async (request, reply) => {
+fastify.get('/api/namespaces/:namespaceId/keys', { onRequest: [authenticate] }, async (request, reply) => {
   const { namespaceId } = request.params as any;
   const userId = (request.user as any).userId;
 
@@ -208,7 +208,7 @@ fastify.get('/api/namespaces/:namespaceId/keys', { onRequest: [fastify.authentic
   return { keys };
 });
 
-fastify.post('/api/namespaces/:namespaceId/keys', { onRequest: [fastify.authenticate as any] }, async (request, reply) => {
+fastify.post('/api/namespaces/:namespaceId/keys', { onRequest: [authenticate] }, async (request, reply) => {
   const { namespaceId } = request.params as any;
   const { key, description } = request.body as any;
   const userId = (request.user as any).userId;
@@ -222,7 +222,7 @@ fastify.post('/api/namespaces/:namespaceId/keys', { onRequest: [fastify.authenti
   reply.code(201).send({ key: keyRecord });
 });
 
-fastify.get('/api/keys/:id', { onRequest: [fastify.authenticate as any] }, async (request, reply) => {
+fastify.get('/api/keys/:id', { onRequest: [authenticate] }, async (request, reply) => {
   const { id } = request.params as any;
   const userId = (request.user as any).userId;
 
@@ -240,7 +240,7 @@ fastify.get('/api/keys/:id', { onRequest: [fastify.authenticate as any] }, async
 });
 
 // Translation routes
-fastify.post('/api/keys/:keyId/translations', { onRequest: [fastify.authenticate as any] }, async (request, reply) => {
+fastify.post('/api/keys/:keyId/translations', { onRequest: [authenticate] }, async (request, reply) => {
   const { keyId } = request.params as any;
   const { localeId, value } = request.body as any;
   const userId = (request.user as any).userId;
@@ -274,7 +274,7 @@ fastify.post('/api/keys/:keyId/translations', { onRequest: [fastify.authenticate
   reply.code(201).send({ translation });
 });
 
-fastify.patch('/api/translations/:id', { onRequest: [fastify.authenticate as any] }, async (request, reply) => {
+fastify.patch('/api/translations/:id', { onRequest: [authenticate] }, async (request, reply) => {
   const { id } = request.params as any;
   const { value, state } = request.body as any;
   const userId = (request.user as any).userId;
@@ -321,7 +321,7 @@ fastify.patch('/api/translations/:id', { onRequest: [fastify.authenticate as any
 });
 
 // Comment routes
-fastify.get('/api/translations/:translationId/comments', { onRequest: [fastify.authenticate as any] }, async (request, reply) => {
+fastify.get('/api/translations/:translationId/comments', { onRequest: [authenticate] }, async (request, reply) => {
   const { translationId } = request.params as any;
   const userId = (request.user as any).userId;
 
@@ -343,7 +343,7 @@ fastify.get('/api/translations/:translationId/comments', { onRequest: [fastify.a
   return { comments };
 });
 
-fastify.post('/api/translations/:translationId/comments', { onRequest: [fastify.authenticate as any] }, async (request, reply) => {
+fastify.post('/api/translations/:translationId/comments', { onRequest: [authenticate] }, async (request, reply) => {
   const { translationId } = request.params as any;
   const { content } = request.body as any;
   const userId = (request.user as any).userId;
@@ -367,7 +367,7 @@ fastify.post('/api/translations/:translationId/comments', { onRequest: [fastify.
 });
 
 // Import/Export routes
-fastify.post('/api/projects/:projectId/import', { onRequest: [fastify.authenticate as any] }, async (request, reply) => {
+fastify.post('/api/projects/:projectId/import', { onRequest: [authenticate] }, async (request, reply) => {
   const { projectId } = request.params as any;
   const userId = (request.user as any).userId;
 
@@ -407,7 +407,7 @@ fastify.post('/api/projects/:projectId/import', { onRequest: [fastify.authentica
   return { imported };
 });
 
-fastify.get('/api/projects/:projectId/export', { onRequest: [fastify.authenticate as any] }, async (request, reply) => {
+fastify.get('/api/projects/:projectId/export', { onRequest: [authenticate] }, async (request, reply) => {
   const { projectId } = request.params as any;
   const userId = (request.user as any).userId;
 
@@ -422,7 +422,7 @@ fastify.get('/api/projects/:projectId/export', { onRequest: [fastify.authenticat
 });
 
 // Audit log routes
-fastify.get('/api/projects/:projectId/audit', { onRequest: [fastify.authenticate as any] }, async (request, reply) => {
+fastify.get('/api/projects/:projectId/audit', { onRequest: [authenticate] }, async (request, reply) => {
   const { projectId } = request.params as any;
   const userId = (request.user as any).userId;
 

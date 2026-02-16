@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ACLService } from '../acl.service';
-import { Role, WorkflowState } from '@prisma/client';
+import { Role } from '../types';
 import { prismaService } from '../prisma.service';
 
 vi.mock('../prisma.service');
