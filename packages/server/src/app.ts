@@ -12,8 +12,18 @@ const fastify = Fastify({ logger: true });
 
 // Register plugins
 await fastify.register(cors);
+
+// Ensure JWT secret is set in production
+const jwtSecret = process.env.JWT_SECRET;
+if (!jwtSecret || jwtSecret === 'your-secret-key-change-in-production') {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET must be set in production environment');
+  }
+  console.warn('WARNING: Using default JWT secret. Set JWT_SECRET environment variable in production.');
+}
+
 await fastify.register(jwt, {
-  secret: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
+  secret: jwtSecret || 'your-secret-key-change-in-production',
 });
 await fastify.register(multipart);
 

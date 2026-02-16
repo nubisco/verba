@@ -21,7 +21,8 @@ export async function importCSV(csvContent: string, projectId: string): Promise<
   const localeCache = new Map<string, string>();
   const keyCache = new Map<string, string>();
 
-  for (const row of result.data) {
+  for (let i = 0; i < result.data.length; i++) {
+    const row = result.data[i];
     try {
       // Get or create namespace
       let namespaceId = namespaceCache.get(row.namespace);
@@ -68,7 +69,7 @@ export async function importCSV(csvContent: string, projectId: string): Promise<
 
       imported++;
     } catch (error) {
-      console.error(`Failed to import row:`, row, error);
+      console.error(`Failed to import row ${i + 2} (including header):`, JSON.stringify(row), `Error: ${error}`);
     }
   }
 
@@ -86,7 +87,8 @@ export async function importXLSX(buffer: Buffer, projectId: string): Promise<num
   const localeCache = new Map<string, string>();
   const keyCache = new Map<string, string>();
 
-  for (const row of data) {
+  for (let i = 0; i < data.length; i++) {
+    const row = data[i];
     try {
       // Get or create namespace
       let namespaceId = namespaceCache.get(row.namespace);
@@ -133,7 +135,7 @@ export async function importXLSX(buffer: Buffer, projectId: string): Promise<num
 
       imported++;
     } catch (error) {
-      console.error(`Failed to import row:`, row, error);
+      console.error(`Failed to import row ${i + 1}:`, JSON.stringify(row), `Error: ${error}`);
     }
   }
 

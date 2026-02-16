@@ -24,4 +24,4 @@ RUN pnpm build
 EXPOSE 3001
 
 # Run migrations and start server
-CMD pnpm prisma:migrate deploy && pnpm start
+CMD pnpm prisma:migrate:deploy && pnpm start
