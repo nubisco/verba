@@ -77,10 +77,27 @@ export async function importCSV(csvContent: string, projectId: string): Promise<
 }
 
 export async function importXLSX(buffer: Buffer, projectId: string): Promise<number> {
+  // Security: Limit file size to 10MB to mitigate ReDoS attacks
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+  if (buffer.length > MAX_FILE_SIZE) {
+    throw new Error(`File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB`);
+  }
+
   const workbook = XLSX.read(buffer, { type: 'buffer' });
   const sheetName = workbook.SheetNames[0];
+  
+  if (!sheetName) {
+    throw new Error('No sheets found in workbook');
+  }
+  
   const worksheet = workbook.Sheets[sheetName];
   const data = XLSX.utils.sheet_to_json<ImportRow>(worksheet);
+
+  // Security: Limit number of rows to prevent resource exhaustion
+  const MAX_ROWS = 10000;
+  if (data.length > MAX_ROWS) {
+    throw new Error(`Too many rows. Maximum is ${MAX_ROWS} rows`);
+  }
 
   let imported = 0;
   const namespaceCache = new Map<string, string>();
@@ -90,6 +107,12 @@ export async function importXLSX(buffer: Buffer, projectId: string): Promise<num
   for (let i = 0; i < data.length; i++) {
     const row = data[i];
     try {
+      // Validate row data
+      if (!row.namespace || !row.key || !row.locale || !row.value) {
+        console.error(`Row ${i + 1} missing required fields:`, JSON.stringify(row));
+        continue;
+      }
+
       // Get or create namespace
       let namespaceId = namespaceCache.get(row.namespace);
       if (!namespaceId) {

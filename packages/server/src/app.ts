@@ -25,7 +25,12 @@ if (!jwtSecret || jwtSecret === 'your-secret-key-change-in-production') {
 await fastify.register(jwt, {
   secret: jwtSecret || 'your-secret-key-change-in-production',
 });
-await fastify.register(multipart);
+await fastify.register(multipart, {
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+    files: 1, // Only allow 1 file at a time
+  },
+});
 
 // Auth middleware
 const authenticate = async (request: any, reply: any) => {

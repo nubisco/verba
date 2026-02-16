@@ -178,6 +178,32 @@ verba/
 └── pnpm-workspace.yaml
 ```
 
+## Security
+
+### Known Dependencies Issues
+
+**xlsx (SheetJS) Library**: The project currently uses xlsx@0.18.5 for XLSX import functionality. While this is the latest version available on npm, there are known vulnerabilities:
+- Regular Expression Denial of Service (ReDoS) 
+- Prototype Pollution
+
+**Mitigations Implemented:**
+- File size limited to 10MB to prevent ReDoS attacks
+- Row count limited to 10,000 rows
+- Input validation on all imported data
+- Maintainer-only access to import functionality
+
+**Recommendations:**
+- Only allow trusted users (MAINTAINER role or higher) to import files
+- Consider implementing import as an async background job with timeout
+- Monitor for alternative libraries or wait for patched npm releases
+
+**Other Security Measures:**
+- JWT secret validation (fails in production without proper secret)
+- Password hashing with bcrypt
+- Server-side ACL enforcement
+- Audit logging for accountability
+- Updated to Fastify 5.7.2+ (fixes Content-Type header vulnerability)
+
 ## License
 
 MIT License - see LICENSE file for details
