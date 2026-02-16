@@ -11,7 +11,7 @@ A self-hostable, open-source i18n (internationalization) collaboration tool with
 - 🔒 **Namespace ACL**: Fine-grained access control at namespace level
 - 💬 **Comments**: Collaborate with team members on translations
 - 📊 **Audit Logs**: Track all changes and state transitions
-- 📥 **Import/Export**: CSV/XLSX import and approved JSON export
+- 📥 **Import/Export**: CSV import and approved JSON export
 - 🎨 **Modern UI**: Built with Vue 3, TypeScript, and SCSS
 
 ## Tech Stack
@@ -143,7 +143,7 @@ Access the application at http://localhost:3000
 - `POST /api/translations/:translationId/comments` - Add comment
 
 ### Import/Export
-- `POST /api/projects/:projectId/import` - Import CSV/XLSX
+- `POST /api/projects/:projectId/import` - Import CSV
 - `GET /api/projects/:projectId/export` - Export approved JSON
 
 ### Audit Logs
@@ -180,29 +180,33 @@ verba/
 
 ## Security
 
-### Known Dependencies Issues
+### Secure by Design
 
-**xlsx (SheetJS) Library**: The project currently uses xlsx@0.18.5 for XLSX import functionality. While this is the latest version available on npm, there are known vulnerabilities:
-- Regular Expression Denial of Service (ReDoS) 
-- Prototype Pollution
+**Security Measures:**
+- ✅ JWT secret validation (fails in production without proper secret)
+- ✅ Password hashing with bcrypt
+- ✅ Server-side ACL enforcement on all endpoints
+- ✅ Audit logging for accountability
+- ✅ Fastify 5.7.2+ (fixes Content-Type header vulnerability)
+- ✅ File size limits (10MB) for imports
+- ✅ CSV-only import (no vulnerable xlsx dependency)
 
-**Mitigations Implemented:**
-- File size limited to 10MB to prevent ReDoS attacks
-- Row count limited to 10,000 rows
-- Input validation on all imported data
-- Maintainer-only access to import functionality
+**Import Functionality:**
+- Only CSV import is supported (secure, no known vulnerabilities)
+- XLSX import was intentionally removed due to unpatched security vulnerabilities in the xlsx library
+- Users can convert XLSX to CSV before importing
+- File size limited to 10MB to prevent DoS attacks
 
 **Recommendations:**
 - Only allow trusted users (MAINTAINER role or higher) to import files
-- Consider implementing import as an async background job with timeout
-- Monitor for alternative libraries or wait for patched npm releases
+- Review audit logs regularly
+- Keep dependencies updated
+- Use strong JWT secrets in production
 
-**Other Security Measures:**
-- JWT secret validation (fails in production without proper secret)
-- Password hashing with bcrypt
-- Server-side ACL enforcement
-- Audit logging for accountability
-- Updated to Fastify 5.7.2+ (fixes Content-Type header vulnerability)
+## Known Limitations
+
+- **XLSX Import**: Not supported due to security vulnerabilities in xlsx library. Use CSV instead.
+- **SQLite**: Development only. Use PostgreSQL for production.
 
 ## License
 

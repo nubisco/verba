@@ -1,5 +1,4 @@
 import Papa from 'papaparse';
-import * as XLSX from 'xlsx';
 import { prismaService } from './prisma.service.js';
 
 export interface ImportRow {
@@ -24,92 +23,9 @@ export async function importCSV(csvContent: string, projectId: string): Promise<
   for (let i = 0; i < result.data.length; i++) {
     const row = result.data[i];
     try {
-      // Get or create namespace
-      let namespaceId = namespaceCache.get(row.namespace);
-      if (!namespaceId) {
-        const namespace = await prismaService.createNamespace({
-          projectId,
-          name: row.namespace,
-        });
-        namespaceId = namespace.id;
-        namespaceCache.set(row.namespace, namespaceId);
-      }
-
-      // Get or create locale
-      let localeId = localeCache.get(row.locale);
-      if (!localeId) {
-        const locale = await prismaService.createLocale({
-          projectId,
-          code: row.locale,
-          name: row.locale,
-        });
-        localeId = locale.id;
-        localeCache.set(row.locale, localeId);
-      }
-
-      // Get or create key
-      const keyLookup = `${namespaceId}:${row.key}`;
-      let keyId = keyCache.get(keyLookup);
-      if (!keyId) {
-        const key = await prismaService.createKey({
-          namespaceId,
-          key: row.key,
-          description: row.description,
-        });
-        keyId = key.id;
-        keyCache.set(keyLookup, keyId);
-      }
-
-      // Create translation
-      await prismaService.createTranslation({
-        keyId,
-        localeId,
-        value: row.value,
-      });
-
-      imported++;
-    } catch (error) {
-      console.error(`Failed to import row ${i + 2} (including header):`, JSON.stringify(row), `Error: ${error}`);
-    }
-  }
-
-  return imported;
-}
-
-export async function importXLSX(buffer: Buffer, projectId: string): Promise<number> {
-  // Security: Limit file size to 10MB to mitigate ReDoS attacks
-  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-  if (buffer.length > MAX_FILE_SIZE) {
-    throw new Error(`File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB`);
-  }
-
-  const workbook = XLSX.read(buffer, { type: 'buffer' });
-  const sheetName = workbook.SheetNames[0];
-  
-  if (!sheetName) {
-    throw new Error('No sheets found in workbook');
-  }
-  
-  const worksheet = workbook.Sheets[sheetName];
-  const data = XLSX.utils.sheet_to_json<ImportRow>(worksheet);
-
-  // Security: Limit number of rows to prevent resource exhaustion
-  const MAX_ROWS = 10000;
-  if (data.length > MAX_ROWS) {
-    throw new Error(`Too many rows. Maximum is ${MAX_ROWS} rows`);
-  }
-
-  let imported = 0;
-  const namespaceCache = new Map<string, string>();
-  const localeCache = new Map<string, string>();
-  const keyCache = new Map<string, string>();
-
-  for (let i = 0; i < data.length; i++) {
-    const row = data[i];
-    try {
       // Validate row data
       if (!row.namespace || !row.key || !row.locale || !row.value) {
-        console.error(`Row ${i + 1} missing required fields:`, JSON.stringify(row));
+        console.error(`Row ${i + 2} (including header) missing required fields:`, JSON.stringify(row));
         continue;
       }
 
@@ -158,7 +74,7 @@ export async function importXLSX(buffer: Buffer, projectId: string): Promise<num
 
       imported++;
     } catch (error) {
-      console.error(`Failed to import row ${i + 1}:`, JSON.stringify(row), `Error: ${error}`);
+      console.error(`Failed to import row ${i + 2} (including header):`, JSON.stringify(row), `Error: ${error}`);
     }
   }
 

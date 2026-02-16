@@ -5,7 +5,7 @@ import multipart from '@fastify/multipart';
 import { hashPassword, comparePassword } from './auth.utils.js';
 import { prismaService } from './prisma.service.js';
 import { aclService } from './acl.service.js';
-import { importCSV, importXLSX, exportApprovedJSON } from './import-export.service.js';
+import { importCSV, exportApprovedJSON } from './import-export.service.js';
 import { Role, WorkflowState } from './types.js';
 
 const fastify = Fastify({ logger: true });
@@ -402,12 +402,8 @@ fastify.post('/api/projects/:projectId/import', { onRequest: [authenticate] }, a
   if (data.mimetype === 'text/csv') {
     const content = buffer.toString('utf-8');
     imported = await importCSV(content, projectId);
-  } else if (
-    data.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-  ) {
-    imported = await importXLSX(buffer, projectId);
   } else {
-    return reply.code(400).send({ error: 'Unsupported file type' });
+    return reply.code(400).send({ error: 'Unsupported file type. Only CSV files are supported.' });
   }
 
   await prismaService.createAuditLog({

@@ -63,8 +63,8 @@
         <div class="modal-content">
           <h3>Import Translations</h3>
           <div class="form-group">
-            <label>Upload CSV or XLSX file</label>
-            <input type="file" @change="handleFileSelect" accept=".csv,.xlsx" />
+            <label>Upload CSV file</label>
+            <input type="file" @change="handleFileSelect" accept=".csv" />
           </div>
           <div class="modal-actions">
             <button @click="showImportModal = false" class="btn">Cancel</button>
