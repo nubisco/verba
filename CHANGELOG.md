@@ -1,3 +1,10 @@
+## [1.1.4](https://github.com/nubisco/verba/compare/v1.1.3...v1.1.4) (2026-05-01)
+
+
+### Bug Fixes
+
+* switch Prisma provider to postgresql in Docker build ([5bc4e67](https://github.com/nubisco/verba/commit/5bc4e676dfcb078cef364667a4dbaaa7becd0f78))
+
 ## [1.1.3](https://github.com/nubisco/verba/compare/v1.1.2...v1.1.3) (2026-05-01)
 
 

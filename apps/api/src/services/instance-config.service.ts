@@ -4,6 +4,7 @@ export interface AuthConfig {
   localPasswordEnabled: boolean
   platformEnabled: boolean
   platformIssuer: string | null
+  platformAppId: string | null
 }
 
 export interface PublicInstanceConfig {
@@ -17,6 +18,7 @@ export function getAuthConfig(): AuthConfig {
   const localPasswordEnabled = process.env.ENABLE_LOCAL_PASSWORD === 'true'
   const localOtpEnabled = process.env.DISABLE_LOCAL_OTP !== 'true'
   const platformIssuer = process.env.PLATFORM_ISSUER ?? null
+  const platformAppId = process.env.PLATFORM_APP_ID ?? null
   const platformEnabled = Boolean(platformIssuer)
 
   if (localPasswordEnabled && localOtpEnabled) {
@@ -26,6 +28,7 @@ export function getAuthConfig(): AuthConfig {
       localPasswordEnabled,
       platformEnabled,
       platformIssuer,
+      platformAppId,
     }
   }
 
@@ -35,6 +38,7 @@ export function getAuthConfig(): AuthConfig {
     localPasswordEnabled,
     platformEnabled,
     platformIssuer,
+    platformAppId,
   }
 }
 

@@ -270,7 +270,7 @@ function startPlatformLogin() {
   sessionStorage.setItem(PLATFORM_REDIRECT_KEY, redirectTarget)
 
   const ssoUrl = new URL('/api/auth/sso', issuer)
-  ssoUrl.searchParams.set('app_id', 'verba')
+  ssoUrl.searchParams.set('app_id', instanceConfig.auth.platformAppId || 'verba')
   ssoUrl.searchParams.set('redirect_uri', callbackUrl.toString())
   ssoUrl.searchParams.set('state', state)
 

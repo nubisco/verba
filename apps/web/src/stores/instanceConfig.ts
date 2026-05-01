@@ -13,6 +13,7 @@ interface InstanceAuthConfig {
   localPasswordEnabled: boolean
   platformEnabled: boolean
   platformIssuer: string | null
+  platformAppId: string | null
 }
 
 interface InstanceConfig {
@@ -28,6 +29,7 @@ export const useInstanceConfigStore = defineStore('instanceConfig', () => {
     localPasswordEnabled: false,
     platformEnabled: false,
     platformIssuer: null,
+    platformAppId: null,
   })
   const ready = ref(false)
 
