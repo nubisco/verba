@@ -16,10 +16,8 @@ COPY tsconfig.base.json tsconfig.json ./
 COPY packages/shared ./packages/shared
 COPY apps/api ./apps/api
 
-# Disable strict mode and stub EE BEFORE any TypeScript compilation.
-# The EE stub provides minimal exports so the dynamic import resolves.
-# Real strict type checking runs in CI where all packages are present.
-RUN echo '{"compilerOptions":{"target":"ESNext","module":"ESNext","moduleResolution":"Node","strict":false,"strictNullChecks":false,"noImplicitAny":false,"esModuleInterop":true,"skipLibCheck":true,"forceConsistentCasingInFileNames":true,"resolveJsonModule":true}}' > tsconfig.base.json \
+# Generate Prisma client types, stub EE, then build.
+RUN pnpm --filter @nubisco/verba-api exec prisma generate \
     && mkdir -p packages/ee/src \
     && printf 'export function isLicenseValid() { return false }\nexport function resolveEntitlements() { return {} }\nexport function hasFeature() { return false }\n' > packages/ee/src/index.ts \
     && echo '{"compilerOptions":{"composite":true,"outDir":"dist","rootDir":"src"},"include":["src"]}' > packages/ee/tsconfig.json \
