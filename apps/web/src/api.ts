@@ -1,6 +1,6 @@
 import router from './router'
 
-const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:4000'
+const BASE = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? '/api' : 'http://localhost:4000')
 
 export async function apiFetch<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {
   const isGet = !options.method || options.method.toUpperCase() === 'GET'
