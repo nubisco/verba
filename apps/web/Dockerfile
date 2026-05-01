@@ -6,8 +6,8 @@ RUN corepack enable && corepack prepare pnpm@9 --activate
 
 # ---- build ----
 FROM base AS build
-ARG VITE_API_URL=http://localhost:4000
-ENV VITE_API_URL=$VITE_API_URL
+# VITE_API_URL is intentionally not set so the app defaults to /api
+# (proxied by nginx to the API container). Pass as a build arg to override.
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json ./apps/web/

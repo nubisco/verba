@@ -37,6 +37,7 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       ENABLE_LOCAL_PASSWORD: ${ENABLE_LOCAL_PASSWORD:-false}
+      PLATFORM_ISSUER: ${PLATFORM_ISSUER:-}
     ports:
       - '${API_PORT:-4000}:4000'
 
