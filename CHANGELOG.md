@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/nubisco/verba/compare/v1.1.0...v1.1.1) (2026-05-01)
+
+
+### Bug Fixes
+
+* copy generated Prisma client from build stage instead of regenerating ([ed9a112](https://github.com/nubisco/verba/commit/ed9a11276225bbf046b6c4c7a90fdddf4d55115f))
+
 # [1.1.0](https://github.com/nubisco/verba/compare/v1.0.1...v1.1.0) (2026-05-01)
 
 
