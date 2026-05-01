@@ -1,0 +1,85 @@
+name: Publish CLI to npm
+
+on:
+  push:
+    tags:
+      - 'cli/v*' # trigger on tags like cli/v0.2.0
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # needed to create GitHub Release
+      id-token: write # needed for npm provenance
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build CLI
+        run: pnpm --filter @nubisco/verba-cli build
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#cli/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Bump package version
+        working-directory: packages/cli
+        run: npm version "${{ steps.version.outputs.VERSION }}" --no-git-tag-version
+
+      - name: Verify package contents
+        working-directory: packages/cli
+        run: |
+          echo "=== Files that will be published ==="
+          npm pack --dry-run 2>&1
+          # Fail if any sensitive files would be included
+          PACK_LIST=$(npm pack --dry-run 2>&1)
+          for pattern in ".env" "credentials" "secret" ".pem" ".key"; do
+            if echo "$PACK_LIST" | grep -i "$pattern"; then
+              echo "::error::Sensitive file matching '$pattern' found in package contents"
+              exit 1
+            fi
+          done
+          # Fail if EE code somehow leaked in
+          if echo "$PACK_LIST" | grep -i "packages/ee"; then
+            echo "::error::EE code found in CLI package contents"
+            exit 1
+          fi
+          echo "Package contents verified."
+
+      - name: Publish to npm
+        working-directory: packages/cli
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: 'CLI v${{ steps.version.outputs.VERSION }}'
+          body: |
+            ## @nubisco/verba-cli v${{ steps.version.outputs.VERSION }}
+
+            Install via npm:
+            ```bash
+            npm install -g @nubisco/verba-cli
+            ```
+            Or via Homebrew (after setting up the tap):
+            ```bash
+            brew tap nubisco/tap
+            brew install verba
+            ```
+          generate_release_notes: true

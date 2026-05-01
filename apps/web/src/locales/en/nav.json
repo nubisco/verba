@@ -1,0 +1,20 @@
+{
+  "home": "Home",
+  "dashboard": "Dashboard",
+  "keys": "Translation Keys",
+  "board": "Board",
+  "review": "Review Queue",
+  "import": "Import",
+  "importRun": "Import Run",
+  "export": "Export",
+  "history": "History",
+  "settings": "Settings",
+  "profile": "Profile",
+  "admin": "Admin",
+  "projects": "Projects",
+  "organizations": "Organizations",
+  "liveIndicator": "LIVE",
+  "offlineIndicator": "OFFLINE",
+  "projectFallback": "Select a project",
+  "allProjects": "All Projects"
+}

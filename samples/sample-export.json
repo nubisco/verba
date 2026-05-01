@@ -1,0 +1,18 @@
+{
+  "alerts.low_wind.description": "Wind speed is below the operational threshold.",
+  "alerts.low_wind.title": "Low Wind Alert",
+  "app.footer.copyright": "© 2024 Nubisco. All rights reserved.",
+  "app.menu.edit": "Edit",
+  "app.menu.file": "File",
+  "app.menu.help": "Help",
+  "app.menu.view": "View",
+  "auth.errors.invalid_credentials": "Invalid email or password.",
+  "auth.errors.session_expired": "Your session has expired. Please sign in again.",
+  "auth.login.button": "Sign In",
+  "auth.login.email": "Email address",
+  "auth.login.password": "Password",
+  "auth.login.title": "Welcome back",
+  "dashboard.keys.total": "Total Keys",
+  "dashboard.locale.progress": "Translation Progress",
+  "dashboard.review.pending": "Pending Review"
+}

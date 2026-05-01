@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @nubisco/verba-api prisma:generate
+
+      - name: Build
+        run: pnpm build
+
+      - name: Test
+        run: pnpm test
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Verify forbidden EE imports in CE code
+        run: |
+          # ESLint already enforces this, but a grep backstop catches it even
+          # if the lint step is accidentally skipped or the rule is weakened.
+          VIOLATIONS=$(grep -rn --include='*.ts' --include='*.vue' \
+            -e "from '@nubisco/verba-ee" -e "from \"@nubisco/verba-ee" \
+            apps/ packages/shared/ packages/cli/ || true)
+          if [ -n "$VIOLATIONS" ]; then
+            echo "::error::Forbidden EE imports found in CE code:"
+            echo "$VIOLATIONS"
+            exit 1
+          fi
+          echo "No forbidden EE imports found."
+
+      - name: Verify required legal files
+        run: |
+          MISSING=""
+          for f in LICENSE LICENSE-AGPL.txt NOTICE.md packages/ee/LICENSE; do
+            if [ ! -f "$f" ]; then
+              MISSING="$MISSING $f"
+            fi
+          done
+          if [ -n "$MISSING" ]; then
+            echo "::error::Missing required legal files:$MISSING"
+            exit 1
+          fi
+          echo "All required legal files present."

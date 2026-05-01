@@ -1,0 +1,45 @@
+Verba — Split License
+
+Copyright (c) 2026 Nubisco Lda. All rights reserved.
+
+This repository contains two distinct components under two distinct licenses:
+
+────────────────────────────────────────────────────────────────────────────────
+ COMMUNITY EDITION (CE)
+────────────────────────────────────────────────────────────────────────────────
+
+All source code NOT located under the `packages/ee/` directory is part of the
+Verba Community Edition and is licensed under the GNU Affero General Public
+License, version 3 or later (AGPL-3.0-or-later).
+
+The full text of the AGPL-3.0 is available at:
+
+  ./LICENSE-AGPL.txt
+
+In summary, you are free to use, modify, and distribute the Community Edition,
+provided that any modified or derivative works that are run over a network are
+also made available under the AGPL-3.0 or a compatible license.
+
+────────────────────────────────────────────────────────────────────────────────
+ ENTERPRISE EDITION (EE)
+────────────────────────────────────────────────────────────────────────────────
+
+All source code located under the `packages/ee/` directory, and any source file
+bearing the header "Copyright (c) Nubisco — All Rights Reserved", is part of
+the Verba Enterprise Edition and is proprietary software owned by Nubisco Lda.
+
+The full terms of the Enterprise Edition license are available at:
+
+  ./packages/ee/LICENSE
+
+In summary, the Enterprise Edition source code is made available for inspection
+and local development/evaluation only. Production or commercial use requires a
+valid commercial license obtained from Nubisco Lda.
+
+────────────────────────────────────────────────────────────────────────────────
+ CONTACT
+────────────────────────────────────────────────────────────────────────────────
+
+Licensing enquiries:  licensing@nubisco.io
+Legal:                legal@nubisco.io
+Website:              https://nubisco.io

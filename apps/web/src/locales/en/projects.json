@@ -1,0 +1,57 @@
+{
+  "list": {
+    "title": "Projects",
+    "empty": "No projects yet.",
+    "createFirst": "Create your first project to get started.",
+    "loading": "Loading projects…"
+  },
+  "create": {
+    "title": "Create project",
+    "newProject": "New Project",
+    "namePlaceholder": "My App",
+    "slugPlaceholder": "my-app",
+    "submit": "Create project",
+    "submitting": "Creating…",
+    "cancel": "Cancel"
+  },
+  "header": {
+    "totalKeys": "Total Keys",
+    "needsReview": "Needs Review"
+  },
+  "locales": {
+    "title": "Locales",
+    "add": "Add locale",
+    "quickPick": "Pick a common language…",
+    "codePlaceholder": "en_US",
+    "namePlaceholder": "English (US)",
+    "submitting": "Adding…",
+    "remove": "Remove",
+    "confirmRemove": "Remove locale \"{code}\"? This will fail if translations exist."
+  },
+  "namespaces": {
+    "title": "Namespaces",
+    "empty": "No namespaces yet. Add one below.",
+    "namePlaceholder": "Name (e.g. common, auth, errors)",
+    "confirmRemove": "Remove namespace \"{slug}\"? Keys inside will also be deleted."
+  },
+  "members": {
+    "title": "Members",
+    "empty": "No members yet.",
+    "add": "Add member",
+    "emailPlaceholder": "user{'@'}example.com",
+    "role": "Role",
+    "assignLocales": "Assign locales",
+    "noLocalesAssigned": "All locales",
+    "editLocales": "🌐",
+    "save": "Save locales",
+    "cancel": "Cancel",
+    "remove": "Remove member",
+    "confirmRemove": "Remove this member from the project?",
+    "leaveUnchecked": "Leave all unchecked to allow all locales."
+  },
+  "settings": {
+    "title": "Project Settings",
+    "icon": "Project icon (emoji or 2 chars)",
+    "save": "Save"
+  }
+}

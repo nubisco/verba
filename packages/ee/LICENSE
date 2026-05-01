@@ -1,0 +1,96 @@
+Verba Enterprise Edition License
+
+Copyright (c) 2026 Nubisco Lda. All Rights Reserved.
+
+Nubisco Lda is a private limited company registered in Portugal
+("Licensor"). This license governs use of the Verba Enterprise Edition
+software and associated documentation located under the `packages/ee/`
+directory ("EE Software").
+
+────────────────────────────────────────────────────────────────────────────────
+ 1. PERMITTED USE — DEVELOPMENT AND EVALUATION
+────────────────────────────────────────────────────────────────────────────────
+
+You are permitted, without a commercial license key, to:
+
+  a) Clone, build, and run the EE Software on a local development machine
+     for the purpose of developing, testing, or evaluating Verba;
+  b) Read, study, and audit the EE source code;
+  c) Contribute to the EE Software under the Contributor License Agreement
+     at the root of this repository (CLA.md).
+
+────────────────────────────────────────────────────────────────────────────────
+ 2. COMMERCIAL LICENSE REQUIRED
+────────────────────────────────────────────────────────────────────────────────
+
+A valid commercial license key, obtained from Nubisco Lda, is required for:
+
+  a) Running EE Software in any production, staging, or pre-production
+     environment accessible to end users;
+  b) Using EE Software as part of a managed or hosted service offered to
+     third parties;
+  c) Incorporating EE Software into a product or service that generates
+     revenue, directly or indirectly.
+
+To obtain a license: licensing@nubisco.io
+
+────────────────────────────────────────────────────────────────────────────────
+ 3. RESTRICTIONS
+────────────────────────────────────────────────────────────────────────────────
+
+Unless expressly permitted above or by a separate written agreement with
+Nubisco Lda, you may NOT:
+
+  a) Redistribute, sublicense, or resell the EE Software or any derivative;
+  b) Build or offer a product or service that competes with Verba using
+     the EE Software;
+  c) Remove or modify any copyright notices or license headers;
+  d) Circumvent or disable any license key checks in the EE Software.
+
+────────────────────────────────────────────────────────────────────────────────
+ 4. INTELLECTUAL PROPERTY
+────────────────────────────────────────────────────────────────────────────────
+
+The EE Software is the proprietary and confidential property of Nubisco Lda.
+Making the source code available does not constitute a waiver of any
+intellectual property rights. Availability of source code is provided solely
+to enable inspection, auditability, and local development, as stated in
+Section 1.
+
+────────────────────────────────────────────────────────────────────────────────
+ 5. TERMINATION
+────────────────────────────────────────────────────────────────────────────────
+
+Any rights granted under this license terminate automatically upon breach of
+its terms. Upon termination you must cease all use and destroy all copies of
+the EE Software in your possession.
+
+────────────────────────────────────────────────────────────────────────────────
+ 6. GOVERNING LAW AND VENUE
+────────────────────────────────────────────────────────────────────────────────
+
+This license is governed by the laws of Portugal, without regard to conflict-
+of-law principles. Any disputes arising under this license shall be subject to
+the exclusive jurisdiction of the courts of Portugal.
+
+────────────────────────────────────────────────────────────────────────────────
+ 7. NO WARRANTY
+────────────────────────────────────────────────────────────────────────────────
+
+THE EE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT. IN NO EVENT SHALL NUBISCO LDA
+BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM USE OF THE
+EE SOFTWARE.
+
+────────────────────────────────────────────────────────────────────────────────
+ 8. LEGAL REVIEW
+────────────────────────────────────────────────────────────────────────────────
+
+> [!NOTE]
+> This license is a working draft and must be reviewed by qualified legal
+> counsel before the public release of the Verba Enterprise Edition.
+
+────────────────────────────────────────────────────────────────────────────────
+
+Contact: licensing@nubisco.io | legal@nubisco.io

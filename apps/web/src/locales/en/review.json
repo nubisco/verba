@@ -1,0 +1,16 @@
+{
+  "title": "Review Queue",
+  "breadcrumb": "← Project",
+  "subtitle": "Translations submitted for approval",
+  "empty": "Nothing to review: you're all caught up!",
+  "approve": "✓ Approve",
+  "reject": "↩ Send back",
+  "approved": "Approved",
+  "rejected": "Rejected",
+  "key": "Key",
+  "locale": "Locale",
+  "text": "Translation",
+  "refresh": "↺ Refresh",
+  "addComment": "Add note",
+  "commentPlaceholder": "Optional note to the translator…"
+}

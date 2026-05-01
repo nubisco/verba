@@ -1,0 +1,8 @@
+{
+  "welcome": "Welcome back, {name}!",
+  "myTasks": "My Active Tasks",
+  "myProjects": "My Projects",
+  "noTasks": "🎉 No active tasks: you're all caught up!",
+  "noProjects": "No projects yet.",
+  "loading": "Loading…"
+}

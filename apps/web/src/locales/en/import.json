@@ -1,0 +1,19 @@
+{
+  "title": "Import Translations",
+  "breadcrumb": "← Project",
+  "selectFile": "1. Select File",
+  "columnMapping": "2. Column Mapping",
+  "keyColumn": "Key column",
+  "namespaceColumn": "Namespace column (optional)",
+  "preview": "Preview",
+  "previewTitle": "Preview",
+  "applyImport": "Apply Import",
+  "applying": "Applying…",
+  "loading": "Loading…",
+  "importComplete": "Import Complete",
+  "viewImportRun": "View Import Run",
+  "create": "+{count} create",
+  "update": "~{count} update",
+  "skip": "{count} skip",
+  "error": "Import failed: {message}"
+}

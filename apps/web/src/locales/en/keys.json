@@ -1,0 +1,68 @@
+{
+  "list": {
+    "title": "Translation Keys",
+    "empty": "No keys yet.",
+    "search": "Search keys by name…",
+    "allNamespaces": "All namespaces",
+    "createKey": "New key",
+    "page": "Page {page} of {total}",
+    "total": "{count} keys total",
+    "noMatch": "No keys match your search.",
+    "createFirst": "+ Create your first key",
+    "newKey": "+ New Key",
+    "cancel": "Cancel",
+    "noNamespacesWarning": "⚠ No namespaces yet.",
+    "goToSettings": "Go to project settings"
+  },
+  "create": {
+    "title": "New Translation Key",
+    "name": "Key name *",
+    "namePlaceholder": "e.g. common.greeting",
+    "namespace": "Namespace *",
+    "description": "Description (optional)",
+    "descriptionPlaceholder": "Context for translators",
+    "submit": "Create Key",
+    "submitting": "Creating…"
+  },
+  "detail": {
+    "breadcrumb": "← Keys",
+    "translations": "Translations",
+    "noLocales": "No locales configured.",
+    "enterTranslation": "Enter translation…",
+    "hint": "Tip: Use {variable} for placeholders and @:namespace.key for key references",
+    "locked": "🔒 Assigned to {user}",
+    "save": "Save",
+    "saving": "Saving…",
+    "deleteKey": "Delete key",
+    "confirmDelete": "Delete this key? This action cannot be undone easily.",
+    "layout": {
+      "stacked": "Stacked layout",
+      "sideBySide": "Side by side"
+    },
+    "comments": "Comments",
+    "history": "History",
+    "noComments": "No comments yet.",
+    "noHistory": "No history yet.",
+    "saveForComments": "Save at least one translation to add comments.",
+    "addComment": "Add a comment…",
+    "addCommentBtn": "Add comment",
+    "reply": "Reply",
+    "writeReply": "Write a reply…",
+    "send": "Send",
+    "historyLoading": "Loading…",
+    "noTranslation": "(no translation)"
+  },
+  "status": {
+    "submit": "Submit for review",
+    "approve": "Approve",
+    "reject": "Reject",
+    "reopen": "Reopen",
+    "startWorking": "Start working"
+  },
+  "tabs": {
+    "myLanguages": "My Languages ({count})",
+    "otherLanguages": "Other Languages ({count})"
+  },
+  "deleted": "Key deleted.",
+  "restored": "Key restored."
+}

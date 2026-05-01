@@ -1,0 +1,17 @@
+Key,Namespace,en,pt-PT,de
+app.menu.file,app,File,Ficheiro,Datei
+app.menu.edit,app,Edit,Editar,Bearbeiten
+app.menu.view,app,View,Ver,Ansicht
+app.menu.help,app,Help,Ajuda,Hilfe
+app.footer.copyright,app,© 2024 Nubisco. All rights reserved.,© 2024 Nubisco. Todos os direitos reservados.,© 2024 Nubisco. Alle Rechte vorbehalten.
+auth.login.title,auth,Welcome back,Bem-vindo de volta,Willkommen zurück
+auth.login.email,auth,Email address,Endereço de e-mail,E-Mail-Adresse
+auth.login.password,auth,Password,Palavra-passe,Passwort
+auth.login.button,auth,Sign In,Entrar,Anmelden
+auth.errors.invalid_credentials,auth,Invalid email or password.,E-mail ou palavra-passe inválidos.,Ungültige E-Mail oder Passwort.
+auth.errors.session_expired,auth,Your session has expired. Please sign in again.,A sua sessão expirou. Por favor inicie sessão novamente.,Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.
+dashboard.keys.total,dashboard,Total Keys,Total de Chaves,Gesamtschlüssel
+dashboard.locale.progress,dashboard,Translation Progress,Progresso de Tradução,Übersetzungsfortschritt
+dashboard.review.pending,dashboard,Pending Review,Revisão Pendente,Ausstehende Überprüfung
+alerts.low_wind.title,alerts,Low Wind Alert,Alerta de Vento Fraco,Schwacher Wind Alarm
+alerts.low_wind.description,alerts,Wind speed is below the operational threshold.,A velocidade do vento está abaixo do limiar operacional.,Die Windgeschwindigkeit liegt unter dem Betriebsschwellenwert.

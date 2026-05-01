@@ -1,0 +1,18 @@
+{
+  "title": "Export Translations",
+  "breadcrumb": "← Project",
+  "format": "Format",
+  "filters": "Filters",
+  "locale": "Locale",
+  "allLocales": "All locales",
+  "status": "Status",
+  "allStatuses": "All statuses",
+  "options": "Options",
+  "resolveRefs": "Resolve key references (@:key → actual text)",
+  "resolveHint": "Replaces inline key references with their translations. Warns about missing/empty refs.",
+  "splitByNamespace": "One file per namespace (ZIP)",
+  "splitHint": "Exports a ZIP archive with one JSON file per namespace, organized in locale folders.",
+  "submit": "Export {format}",
+  "exporting": "Exporting…",
+  "error": "Export failed: {message}"
+}

@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "jsx": "preserve",
+    "lib": ["ESNext", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowJs": false,
+    "types": ["vite/client"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@nubisco/verba-shared": ["../../packages/shared/src"],
+      "@nubisco/verba-shared/*": ["../../packages/shared/src/*"]
+    }
+  },
+  "include": ["src/**/*", "env.d.ts"],
+  "references": [{ "path": "../../packages/shared" }]
+}

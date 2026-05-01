@@ -1,0 +1,50 @@
+{
+  "name": "@nubisco/verba-cli",
+  "version": "0.1.0",
+  "description": "CLI for Verba: open-source i18n collaboration platform",
+  "keywords": [
+    "i18n",
+    "localization",
+    "translation",
+    "verba",
+    "cli"
+  ],
+  "author": "Nubisco",
+  "license": "MIT",
+  "homepage": "https://github.com/nubisco/verba",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nubisco/verba.git",
+    "directory": "packages/cli"
+  },
+  "type": "module",
+  "bin": {
+    "verba": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "prepublishOnly": "pnpm build"
+  },
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "commander": "^14.0.3",
+    "inquirer": "^13.3.2",
+    "ora": "^9.3.0"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^9.0.9",
+    "tsx": "^4.21.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

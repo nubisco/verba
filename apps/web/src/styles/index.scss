@@ -1,0 +1,15 @@
+// Import nubisco-ui design tokens and theme (CSS custom properties, grid, typography)
+@use '@nubisco/ui/styles';
+
+html {
+  font-size: 100%;
+}
+
+body {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: var(--nb-font-family-sans);
+  font-weight: var(--nb-font-weight-regular);
+  overflow: hidden;
+}

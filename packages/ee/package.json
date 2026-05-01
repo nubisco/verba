@@ -1,0 +1,24 @@
+{
+  "name": "@nubisco/verba-ee",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Verba Enterprise Edition: proprietary features (SSO, advanced audit, multi-tenancy)",
+  "type": "module",
+  "license": "SEE LICENSE IN LICENSE",
+  "files": [
+    "dist"
+  ],
+  "main": "./src/index.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@nubisco/verba-shared": "workspace:*",
+    "@prisma/client": "^6.19.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "vitest": "^4.1.1"
+  }
+}

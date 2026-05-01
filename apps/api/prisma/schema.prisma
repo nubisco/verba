@@ -1,0 +1,288 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                   String    @id @default(cuid())
+  email                String    @unique
+  name                 String?
+  passwordHash         String
+  isGlobalAdmin        Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+  deactivatedAt        DateTime?
+  preferredLocales     String    @default("[]") // JSON array of locale codes e.g. ["en","fr"]
+  notificationOpenMode String    @default("inspector")
+
+  memberships              Membership[]
+  comments                 Comment[]
+  translations             Translation[]
+  auditLogs                AuditLog[]
+  importRuns               ImportRun[]
+  orgMemberships           OrgMembership[]
+  assignedTranslations     Translation[]  @relation("AssignedTranslations")
+  notifications            Notification[] @relation("NotificationRecipient")
+  triggeredNotifications   Notification[] @relation("NotificationActor")
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  projects Project[]
+  members  OrgMembership[]
+}
+
+model OrgMembership {
+  id        String   @id @default(cuid())
+  userId    String
+  orgId     String
+  role      String   @default("MEMBER")
+  createdAt DateTime @default(now())
+
+  user User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, orgId])
+}
+
+model Project {
+  id             String   @id @default(cuid())
+  name           String
+  slug           String   @unique
+  avatar         String?  // Emoji or short icon text, e.g. "🌍" or "VP"
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  organizationId String?
+  aiProvider     String?  // "openai" | "anthropic" | "gemini"
+  aiApiKey       String?  // store as-is; in production should be env-encrypted
+  aiModel        String?  // e.g. "gpt-4o-mini", "claude-3-haiku"
+  aiEnabled      Boolean  @default(false)
+
+  organization  Organization? @relation(fields: [organizationId], references: [id])
+  locales       Locale[]
+  namespaces    Namespace[]
+  keys          Key[]
+  memberships   Membership[]
+  auditLogs     AuditLog[]
+  importRuns    ImportRun[]
+  notifications Notification[]
+}
+
+model Locale {
+  id        String  @id @default(cuid())
+  projectId String
+  code      String
+  name      String
+  isEnabled Boolean @default(true)
+
+  project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  translations Translation[]
+
+  @@unique([projectId, code])
+}
+
+model Namespace {
+  id        String @id @default(cuid())
+  projectId String
+  name      String
+  slug      String
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  keys    Key[]
+
+  @@unique([projectId, slug])
+}
+
+model Key {
+  id          String    @id @default(cuid())
+  projectId   String
+  namespaceId String
+  name        String
+  description String?
+  deletedAt   DateTime?
+
+  project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  namespace     Namespace      @relation(fields: [namespaceId], references: [id], onDelete: Cascade)
+  translations  Translation[]
+  notifications Notification[]
+
+  @@unique([namespaceId, name])
+}
+
+model Translation {
+  id           String    @id @default(cuid())
+  keyId        String
+  localeId     String
+  text         String    @default("")
+  status       String    @default("TODO")
+  version      Int       @default(1)
+  updatedById  String?
+  assignedToId String?
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  key       Key     @relation(fields: [keyId], references: [id], onDelete: Cascade)
+  locale    Locale  @relation(fields: [localeId], references: [id], onDelete: Cascade)
+  updatedBy User?   @relation(fields: [updatedById], references: [id])
+  assignedTo User?  @relation("AssignedTranslations", fields: [assignedToId], references: [id])
+  comments  Comment[]
+
+  @@unique([keyId, localeId])
+}
+
+model Membership {
+  id              String   @id @default(cuid())
+  userId          String
+  projectId       String
+  role            String
+  namespaces      String   @default("[]")
+  assignedLocales String   @default("[]") // JSON array of locale IDs assigned to this member
+  createdAt       DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+}
+
+model Comment {
+  id               String    @id @default(cuid())
+  translationId    String
+  userId           String
+  text             String
+  createdAt        DateTime  @default(now())
+  deletedAt        DateTime?
+  parentId         String?
+  mentionedUserIds String    @default("") // comma-separated user IDs
+
+  translation   Translation    @relation(fields: [translationId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent        Comment?       @relation("CommentReplies", fields: [parentId], references: [id])
+  replies       Comment[]      @relation("CommentReplies")
+  notifications Notification[]
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  projectId  String
+  userId     String?
+  action     String
+  entityType String
+  entityId   String
+  before     String?
+  after      String?
+  createdAt  DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id])
+}
+
+model ImportRun {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String?
+  status    String   @default("PENDING")
+  mapping   String   @default("{}")
+  stats     String   @default("{}")
+  errors    String   @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id])
+}
+
+model OtpToken {
+  id        String   @id @default(cuid())
+  email     String
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  actorId   String?
+  type      String   // "MENTION" | "KEY_COMMENT"
+  projectId String
+  keyId     String
+  commentId String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user    User     @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  actor   User?    @relation("NotificationActor", fields: [actorId], references: [id])
+  project Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  key     Key      @relation(fields: [keyId], references: [id], onDelete: Cascade)
+  comment Comment? @relation(fields: [commentId], references: [id])
+}
+
+// ---------------------------------------------------------------------------
+// EE: Billing, Entitlements, and License (SQLite-compatible, no native enums)
+// ---------------------------------------------------------------------------
+
+/// Active subscription for a managed-SaaS org.
+/// planId: "free" | "pro" | "business" | "enterprise"
+/// status: "trialing" | "active" | "past_due" | "canceled" | "paused" | "incomplete"
+model Subscription {
+  id                   String    @id @default(cuid())
+  orgId                String    @unique
+  planId               String    @default("free")
+  status               String    @default("active")
+  stripeSubscriptionId String?
+  stripeCustomerId     String?
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+}
+
+/// Manual entitlement override for a specific org.
+/// features: JSON array of EntitlementFeature strings (replaces base if set).
+/// featureAdditions: JSON array merged onto resolved features.
+/// Limit fields: override specific resource limits (null = unlimited).
+model EntitlementOverride {
+  id                   String    @id @default(cuid())
+  orgId                String    @unique
+  features             String?   // JSON: EntitlementFeature[] | null
+  featureAdditions     String?   // JSON: EntitlementFeature[] | null
+  maxProjects          Int?
+  maxSeatsPerProject   Int?
+  maxKeysPerProject    Int?
+  maxLocalesPerProject Int?
+  maxMonthlyApiCalls   Int?
+  note                 String?
+  expiresAt            DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+}
+
+/// Cached license state for a self-hosted EE instance.
+/// One row per instance (singleton, orgId is optional for single-org installs).
+/// status: "none" | "valid" | "grace" | "expired" | "invalid"
+model LicenseState {
+  id             String    @id @default(cuid())
+  orgId          String?   @unique
+  status         String    @default("none")
+  licensee       String?
+  planId         String?
+  seats          Int?
+  features       String    @default("[]") // JSON: EntitlementFeature[]
+  expiresAt      DateTime?
+  graceEndsAt    DateTime?
+  lastVerifiedAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}

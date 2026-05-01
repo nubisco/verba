@@ -1,0 +1,16 @@
+{
+  "title": "Board",
+  "backlog": "📥 Backlog",
+  "filterAll": "All",
+  "allNamespaces": "All namespaces",
+  "collapse": "Collapse",
+  "expand": "Expand",
+  "unassign": "Unassign",
+  "dragHint": "Drag to change status or assignee",
+  "empty": "No cards",
+  "inspector": {
+    "title": "Details"
+  },
+  "liveIndicator": "Live",
+  "offlineIndicator": "Offline"
+}

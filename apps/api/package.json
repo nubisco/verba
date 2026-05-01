@@ -1,0 +1,43 @@
+{
+  "name": "@nubisco/verba-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -b",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "prisma:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/cors": "^11.2.0",
+    "@fastify/jwt": "^10.0.0",
+    "@fastify/multipart": "^9.4.0",
+    "@fastify/websocket": "^11.2.0",
+    "@nubisco/verba-shared": "workspace:*",
+    "@prisma/client": "^6.19.3",
+    "archiver": "^7.0.1",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^17.3.1",
+    "exceljs": "^4.4.0",
+    "fastify": "^5.8.4",
+    "xlsx": "^0.18.5",
+    "zod": "^4.3.6"
+  },
+  "optionalDependencies": {
+    "@nubisco/verba-ee": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/archiver": "^7.0.0",
+    "@types/bcryptjs": "^3.0.0",
+    "@types/node": "^25.5.0",
+    "@types/nodemailer": "^7.0.11",
+    "prisma": "^6.19.3",
+    "tsx": "^4.21.0",
+    "vitest": "^4.1.1"
+  }
+}
