@@ -16,8 +16,9 @@ COPY tsconfig.base.json tsconfig.json ./
 COPY packages/shared ./packages/shared
 COPY apps/api ./apps/api
 
-# Generate Prisma client types, stub EE, then build.
-RUN pnpm --filter @nubisco/verba-api exec prisma generate \
+# Switch Prisma provider to PostgreSQL for production and generate client.
+RUN sed -i 's/provider = "sqlite"/provider = "postgresql"/' apps/api/prisma/schema.prisma \
+    && pnpm --filter @nubisco/verba-api exec prisma generate \
     && mkdir -p packages/ee/src \
     && printf 'export function isLicenseValid() { return false }\nexport function resolveEntitlements() { return {} }\nexport function hasFeature() { return false }\n' > packages/ee/src/index.ts \
     && echo '{"compilerOptions":{"composite":true,"outDir":"dist","rootDir":"src"},"include":["src"]}' > packages/ee/tsconfig.json \
