@@ -1,3 +1,15 @@
+# [1.1.0](https://github.com/nubisco/verba/compare/v1.0.1...v1.1.0) (2026-05-01)
+
+
+### Bug Fixes
+
+* run prisma generate in bundle stage for runtime client ([03adac7](https://github.com/nubisco/verba/commit/03adac708b1727059491729c12e75fb92de26f25))
+
+
+### Features
+
+* proxy API through nginx so web image works without baked URL ([66560cd](https://github.com/nubisco/verba/commit/66560cdb2421c10cadf31e32ad6a898993b66463))
+
 ## [1.0.1](https://github.com/nubisco/verba/compare/v1.0.0...v1.0.1) (2026-05-01)
 
 
