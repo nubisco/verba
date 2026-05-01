@@ -27,6 +27,9 @@ RUN pnpm --filter @nubisco/verba-api exec prisma generate \
 # ---- deploy bundle: standalone dir with only prod deps (no symlinks) ----
 FROM build AS bundle
 RUN pnpm deploy --filter @nubisco/verba-api --prod /bundle
+# Re-generate Prisma client inside the bundle (pnpm deploy may not copy .prisma)
+COPY apps/api/prisma /bundle/prisma
+RUN cd /bundle && npx prisma generate
 
 # ---- runtime: minimal, non-root ----
 FROM node:22-alpine AS runtime
