@@ -1,3 +1,10 @@
+## [1.1.2](https://github.com/nubisco/verba/compare/v1.1.1...v1.1.2) (2026-05-01)
+
+
+### Bug Fixes
+
+* copy Prisma generated client to pnpm store path in Docker bundle ([971f3e0](https://github.com/nubisco/verba/commit/971f3e0bad03c59c0ef0da0874c5476df5e22efe))
+
 ## [1.1.1](https://github.com/nubisco/verba/compare/v1.1.0...v1.1.1) (2026-05-01)
 
 
