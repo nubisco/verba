@@ -1,3 +1,10 @@
+## [1.1.3](https://github.com/nubisco/verba/compare/v1.1.2...v1.1.3) (2026-05-01)
+
+
+### Bug Fixes
+
+* remove hardcoded VITE_API_URL from web Dockerfile so /api proxy is used ([a965c02](https://github.com/nubisco/verba/commit/a965c02290f3d0a21fe05d7185b82148025e9ed1))
+
 ## [1.1.2](https://github.com/nubisco/verba/compare/v1.1.1...v1.1.2) (2026-05-01)
 
 
