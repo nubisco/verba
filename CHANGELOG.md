@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/nubisco/verba/compare/v1.0.0...v1.0.1) (2026-05-02)
+
+
+### Bug Fixes
+
+* auto-run migrations in Docker and show Platform-only login ([e354e8f](https://github.com/nubisco/verba/commit/e354e8fe6da0cba41d7086ac07a44aa481e112ff))
+
 # 1.0.0 (2026-05-02)
 
 
