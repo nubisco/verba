@@ -16,6 +16,7 @@
         :to="item.href"
         :tooltip="t(item.label)"
         :active="item.isActive"
+        @click.prevent="router.push(item.href)"
       >
         <NbIcon :name="item.icon" :size="18" />
       </NbSidebarLink>
@@ -44,6 +45,7 @@
           :to="item.href"
           :tooltip="t(item.label)"
           :active="item.isActive"
+          @click.prevent="router.push(item.href)"
         >
           <NbIcon :name="item.icon" :size="18" />
         </NbSidebarLink>
@@ -54,7 +56,12 @@
     <template #sidebar-bottom>
       <NotificationBell sidebar />
 
-      <NbSidebarLink to="/profile" :tooltip="auth.user ? displayName(auth.user) : 'Profile'" :active="false">
+      <NbSidebarLink
+        to="/profile"
+        :tooltip="auth.user ? displayName(auth.user) : 'Profile'"
+        :active="false"
+        @click.prevent="router.push('/profile')"
+      >
         <div class="user-avatar-icon" :class="{ admin: auth.user?.isGlobalAdmin }">
           {{ userInitials }}
         </div>
@@ -93,6 +100,7 @@
 
 <script setup lang="ts">
 import { computed, watch, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useNavigationStore } from '../stores/navigation'
 import { useProjectStore } from '../stores/project'
@@ -103,6 +111,7 @@ import { useLayoutSlots } from '../composables/useLayoutSlots'
 import NotificationBell from '../components/NotificationBell.vue'
 import AppBreadcrumbs from '../components/AppBreadcrumbs.vue'
 
+const router = useRouter()
 const auth = useAuthStore()
 const navStore = useNavigationStore()
 const projectStore = useProjectStore()
