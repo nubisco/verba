@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/nubisco/verba/compare/v1.1.0...v1.1.1) (2026-05-02)
+
+
+### Bug Fixes
+
+* use /api proxy fallback in all frontend API references, not just api.ts ([c885c8f](https://github.com/nubisco/verba/commit/c885c8f3b4a47e20d8fafb8d0d9aa53eeba6ed0e))
+
 # [1.1.0](https://github.com/nubisco/verba/compare/v1.0.2...v1.1.0) (2026-05-02)
 
 
