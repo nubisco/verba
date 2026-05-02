@@ -137,7 +137,10 @@ async function changeLocale(code: string) {
   await setLocale(code)
 }
 
-const WS_BASE = (import.meta.env.VITE_API_URL ?? 'http://localhost:4000').replace(/^http/, 'ws')
+const WS_BASE = (import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? '/api' : 'http://localhost:4000')).replace(
+  /^http/,
+  'ws',
+)
 watch(
   () => navStore.projectId,
   (id, _prev, onCleanup) => {

@@ -15,7 +15,9 @@ const apiStatus = ref<'checking' | 'ok' | 'error'>('checking')
 
 onMounted(async () => {
   try {
-    const res = await fetch(`${import.meta.env.VITE_API_URL ?? 'http://localhost:4000'}/health`)
+    const res = await fetch(
+      `${import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? '/api' : 'http://localhost:4000')}/health`,
+    )
     const data = await res.json()
     apiStatus.value = data.status === 'ok' ? 'ok' : 'error'
   } catch {

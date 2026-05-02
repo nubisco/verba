@@ -44,9 +44,9 @@ router.beforeEach(async (to) => {
 
   // Check if first-run setup is needed
   try {
-    const status = await fetch(`${import.meta.env.VITE_API_URL ?? 'http://localhost:4000'}/setup/status`).then(
-      (r) => r.json() as Promise<{ needsSetup: boolean }>,
-    )
+    const status = await fetch(
+      `${import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? '/api' : 'http://localhost:4000')}/setup/status`,
+    ).then((r) => r.json() as Promise<{ needsSetup: boolean }>)
     if (status.needsSetup) return { path: '/setup' }
   } catch {
     // If the API is unreachable, proceed normally (avoids redirect loop in dev)

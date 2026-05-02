@@ -506,7 +506,7 @@ import LocaleBadge from '../components/LocaleBadge.vue'
 const route = useRoute()
 const router = useRouter()
 const projectId = route.params.id as string
-const apiBase = import.meta.env.VITE_API_URL ?? 'http://localhost:4000'
+const apiBase = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? '/api' : 'http://localhost:4000')
 const { t } = useI18n()
 
 type TabId = 'overview' | 'settings' | 'import' | 'export' | 'history'

@@ -72,7 +72,7 @@ const route = useRoute()
 const projectId = route.params.id as string
 const store = useProjectStore()
 const { t } = useI18n()
-const apiBase = import.meta.env.VITE_API_URL ?? 'http://localhost:4000'
+const apiBase = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? '/api' : 'http://localhost:4000')
 
 const STATUS_COLORS: Record<string, string> = {
   IN_PROGRESS: '#3b82f6',

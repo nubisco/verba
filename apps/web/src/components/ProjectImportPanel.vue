@@ -6,7 +6,7 @@ import { type NbSelectOption } from '@nubisco/ui'
 import LocaleBadge from './LocaleBadge.vue'
 
 const props = defineProps<{ projectId: string }>()
-const apiBase = import.meta.env.VITE_API_URL ?? 'http://localhost:4000'
+const apiBase = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? '/api' : 'http://localhost:4000')
 const { t } = useI18n()
 
 interface Locale {
