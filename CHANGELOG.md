@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/nubisco/verba/compare/v1.0.1...v1.0.2) (2026-05-02)
+
+
+### Bug Fixes
+
+* use prisma db push instead of migrate deploy for PostgreSQL compat ([2d15d2d](https://github.com/nubisco/verba/commit/2d15d2dac8c1fbab8e5dbe4c0da2ac8119882191))
+
 ## [1.0.1](https://github.com/nubisco/verba/compare/v1.0.0...v1.0.1) (2026-05-02)
 
 
