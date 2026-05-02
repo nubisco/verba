@@ -293,6 +293,9 @@ function startPlatformLogin() {
   ssoUrl.searchParams.set('app_id', instanceConfig.auth.platformAppId || 'verba')
   ssoUrl.searchParams.set('redirect_uri', callbackUrl.toString())
   ssoUrl.searchParams.set('state', state)
+  // Force the platform to prompt for credentials so we never inherit
+  // a stale platform session belonging to a different identity.
+  ssoUrl.searchParams.set('prompt', 'login')
 
   window.location.href = ssoUrl.toString()
 }
