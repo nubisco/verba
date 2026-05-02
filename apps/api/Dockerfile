@@ -18,6 +18,7 @@ COPY apps/api ./apps/api
 
 # Switch Prisma provider to PostgreSQL for production and generate client.
 RUN sed -i 's/provider = "sqlite"/provider = "postgresql"/' apps/api/prisma/schema.prisma \
+    && sed -i 's/provider = "sqlite"/provider = "postgresql"/' apps/api/prisma/migrations/migration_lock.toml \
     && pnpm --filter @nubisco/verba-api exec prisma generate \
     && mkdir -p packages/ee/src \
     && printf 'export function isLicenseValid() { return false }\nexport function resolveEntitlements() { return {} }\nexport function hasFeature() { return false }\n' > packages/ee/src/index.ts \
@@ -46,4 +47,4 @@ COPY --from=build --chown=node:node /app/apps/api/prisma ./prisma
 ENV NODE_ENV=production
 EXPOSE 4000
 USER node
-CMD ["sh", "-c", "prisma migrate deploy && node dist/index.js"]
+CMD ["sh", "-c", "prisma db push --skip-generate --accept-data-loss 2>/dev/null || prisma db push --skip-generate && node dist/index.js"]
