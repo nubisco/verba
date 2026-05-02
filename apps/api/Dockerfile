@@ -35,12 +35,15 @@ RUN PRISMA_STORE=$(find /app/node_modules/.pnpm -path '*/@prisma+client*/node_mo
 
 # ---- runtime: minimal, non-root ----
 FROM node:22-alpine AS runtime
+RUN npm install -g prisma@6
 WORKDIR /app
 
 # Copy the self-contained bundle
 COPY --from=bundle --chown=node:node /bundle .
+# Copy Prisma schema and migrations for runtime migrate deploy
+COPY --from=build --chown=node:node /app/apps/api/prisma ./prisma
 
 ENV NODE_ENV=production
 EXPOSE 4000
 USER node
-CMD ["node", "dist/index.js"]
+CMD ["sh", "-c", "prisma migrate deploy && node dist/index.js"]

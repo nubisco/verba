@@ -3,135 +3,150 @@
     <div class="login-card">
       <div class="auth-logo-wrap">
         <img :src="logoSrc" alt="Verba" class="auth-logo" />
+        <span v-if="platformOnly" class="auth-logo-name">Verba</span>
       </div>
 
-      <!-- Mode tabs -->
-      <div v-if="mode !== 'otp-verify'" class="tabs">
-        <NbButton
-          v-if="instanceConfig.auth.localPasswordEnabled"
-          :class="{ active: mode === 'login' }"
-          @click="
-            () => {
-              mode = 'login'
-              error = ''
-            }
-          "
-        >
-          {{ t('auth.login.tab.password') }}
-        </NbButton>
-        <NbButton
-          v-if="instanceConfig.auth.localOtpEnabled"
-          :class="{ active: mode === 'otp-request' }"
-          @click="
-            () => {
-              mode = 'otp-request'
-              error = ''
-            }
-          "
-        >
-          {{ t('auth.login.tab.magic') }}
-        </NbButton>
-        <NbButton
-          v-if="instanceConfig.auth.localPasswordEnabled"
-          :class="{ active: mode === 'register' }"
-          @click="
-            () => {
-              mode = 'register'
-              error = ''
-            }
-          "
-        >
-          {{ t('auth.login.tab.register') }}
-        </NbButton>
-      </div>
-
-      <p class="subtitle">
-        <span v-if="mode === 'login'">{{ t('auth.login.subtitle') }}</span>
-        <span v-else-if="mode === 'register'">Create a new account</span>
-        <span v-else-if="mode === 'otp-request'">{{ t('auth.login.magic.description') }}</span>
-        <span v-else>Enter the code we sent to {{ email }}</span>
-      </p>
-
-      <p v-if="instanceConfig.auth.platformEnabled" class="instance-hint">
-        Nubisco Platform SSO is configured for this instance.
-      </p>
-
-      <NbButton
-        v-if="instanceConfig.auth.platformEnabled"
-        variant="secondary"
-        outlined
-        size="lg"
-        class="platform-btn"
-        :disabled="loading || auth.loading"
-        @click="startPlatformLogin"
-      >
-        Continue with Nubisco Platform
-      </NbButton>
-
-      <form @submit.prevent="submit">
-        <div v-if="mode !== 'otp-verify'" class="field">
-          <label for="email">{{ t('auth.login.email') }}</label>
-          <NbTextInput id="email" v-model="email" type="email" required autocomplete="email" />
-        </div>
-        <div v-if="mode === 'login' || mode === 'register'" class="field">
-          <label for="password">{{ t('auth.login.password') }}</label>
-          <NbTextInput
-            id="password"
-            v-model="password"
-            type="password"
-            required
-            :autocomplete="mode === 'login' ? 'current-password' : 'new-password'"
-            placeholder="Min. 8 characters"
-          />
-        </div>
-        <div v-if="mode === 'otp-verify'" class="field">
-          <label for="otp">One-time code</label>
-          <NbTextInput
-            id="otp"
-            v-model="otpCode"
-            type="text"
-            inputmode="numeric"
-            :maxlength="6"
-            placeholder="123456"
-            autocomplete="one-time-code"
-            required
-          />
-          <p class="hint">Check your email (or server logs in development).</p>
-        </div>
-
+      <!-- Platform-only login (like Analytics) -->
+      <template v-if="platformOnly">
+        <p class="subtitle">Sign in with Nubisco Platform to continue.</p>
         <p v-if="error" class="error">{{ error }}</p>
-
-        <NbButton variant="primary" type="submit" size="lg" :disabled="loading || auth.loading" class="submit-btn">
-          <span v-if="loading || auth.loading">{{ t('common.loading') }}</span>
-          <span v-else-if="mode === 'login'">{{ t('auth.login.submit') }}</span>
-          <span v-else-if="mode === 'register'">{{ t('auth.login.register.submit') }}</span>
-          <span v-else-if="mode === 'otp-request'">{{ t('auth.login.magic.send') }}</span>
-          <span v-else>{{ t('auth.login.magic.verify') }}</span>
-        </NbButton>
-      </form>
-
-      <p v-if="mode === 'otp-verify'" class="toggle">
         <NbButton
-          type="button"
-          variant="ghost"
-          size="sm"
-          @click="
-            () => {
-              mode = 'otp-request'
-              otpCode = ''
-              error = ''
-            }
-          "
+          variant="primary"
+          size="lg"
+          class="platform-btn"
+          :disabled="loading || auth.loading"
+          @click="startPlatformLogin"
         >
-          {{ t('common.back') }} / resend
+          Continue with Platform
         </NbButton>
-      </p>
+      </template>
+
+      <!-- Local auth (OTP / password) with optional Platform button -->
+      <template v-else>
+        <!-- Mode tabs -->
+        <div v-if="mode !== 'otp-verify'" class="tabs">
+          <NbButton
+            v-if="instanceConfig.auth.localPasswordEnabled"
+            :class="{ active: mode === 'login' }"
+            @click="
+              () => {
+                mode = 'login'
+                error = ''
+              }
+            "
+          >
+            {{ t('auth.login.tab.password') }}
+          </NbButton>
+          <NbButton
+            v-if="instanceConfig.auth.localOtpEnabled"
+            :class="{ active: mode === 'otp-request' }"
+            @click="
+              () => {
+                mode = 'otp-request'
+                error = ''
+              }
+            "
+          >
+            {{ t('auth.login.tab.magic') }}
+          </NbButton>
+          <NbButton
+            v-if="instanceConfig.auth.localPasswordEnabled"
+            :class="{ active: mode === 'register' }"
+            @click="
+              () => {
+                mode = 'register'
+                error = ''
+              }
+            "
+          >
+            {{ t('auth.login.tab.register') }}
+          </NbButton>
+        </div>
+
+        <p class="subtitle">
+          <span v-if="mode === 'login'">{{ t('auth.login.subtitle') }}</span>
+          <span v-else-if="mode === 'register'">Create a new account</span>
+          <span v-else-if="mode === 'otp-request'">{{ t('auth.login.magic.description') }}</span>
+          <span v-else>Enter the code we sent to {{ email }}</span>
+        </p>
+
+        <NbButton
+          v-if="instanceConfig.auth.platformEnabled"
+          variant="secondary"
+          outlined
+          size="lg"
+          class="platform-btn"
+          :disabled="loading || auth.loading"
+          @click="startPlatformLogin"
+        >
+          Continue with Nubisco Platform
+        </NbButton>
+
+        <form @submit.prevent="submit">
+          <div v-if="mode !== 'otp-verify'" class="field">
+            <label for="email">{{ t('auth.login.email') }}</label>
+            <NbTextInput id="email" v-model="email" type="email" required autocomplete="email" />
+          </div>
+          <div v-if="mode === 'login' || mode === 'register'" class="field">
+            <label for="password">{{ t('auth.login.password') }}</label>
+            <NbTextInput
+              id="password"
+              v-model="password"
+              type="password"
+              required
+              :autocomplete="mode === 'login' ? 'current-password' : 'new-password'"
+              placeholder="Min. 8 characters"
+            />
+          </div>
+          <div v-if="mode === 'otp-verify'" class="field">
+            <label for="otp">One-time code</label>
+            <NbTextInput
+              id="otp"
+              v-model="otpCode"
+              type="text"
+              inputmode="numeric"
+              :maxlength="6"
+              placeholder="123456"
+              autocomplete="one-time-code"
+              required
+            />
+            <p class="hint">Check your email (or server logs in development).</p>
+          </div>
+
+          <p v-if="error" class="error">{{ error }}</p>
+
+          <NbButton variant="primary" type="submit" size="lg" :disabled="loading || auth.loading" class="submit-btn">
+            <span v-if="loading || auth.loading">{{ t('common.loading') }}</span>
+            <span v-else-if="mode === 'login'">{{ t('auth.login.submit') }}</span>
+            <span v-else-if="mode === 'register'">{{ t('auth.login.register.submit') }}</span>
+            <span v-else-if="mode === 'otp-request'">{{ t('auth.login.magic.send') }}</span>
+            <span v-else>{{ t('auth.login.magic.verify') }}</span>
+          </NbButton>
+        </form>
+
+        <p v-if="mode === 'otp-verify'" class="toggle">
+          <NbButton
+            type="button"
+            variant="ghost"
+            size="sm"
+            @click="
+              () => {
+                mode = 'otp-request'
+                otpCode = ''
+                error = ''
+              }
+            "
+          >
+            {{ t('common.back') }} / resend
+          </NbButton>
+        </p>
+      </template>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useInstanceConfigStore } from '../stores/instanceConfig'
@@ -154,6 +169,13 @@ const loading = ref(false)
 const PLATFORM_STATE_KEY = 'verba.platform.sso.state'
 const PLATFORM_REDIRECT_KEY = 'verba.platform.sso.redirect'
 
+// Platform-only: show only the Platform button when Platform is enabled
+// and no local auth methods are explicitly enabled
+const platformOnly = computed(() => {
+  const a = instanceConfig.auth
+  return a.platformEnabled && !a.localPasswordEnabled
+})
+
 onMounted(() => {
   if (auth.user) router.replace('/projects')
   syncModeWithConfig()
@@ -170,7 +192,6 @@ watch(
 
 function syncModeWithConfig() {
   if (mode.value === 'otp-verify') return
-
   if (instanceConfig.auth.localPasswordEnabled) {
     if (mode.value === 'otp-request' && !instanceConfig.auth.localOtpEnabled) {
       mode.value = 'login'
@@ -179,7 +200,6 @@ function syncModeWithConfig() {
     }
     return
   }
-
   if (instanceConfig.auth.localOtpEnabled) {
     mode.value = 'otp-request'
   }
@@ -310,7 +330,9 @@ function clearPlatformCallbackQuery() {
 
   .auth-logo-wrap {
     display: flex;
+    align-items: center;
     justify-content: center;
+    gap: 0.75rem;
     margin-bottom: 1.5rem;
   }
 
@@ -319,16 +341,18 @@ function clearPlatformCallbackQuery() {
     width: auto;
   }
 
+  .auth-logo-name {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1a1a2e;
+    letter-spacing: -0.02em;
+  }
+
   .subtitle {
     color: #666;
     margin: 0.75rem 0 1.25rem;
     font-size: 0.9rem;
-  }
-
-  .instance-hint {
-    margin: 0 0 1rem;
-    font-size: 0.78rem;
-    color: #666;
+    text-align: center;
   }
 }
 
@@ -384,6 +408,7 @@ function clearPlatformCallbackQuery() {
   color: #c0392b;
   font-size: 0.85rem;
   margin: 0 0 0.75rem;
+  text-align: center;
 }
 
 .platform-btn,
