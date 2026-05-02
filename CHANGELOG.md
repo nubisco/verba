@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/nubisco/verba/compare/v1.0.2...v1.1.0) (2026-05-02)
+
+
+### Features
+
+* **auth:** force prompt=login and call platform end-session on logout ([48670be](https://github.com/nubisco/verba/commit/48670bef0358290f991b635bb43c6c8df356f141))
+
 ## [1.0.2](https://github.com/nubisco/verba/compare/v1.0.1...v1.0.2) (2026-05-02)
 
 
