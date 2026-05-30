@@ -2,7 +2,7 @@
 
   <br />
 
-  <img src="docs/public/logo.svg" alt="Verba" width="96" />
+  <img src="https://raw.githubusercontent.com/nubisco/verba/master/docs/public/logo.svg" alt="Verba" width="96" />
 
   <br />
 
