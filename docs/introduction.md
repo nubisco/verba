@@ -48,7 +48,7 @@ Your translation data stays on your infrastructure. Verba has no telemetry, no c
 
 ### Open source
 
-Verba is MIT-licensed. You can inspect every line of code, contribute fixes, and fork it without restriction.
+Verba's Community Edition is AGPL-3.0 licensed. You can inspect every line of code, contribute fixes, and self-host it freely under the terms of the AGPL.
 
 ### Team collaboration without chaos
 

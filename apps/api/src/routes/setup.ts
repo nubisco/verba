@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024 Nubisco
 import { FastifyInstance } from 'fastify'
 import { prisma } from '../prisma.js'
