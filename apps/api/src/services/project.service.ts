@@ -33,12 +33,51 @@ export async function getProject(id: string) {
   return { ...project, aiApiKey: project.aiApiKey ? '***' : null }
 }
 
-export async function createProject(data: CreateProjectInput) {
-  const existing = await prisma.project.findUnique({
-    where: { slug: data.slug },
+// Project cap per platform plan. Platform owns the plan name; Verba owns the
+// mapping to a concrete project limit. Unknown plans fall back to 'free'.
+// TRIAL_PROJECT_CAP env var overrides the 'free' tier (emergency lever).
+const PLAN_PROJECT_CAP: Record<string, number> = {
+  free: Number(process.env.TRIAL_PROJECT_CAP ?? 3),
+  starter: 10,
+  pro: Number.POSITIVE_INFINITY,
+  enterprise: Number.POSITIVE_INFINITY,
+}
+
+function getProjectCapForPlan(plan: string | undefined): number {
+  return PLAN_PROJECT_CAP[plan ?? 'free'] ?? PLAN_PROJECT_CAP.free
+}
+
+async function resolveUniqueSlug(base: string): Promise<string> {
+  let candidate = base
+  for (let i = 2; i < 1000; i++) {
+    const taken = await prisma.project.findUnique({ where: { slug: candidate } })
+    if (!taken) return candidate
+    candidate = `${base}-${i}`
+  }
+  throw Object.assign(new Error('Could not allocate a unique slug'), { statusCode: 409 })
+}
+
+export async function createProject(userId: string, plan: string | undefined, data: CreateProjectInput) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { isGlobalAdmin: true },
   })
-  if (existing) throw Object.assign(new Error('Slug already taken'), { statusCode: 409 })
-  return prisma.project.create({ data })
+  if (!user?.isGlobalAdmin) {
+    const cap = getProjectCapForPlan(plan)
+    if (Number.isFinite(cap)) {
+      const ownedAdminCount = await prisma.membership.count({
+        where: { userId, role: 'ADMIN' },
+      })
+      if (ownedAdminCount >= cap) {
+        throw Object.assign(
+          new Error(`Project limit reached for plan "${plan ?? 'free'}" (${cap}). Upgrade your plan to add more.`),
+          { statusCode: 402 },
+        )
+      }
+    }
+  }
+  const slug = await resolveUniqueSlug(data.slug)
+  return prisma.project.create({ data: { ...data, slug } })
 }
 
 export async function updateProject(id: string, data: UpdateProjectInput) {

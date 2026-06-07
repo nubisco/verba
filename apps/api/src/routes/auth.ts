@@ -113,9 +113,13 @@ export async function authRoutes(app: FastifyInstance) {
     if (!payload) {
       return reply.status(401).send({ error: 'Invalid or expired platform token' })
     }
-    const localToken = app.jwt.sign({ userId: payload.userId, email: payload.email })
+    const localToken = app.jwt.sign({
+      userId: payload.userId,
+      email: payload.email,
+      plan: payload.plan,
+    })
     reply.setCookie('token', localToken, { httpOnly: true, path: '/' })
-    return reply.send({ id: payload.userId, email: payload.email })
+    return reply.send({ id: payload.userId, email: payload.email, plan: payload.plan })
   })
 
   // Returns whether platform auth is configured: used by the frontend to show the platform login button

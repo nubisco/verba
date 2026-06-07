@@ -12,7 +12,7 @@ export async function projectRoutes(app: FastifyInstance) {
 
   app.post('/projects', { preHandler: [app.authenticate] }, async (req, reply) => {
     const body = CreateProjectSchema.parse(req.body)
-    const project = await svc.createProject(body)
+    const project = await svc.createProject(req.user.userId, req.user.plan, body)
     await membershipService.addMember(project.id, {
       userId: req.user.userId,
       role: Role.ADMIN,

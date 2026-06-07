@@ -2,8 +2,8 @@ export {}
 
 declare module '@fastify/jwt' {
   interface FastifyJWT {
-    payload: { userId: string; email: string }
-    user: { userId: string; email: string }
+    payload: { userId: string; email: string; plan?: string }
+    user: { userId: string; email: string; plan?: string }
   }
 }
 

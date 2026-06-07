@@ -29,7 +29,15 @@ async function fetchJwks(issuer: string): Promise<{ keys: Array<JsonWebKey & { k
 async function verifyPlatformJwt(
   token: string,
   issuer: string,
-): Promise<{ email: string; role: string; sub: string; exp: number; iss: string } | null> {
+): Promise<{
+  email: string
+  role: string
+  sub: string
+  exp: number
+  iss: string
+  app_plan?: string
+  app_entitlements?: Record<string, unknown>
+} | null> {
   const parts = token.split('.')
   if (parts.length !== 3) return null
   const [h, p, s] = parts as [string, string, string]
@@ -61,6 +69,8 @@ async function verifyPlatformJwt(
     sub: string
     exp: number
     iss: string
+    app_plan?: string
+    app_entitlements?: Record<string, unknown>
   }
   if (claims.exp < Math.floor(Date.now() / 1000) || claims.iss !== issuer) return null
   return claims
@@ -73,7 +83,9 @@ async function verifyPlatformJwt(
  * Upserts the user by email on first login.
  * Returns null if platform auth is not configured or the token is invalid.
  */
-export async function verifyPlatformToken(token: string): Promise<{ userId: string; email: string } | null> {
+export async function verifyPlatformToken(
+  token: string,
+): Promise<{ userId: string; email: string; plan: string } | null> {
   const issuer = process.env.PLATFORM_ISSUER
   if (!issuer) return null
 
@@ -81,11 +93,12 @@ export async function verifyPlatformToken(token: string): Promise<{ userId: stri
   if (!claims) return null
 
   const email = claims.email.toLowerCase().trim()
+  const plan = claims.app_plan ?? 'free'
 
   const existing = await prisma.user.findUnique({ where: { email } })
   if (existing) {
     if (existing.deactivatedAt != null) return null
-    return { userId: existing.id, email: existing.email }
+    return { userId: existing.id, email: existing.email, plan }
   }
 
   // Auto-provision on first platform login
@@ -100,7 +113,7 @@ export async function verifyPlatformToken(token: string): Promise<{ userId: stri
     select: { id: true, email: true },
   })
 
-  return { userId: user.id, email: user.email }
+  return { userId: user.id, email: user.email, plan }
 }
 
 /** Returns true when platform auth is configured. */
