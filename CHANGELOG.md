@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/nubisco/verba/compare/v1.1.2...v1.2.0) (2026-06-07)
+
+
+### Features
+
+* **billing:** enforce per-user project cap from platform app_plan claim ([84b5f8b](https://github.com/nubisco/verba/commit/84b5f8beb9975a490b4c64e746b174eb91cb8109))
+
 ## [1.1.2](https://github.com/nubisco/verba/compare/v1.1.1...v1.1.2) (2026-05-14)
 
 
