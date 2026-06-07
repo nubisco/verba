@@ -20,9 +20,7 @@ export default defineConfig({
         content: 'i18n, localization, translation, collaboration, self-hosted',
       },
     ],
-    ...(process.env.DOCS_ANALYTICS_URL
-      ? [['script', { defer: '', src: process.env.DOCS_ANALYTICS_URL }] as const]
-      : []),
+    ['script', { defer: '', src: 'https://analytics.nubisco.io/script.js' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:title', content: 'Verba — i18n Collaboration Engine' }],
     [
