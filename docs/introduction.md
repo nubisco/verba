@@ -2,6 +2,11 @@
 
 Verba is an open-source, self-hostable i18n collaboration engine built for development teams that want structured, auditable translations without heavy SaaS tooling.
 
+You can run Verba two ways:
+
+- **Try it on Nubisco** at [verba.nubisco.io](https://verba.nubisco.io) — sign in with a free Nubisco Platform account and start translating in seconds. Free tier includes up to 3 projects.
+- **Self-host** with Docker Compose on your own infrastructure. See [Getting Started](./getting-started).
+
 ## Why Verba?
 
 Most teams start with spreadsheets or shared JSON files committed to Git. This works for a while, but falls apart quickly:

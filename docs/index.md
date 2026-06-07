@@ -7,11 +7,11 @@ hero:
   tagline: Structured, reviewable, and deployable translations, without enterprise bloat.
   actions:
     - theme: brand
-      text: Get Started
-      link: ./getting-started
+      text: Try on Nubisco
+      link: https://verba.nubisco.io
     - theme: alt
-      text: Introduction
-      link: ./introduction
+      text: Self-Host Guide
+      link: ./getting-started
     - theme: alt
       text: GitHub
       link: https://github.com/nubisco/verba

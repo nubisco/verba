@@ -1,6 +1,6 @@
 # Getting Started
 
-This guide covers both **self-hosted production setup** (via Docker Compose) and **local development** from source.
+This guide covers both **self-hosted production setup** (via Docker Compose) and **local development** from source. If you'd rather skip running infrastructure yourself, sign up at [verba.nubisco.io](https://verba.nubisco.io) for the managed version (free tier: up to 3 projects).
 
 ## Self-Hosted Setup (Docker Compose)
 
