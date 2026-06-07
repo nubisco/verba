@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/nubisco/verba/compare/v1.2.0...v1.2.1) (2026-06-07)
+
+
+### Bug Fixes
+
+* **docs:** add xmlns to logo SVGs so they render in <img> tags ([7520968](https://github.com/nubisco/verba/commit/7520968739cf287d4d08adc319f129f1d09f119f))
+
 # [1.2.0](https://github.com/nubisco/verba/compare/v1.1.2...v1.2.0) (2026-06-07)
 
 
