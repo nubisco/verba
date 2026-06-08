@@ -88,7 +88,9 @@
             <div v-if="i.is_active" class="identity-status">Active in this app</div>
           </div>
           <div class="identity-actions">
-            <NbButton v-if="!i.is_active" :disabled="switching" @click="switchTo(i)">Switch to this account</NbButton>
+            <NbButton v-if="!i.is_active" :disabled="switching" @click="switchToIdentity(i)"
+              >Switch to this account</NbButton
+            >
             <NbButton variant="danger" :disabled="switching" @click="removeIdentity(i)">Sign out</NbButton>
           </div>
         </li>
@@ -262,98 +264,45 @@ async function deactivateAccount() {
   }
 }
 
-// ── Account switcher ────────────────────────────────────────────────────────
-// Each platform identity that has signed in to verba in this browser shows up
-// here. "Switch" sends the user through platform's /api/auth/sso with
-// login_hint=<email>: platform finds that identity in its own multi-identity
-// session and silently mints a code, no OTP needed. "Add another account"
-// sends them through with prompt=login to force a fresh OTP for a new email.
+// Account switcher state lives in usePlatformIdentities so the sidebar menu
+// in DefaultLayout and this profile card share one source of truth.
+import { usePlatformIdentities, type PlatformIdentity } from '../composables/usePlatformIdentities'
 
-interface Identity {
-  platform_sub: string
-  email: string
-  name: string | null
-  is_active: boolean
-  last_used_at: string
-}
-
-const identities = ref<Identity[]>([])
-const switching = ref(false)
 const platformEnabled = computed(() => instanceConfig.auth.platformEnabled)
+const { identities, switching, load, switchTo, addAnother, remove } = usePlatformIdentities()
 
 function initialsFor(email: string): string {
   return email.slice(0, 2).toUpperCase()
 }
 
-async function loadIdentities() {
-  if (!platformEnabled.value) return
+async function switchToIdentity(identity: PlatformIdentity) {
   try {
-    const res = await apiFetch<{ identities: Identity[] }>('/auth/identities')
-    identities.value = res.identities ?? []
-  } catch {
-    identities.value = []
-  }
-}
-
-const PLATFORM_STATE_KEY = 'platform_sso_state'
-const PLATFORM_REDIRECT_KEY = 'platform_sso_redirect'
-
-function buildSsoUrl(opts: { loginHint?: string; promptLogin?: boolean }): string {
-  const issuer = instanceConfig.auth.platformIssuer
-  const appId = instanceConfig.auth.platformAppId || 'verba'
-  if (!issuer) throw new Error('Platform issuer not configured')
-  const state = crypto.randomUUID()
-  sessionStorage.setItem(PLATFORM_STATE_KEY, state)
-  sessionStorage.setItem(PLATFORM_REDIRECT_KEY, '/profile')
-  const callbackUrl = new URL(`${window.location.origin}${import.meta.env.BASE_URL}login`)
-  const url = new URL('/api/auth/sso', issuer)
-  url.searchParams.set('app_id', appId)
-  url.searchParams.set('redirect_uri', callbackUrl.toString())
-  url.searchParams.set('state', state)
-  if (opts.loginHint) url.searchParams.set('login_hint', opts.loginHint)
-  if (opts.promptLogin) url.searchParams.set('prompt', 'login')
-  return url.toString()
-}
-
-async function switchTo(identity: Identity) {
-  switching.value = true
-  try {
-    // Ask the verba backend to confirm the identity belongs to this bundle
-    // and to give us the canonical email (the bundle is the source of truth).
-    const res = await apiFetch<{ email: string }>('/auth/switch', {
-      method: 'POST',
-      body: JSON.stringify({ platform_sub: identity.platform_sub }),
-    })
-    window.location.href = buildSsoUrl({ loginHint: res.email })
+    await switchTo(identity)
   } catch (e: unknown) {
     alert(e instanceof Error ? e.message : 'Failed to switch account.')
-    switching.value = false
   }
 }
 
 function addAccount() {
-  window.location.href = buildSsoUrl({ promptLogin: true })
+  addAnother()
 }
 
-async function removeIdentity(identity: Identity) {
+async function removeIdentity(identity: PlatformIdentity) {
   if (!window.confirm(`Sign ${identity.email} out of this device?`)) return
   try {
-    await apiFetch('/auth/identities/remove', {
-      method: 'POST',
-      body: JSON.stringify({ platform_sub: identity.platform_sub }),
-    })
-    if (identity.is_active) {
+    const { activeRemoved } = await remove(identity)
+    if (activeRemoved) {
       auth.user = null
       window.location.href = '/login'
-      return
     }
-    await loadIdentities()
   } catch (e: unknown) {
     alert(e instanceof Error ? e.message : 'Failed to sign out.')
   }
 }
 
-onMounted(loadIdentities)
+onMounted(() => {
+  if (platformEnabled.value) void load()
+})
 </script>
 
 <style lang="scss" scoped>
