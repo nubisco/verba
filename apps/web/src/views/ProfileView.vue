@@ -72,6 +72,34 @@
       </dl>
     </div>
 
+    <div v-if="platformEnabled" class="card identities-card">
+      <h3>Accounts on this device</h3>
+      <p class="section-hint">
+        Switch between Nubisco accounts that have signed in to Verba in this browser. Each app remembers its own active
+        account, switching here does not affect your other apps.
+      </p>
+
+      <ul v-if="identities.length > 0" class="identity-list">
+        <li v-for="i in identities" :key="i.platform_sub" class="identity-row" :class="{ active: i.is_active }">
+          <div class="identity-avatar">{{ initialsFor(i.email) }}</div>
+          <div class="identity-info">
+            <div class="identity-email">{{ i.email }}</div>
+            <div v-if="i.name" class="identity-name">{{ i.name }}</div>
+            <div v-if="i.is_active" class="identity-status">Active in this app</div>
+          </div>
+          <div class="identity-actions">
+            <NbButton v-if="!i.is_active" :disabled="switching" @click="switchTo(i)">Switch to this account</NbButton>
+            <NbButton variant="danger" :disabled="switching" @click="removeIdentity(i)">Sign out</NbButton>
+          </div>
+        </li>
+      </ul>
+      <p v-else class="section-hint">No other accounts on this device yet.</p>
+
+      <div class="form-actions">
+        <NbButton variant="primary" @click="addAccount">Add another account</NbButton>
+      </div>
+    </div>
+
     <div class="card danger-card">
       <h3>{{ t('profile.dangerZone') }}</h3>
       <p class="section-hint">{{ t('profile.dangerHint') }}</p>
@@ -83,13 +111,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '../stores/auth'
+import { useInstanceConfigStore } from '../stores/instanceConfig'
 import { apiFetch } from '../api'
 import LocaleMultiSelect from '../components/LocaleMultiSelect.vue'
 import { useI18n } from 'vue-i18n'
 
 const auth = useAuthStore()
+const instanceConfig = useInstanceConfigStore()
 const { t } = useI18n()
 
 const KNOWN_LOCALES = [
@@ -231,6 +261,99 @@ async function deactivateAccount() {
     alert(e instanceof Error ? e.message : 'Failed to deactivate account.')
   }
 }
+
+// ── Account switcher ────────────────────────────────────────────────────────
+// Each platform identity that has signed in to verba in this browser shows up
+// here. "Switch" sends the user through platform's /api/auth/sso with
+// login_hint=<email>: platform finds that identity in its own multi-identity
+// session and silently mints a code, no OTP needed. "Add another account"
+// sends them through with prompt=login to force a fresh OTP for a new email.
+
+interface Identity {
+  platform_sub: string
+  email: string
+  name: string | null
+  is_active: boolean
+  last_used_at: string
+}
+
+const identities = ref<Identity[]>([])
+const switching = ref(false)
+const platformEnabled = computed(() => instanceConfig.auth.platformEnabled)
+
+function initialsFor(email: string): string {
+  return email.slice(0, 2).toUpperCase()
+}
+
+async function loadIdentities() {
+  if (!platformEnabled.value) return
+  try {
+    const res = await apiFetch<{ identities: Identity[] }>('/auth/identities')
+    identities.value = res.identities ?? []
+  } catch {
+    identities.value = []
+  }
+}
+
+const PLATFORM_STATE_KEY = 'platform_sso_state'
+const PLATFORM_REDIRECT_KEY = 'platform_sso_redirect'
+
+function buildSsoUrl(opts: { loginHint?: string; promptLogin?: boolean }): string {
+  const issuer = instanceConfig.auth.platformIssuer
+  const appId = instanceConfig.auth.platformAppId || 'verba'
+  if (!issuer) throw new Error('Platform issuer not configured')
+  const state = crypto.randomUUID()
+  sessionStorage.setItem(PLATFORM_STATE_KEY, state)
+  sessionStorage.setItem(PLATFORM_REDIRECT_KEY, '/profile')
+  const callbackUrl = new URL(`${window.location.origin}${import.meta.env.BASE_URL}login`)
+  const url = new URL('/api/auth/sso', issuer)
+  url.searchParams.set('app_id', appId)
+  url.searchParams.set('redirect_uri', callbackUrl.toString())
+  url.searchParams.set('state', state)
+  if (opts.loginHint) url.searchParams.set('login_hint', opts.loginHint)
+  if (opts.promptLogin) url.searchParams.set('prompt', 'login')
+  return url.toString()
+}
+
+async function switchTo(identity: Identity) {
+  switching.value = true
+  try {
+    // Ask the verba backend to confirm the identity belongs to this bundle
+    // and to give us the canonical email (the bundle is the source of truth).
+    const res = await apiFetch<{ email: string }>('/auth/switch', {
+      method: 'POST',
+      body: JSON.stringify({ platform_sub: identity.platform_sub }),
+    })
+    window.location.href = buildSsoUrl({ loginHint: res.email })
+  } catch (e: unknown) {
+    alert(e instanceof Error ? e.message : 'Failed to switch account.')
+    switching.value = false
+  }
+}
+
+function addAccount() {
+  window.location.href = buildSsoUrl({ promptLogin: true })
+}
+
+async function removeIdentity(identity: Identity) {
+  if (!window.confirm(`Sign ${identity.email} out of this device?`)) return
+  try {
+    await apiFetch('/auth/identities/remove', {
+      method: 'POST',
+      body: JSON.stringify({ platform_sub: identity.platform_sub }),
+    })
+    if (identity.is_active) {
+      auth.user = null
+      window.location.href = '/login'
+      return
+    }
+    await loadIdentities()
+  } catch (e: unknown) {
+    alert(e instanceof Error ? e.message : 'Failed to sign out.')
+  }
+}
+
+onMounted(loadIdentities)
 </script>
 
 <style lang="scss" scoped>
@@ -358,5 +481,75 @@ async function deactivateAccount() {
   &:hover:not(.active) {
     background: #e8e8e8;
   }
+}
+
+.identities-card .identity-list {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.identity-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  background: #fafafa;
+
+  &.active {
+    border-color: #4f7df0;
+    background: #f4f7ff;
+  }
+}
+
+.identity-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #1a1a2e;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
+.identity-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.identity-email {
+  font-weight: 500;
+  font-size: 0.95rem;
+  color: #111;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.identity-name {
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.identity-status {
+  font-size: 0.75rem;
+  color: #4f7df0;
+  font-weight: 600;
+  margin-top: 0.15rem;
+}
+
+.identity-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
 }
 </style>

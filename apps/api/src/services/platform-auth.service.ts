@@ -83,9 +83,13 @@ async function verifyPlatformJwt(
  * Upserts the user by email on first login.
  * Returns null if platform auth is not configured or the token is invalid.
  */
-export async function verifyPlatformToken(
-  token: string,
-): Promise<{ userId: string; email: string; plan: string } | null> {
+export async function verifyPlatformToken(token: string): Promise<{
+  userId: string
+  email: string
+  plan: string
+  platformSub: string
+  name: string | null
+} | null> {
   const issuer = process.env.PLATFORM_ISSUER
   if (!issuer) return null
 
@@ -98,7 +102,13 @@ export async function verifyPlatformToken(
   const existing = await prisma.user.findUnique({ where: { email } })
   if (existing) {
     if (existing.deactivatedAt != null) return null
-    return { userId: existing.id, email: existing.email, plan }
+    return {
+      userId: existing.id,
+      email: existing.email,
+      plan,
+      platformSub: claims.sub,
+      name: existing.name,
+    }
   }
 
   // Auto-provision on first platform login
@@ -110,10 +120,16 @@ export async function verifyPlatformToken(
       name: claims.email.split('@')[0],
       isGlobalAdmin: isFirstUser,
     },
-    select: { id: true, email: true },
+    select: { id: true, email: true, name: true },
   })
 
-  return { userId: user.id, email: user.email, plan }
+  return {
+    userId: user.id,
+    email: user.email,
+    plan,
+    platformSub: claims.sub,
+    name: user.name,
+  }
 }
 
 /** Returns true when platform auth is configured. */

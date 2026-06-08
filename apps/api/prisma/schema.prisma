@@ -286,3 +286,23 @@ model LicenseState {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 }
+
+// Per-browser bag of platform identities the user has authenticated as in
+// this browser. We never store platform tokens here — just enough metadata
+// to render an account switcher and re-issue an OIDC authorize request with
+// login_hint=<email> when the user switches. The bundleKey lives in a separate
+// long-lived cookie. Only one identity per bundle is `active` at a time;
+// the active row drives the local session token issuance.
+model PlatformIdentity {
+  id          String   @id @default(cuid())
+  bundleKey   String
+  platformSub String
+  email       String
+  name        String?
+  lastUsedAt  DateTime @default(now())
+  isActive    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@unique([bundleKey, platformSub])
+  @@index([bundleKey])
+}

@@ -293,10 +293,10 @@ function startPlatformLogin() {
   ssoUrl.searchParams.set('app_id', instanceConfig.auth.platformAppId || 'verba')
   ssoUrl.searchParams.set('redirect_uri', callbackUrl.toString())
   ssoUrl.searchParams.set('state', state)
-  // Force the platform to prompt for credentials so we never inherit
-  // a stale platform session belonging to a different identity.
-  ssoUrl.searchParams.set('prompt', 'login')
-
+  // No prompt=login on the default login button: if platform has a single
+  // identity in its multi-identity session this is silent SSO. For an
+  // explicit "switch / add another account" we set prompt=login or
+  // login_hint from the account switcher in ProfileView.
   window.location.href = ssoUrl.toString()
 }
 
