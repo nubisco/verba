@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/nubisco/verba/compare/v1.2.1...v1.3.0) (2026-06-08)
+
+
+### Features
+
+* **auth:** per-app account bundle with platform login_hint switching ([f5d68fe](https://github.com/nubisco/verba/commit/f5d68fe8d9379bc45ad46197aa8e7c2f89e6f130))
+
 ## [1.2.1](https://github.com/nubisco/verba/compare/v1.2.0...v1.2.1) (2026-06-07)
 
 
