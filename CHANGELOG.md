@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/nubisco/verba/compare/v1.3.0...v1.4.0) (2026-06-08)
+
+
+### Features
+
+* **web:** account menu in sidebar, consolidating profile and sign-out ([ea0c2a3](https://github.com/nubisco/verba/commit/ea0c2a3857e7f679896f078226dd30edf7212ac7))
+
 # [1.3.0](https://github.com/nubisco/verba/compare/v1.2.1...v1.3.0) (2026-06-08)
 
 
