@@ -187,6 +187,7 @@
   "profile.emailPlaceholder": "you{'@'}example.com",
   "profile.saveProfile": "Save Changes",
   "profile.savingProfile": "Saving…",
+  "profile.profile": "Profile",
   "profile.profileSaved": "Profile updated successfully.",
   "profile.changePassword": "Change Password",
   "profile.changePasswordHint": "Leave blank to keep your current password.",
