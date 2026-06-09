@@ -1,3 +1,10 @@
+## [1.4.1](https://github.com/nubisco/verba/compare/v1.4.0...v1.4.1) (2026-06-09)
+
+
+### Bug Fixes
+
+* **auth:** use the same sessionStorage keys as LoginView for SSO state ([7ee69b9](https://github.com/nubisco/verba/commit/7ee69b9b5baef1c0f33e52f7b3511d13192a7a0f))
+
 # [1.4.0](https://github.com/nubisco/verba/compare/v1.3.0...v1.4.0) (2026-06-08)
 
 
