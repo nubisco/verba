@@ -16,8 +16,10 @@ const identities = ref<PlatformIdentity[]>([])
 const switching = ref(false)
 const loaded = ref(false)
 
-const PLATFORM_STATE_KEY = 'platform_sso_state'
-const PLATFORM_REDIRECT_KEY = 'platform_sso_redirect'
+// These keys must match LoginView.vue's PLATFORM_STATE_KEY / PLATFORM_REDIRECT_KEY
+// so the CSRF state set here is found by the same callback handler over there.
+const PLATFORM_STATE_KEY = 'verba.platform.sso.state'
+const PLATFORM_REDIRECT_KEY = 'verba.platform.sso.redirect'
 
 function buildSsoUrl(opts: { loginHint?: string; promptLogin?: boolean; redirect?: string }): string {
   const instanceConfig = useInstanceConfigStore()
