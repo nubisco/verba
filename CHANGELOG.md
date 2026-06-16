@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/nubisco/verba/compare/v1.4.1...v1.5.0) (2026-06-16)
+
+
+### Features
+
+* **analytics:** replace PostHog with @nubisco/analytics across web and api ([ac1ee09](https://github.com/nubisco/verba/commit/ac1ee09d860f92d8390dfbb4d4d645c51bdec74f))
+
 ## [1.4.1](https://github.com/nubisco/verba/compare/v1.4.0...v1.4.1) (2026-06-09)
 
 
