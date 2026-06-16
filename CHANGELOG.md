@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/nubisco/verba/compare/v1.5.0...v1.6.0) (2026-06-16)
+
+
+### Features
+
+* **api:** add /version endpoint and wire analytics env into compose ([ca77c1f](https://github.com/nubisco/verba/commit/ca77c1fd3411d2a26ca286304a572d21448ecc48))
+
 # [1.5.0](https://github.com/nubisco/verba/compare/v1.4.1...v1.5.0) (2026-06-16)
 
 
