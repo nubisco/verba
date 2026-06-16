@@ -1,4 +1,5 @@
 import 'dotenv/config'
+import { readFileSync } from 'node:fs'
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import cookie from '@fastify/cookie'
@@ -7,6 +8,11 @@ import multipart from '@fastify/multipart'
 import websocket from '@fastify/websocket'
 import { ZodError } from 'zod'
 import type { FastifyRequest, FastifyReply } from 'fastify'
+
+const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8')) as {
+  name: string
+  version: string
+}
 import { projectRoutes } from './routes/projects.js'
 import { namespaceRoutes } from './routes/namespaces.js'
 import { localeRoutes } from './routes/locales.js'
@@ -71,6 +77,13 @@ export function buildApp() {
   })
 
   app.get('/health', async () => ({ status: 'ok' }))
+
+  app.get('/version', async () => ({
+    name: pkg.name,
+    version: pkg.version,
+    commit: process.env.VERBA_GIT_SHA ?? null,
+    environment: process.env.NODE_ENV ?? null,
+  }))
 
   app.register(authRoutes)
   app.register(memberRoutes)

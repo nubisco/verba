@@ -44,6 +44,11 @@ COPY --from=bundle --chown=node:node /bundle .
 # Copy Prisma schema and migrations for runtime migrate deploy
 COPY --from=build --chown=node:node /app/apps/api/prisma ./prisma
 
+# Build provenance, surfaced by GET /version. CI passes BUILD_HASH=${{ github.sha }}
+# via docker/build-push-action build-args; version itself comes from package.json.
+ARG BUILD_HASH=""
+ENV VERBA_GIT_SHA=$BUILD_HASH
+
 ENV NODE_ENV=production
 EXPOSE 4000
 USER node
