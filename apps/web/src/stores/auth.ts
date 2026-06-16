@@ -22,7 +22,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const me = await apiFetch<User>('/auth/me')
       user.value = me
-      identifyUser(me.id, { email: me.email, name: me.name ?? undefined })
+      identifyUser(me.id)
     } catch {
       user.value = null
       resetUser()
@@ -39,7 +39,7 @@ export const useAuthStore = defineStore('auth', () => {
         body: JSON.stringify({ email, password }),
       })
       user.value = me
-      identifyUser(me.id, { email: me.email, name: me.name ?? undefined })
+      identifyUser(me.id)
       trackEvent('Login', { method: 'password' })
     } finally {
       loading.value = false
@@ -54,7 +54,7 @@ export const useAuthStore = defineStore('auth', () => {
         body: JSON.stringify({ email, password }),
       })
       user.value = me
-      identifyUser(me.id, { email: me.email, name: me.name ?? undefined })
+      identifyUser(me.id)
       trackEvent('Register', { method: 'password' })
     } finally {
       loading.value = false

@@ -7,6 +7,7 @@ import {
 import { z } from 'zod'
 import * as svc from '../services/translation.service.js'
 import * as keySvc from '../services/key.service.js'
+import * as analytics from '../services/analytics.service.js'
 import { requireProjectRole, canWriteNamespace } from '../services/acl.service.js'
 import { Role } from '../types.js'
 
@@ -50,6 +51,17 @@ export async function translationRoutes(app: FastifyInstance) {
         req.user.userId,
         membership.role,
       )
+      analytics.track('translation_saved', {
+        userId: req.user.userId,
+        props: {
+          project_id: req.params.projectId,
+          locale_id: req.params.localeId,
+          source:
+            typeof (req.body as { source?: string })?.source === 'string'
+              ? (req.body as { source: string }).source
+              : 'manual',
+        },
+      })
       return reply.status(200).send(t)
     },
   )
@@ -73,7 +85,16 @@ export async function translationRoutes(app: FastifyInstance) {
       if (!canWriteNamespace(membership, translation.key.namespaceId)) {
         throw Object.assign(new Error('Forbidden'), { statusCode: 403 })
       }
-      return svc.updateStatus(req.params.id, body.status, membership.role, req.user.userId)
+      const result = await svc.updateStatus(req.params.id, body.status, membership.role, req.user.userId)
+      analytics.track('translation_status_changed', {
+        userId: req.user.userId,
+        props: {
+          project_id: req.params.projectId,
+          translation_id: req.params.id,
+          to_status: body.status,
+        },
+      })
+      return result
     },
   )
 

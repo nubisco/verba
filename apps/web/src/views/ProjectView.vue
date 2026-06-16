@@ -497,6 +497,7 @@ import LocaleSelect from '../components/LocaleSelect.vue'
 import LocaleMultiSelect from '../components/LocaleMultiSelect.vue'
 import ProjectImportPanel from '../components/ProjectImportPanel.vue'
 import ProjectExportPanel from '../components/ProjectExportPanel.vue'
+import { trackEvent } from '../composables/useAnalytics'
 import ProjectAvatar from '../components/ProjectAvatar.vue'
 import ProjectLogoUpload from '../components/ProjectLogoUpload.vue'
 import { useI18n } from 'vue-i18n'
@@ -1050,6 +1051,7 @@ async function load() {
 }
 
 onMounted(async () => {
+  trackEvent('project_opened', { project_id: projectId })
   try {
     await load()
   } finally {

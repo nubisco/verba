@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { CreateKeySchema, UpdateKeySchema, KeyQuerySchema } from '../schemas/key.schema.js'
 import * as svc from '../services/key.service.js'
+import * as analytics from '../services/analytics.service.js'
 import { requireProjectRole, canWriteNamespace } from '../services/acl.service.js'
 import { Role } from '../types.js'
 import { prisma } from '../prisma.js'
@@ -59,6 +60,10 @@ export async function keyRoutes(app: FastifyInstance) {
         throw Object.assign(new Error('Forbidden'), { statusCode: 403 })
       }
       const key = await svc.createKey(req.params.projectId, body, req.user.userId)
+      analytics.track('key_added_manual', {
+        userId: req.user.userId,
+        props: { project_id: req.params.projectId },
+      })
       return reply.status(201).send(key)
     },
   )
@@ -82,7 +87,12 @@ export async function keyRoutes(app: FastifyInstance) {
       if (!canWriteNamespace(membership, key.namespaceId)) {
         throw Object.assign(new Error('Forbidden'), { statusCode: 403 })
       }
-      return svc.updateKey(req.params.projectId, req.params.id, body)
+      const updated = await svc.updateKey(req.params.projectId, req.params.id, body)
+      analytics.track('key_edited', {
+        userId: req.user.userId,
+        props: { project_id: req.params.projectId },
+      })
+      return updated
     },
   )
 
@@ -96,6 +106,10 @@ export async function keyRoutes(app: FastifyInstance) {
         throw Object.assign(new Error('Forbidden'), { statusCode: 403 })
       }
       await svc.deleteKey(req.params.projectId, req.params.id, req.user.userId)
+      analytics.track('key_deleted', {
+        userId: req.user.userId,
+        props: { project_id: req.params.projectId },
+      })
       return reply.status(204).send()
     },
   )

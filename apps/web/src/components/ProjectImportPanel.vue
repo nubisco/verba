@@ -4,6 +4,7 @@ import { apiFetch } from '../api'
 import { useI18n } from 'vue-i18n'
 import { type NbSelectOption } from '@nubisco/ui'
 import LocaleBadge from './LocaleBadge.vue'
+import { trackEvent } from '../composables/useAnalytics'
 
 const props = defineProps<{ projectId: string }>()
 const apiBase = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? '/api' : 'http://localhost:4000')
@@ -135,6 +136,10 @@ async function doApply() {
   }
   loading.value = true
   error.value = ''
+  trackEvent('import_started', {
+    project_id: props.projectId,
+    file_type: file.value.type || file.value.name.split('.').pop(),
+  })
   try {
     const res = await fetch(`${apiBase}/projects/${props.projectId}/import/apply`, {
       method: 'POST',

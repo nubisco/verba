@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { apiFetch } from '../api'
 import LocaleSelect from './LocaleSelect.vue'
+import { trackEvent } from '../composables/useAnalytics'
 import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{ projectId: string }>()
@@ -38,6 +39,12 @@ onMounted(async () => {
 async function doExport() {
   exporting.value = true
   error.value = ''
+  trackEvent('export_started', {
+    project_id: props.projectId,
+    format: format.value,
+    locale: selectedLocale.value || undefined,
+    status_filter: selectedStatus.value || undefined,
+  })
   try {
     const params = new URLSearchParams({ format: format.value })
     if (selectedLocale.value) params.set('locale', selectedLocale.value)
@@ -64,6 +71,11 @@ async function doExport() {
     URL.revokeObjectURL(url)
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : 'Export failed'
+    trackEvent('export_failed', {
+      project_id: props.projectId,
+      format: format.value,
+      reason: error.value.slice(0, 200),
+    })
   } finally {
     exporting.value = false
   }

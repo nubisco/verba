@@ -4,6 +4,7 @@ import * as authService from '../services/auth.service.js'
 import * as otpService from '../services/otp.service.js'
 import * as platformAuthService from '../services/platform-auth.service.js'
 import * as bundleService from '../services/identity-bundle.service.js'
+import * as analytics from '../services/analytics.service.js'
 import { prisma } from '../prisma.js'
 import { getAuthConfig } from '../services/instance-config.service.js'
 
@@ -150,6 +151,18 @@ export async function authRoutes(app: FastifyInstance) {
       plan: payload.plan,
     })
     reply.setCookie('token', localToken, { httpOnly: true, path: '/' })
+
+    if (payload.created) {
+      analytics.track('app_first_opened', {
+        userId: payload.userId,
+        props: { plan: payload.plan },
+      })
+    }
+    analytics.track('app_session_started', {
+      userId: payload.userId,
+      props: { plan: payload.plan, source: 'platform_oidc' },
+    })
+
     return reply.send({ id: payload.userId, email: payload.email, plan: payload.plan })
   })
 

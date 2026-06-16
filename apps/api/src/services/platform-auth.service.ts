@@ -89,6 +89,8 @@ export async function verifyPlatformToken(token: string): Promise<{
   plan: string
   platformSub: string
   name: string | null
+  // True when this call auto-provisioned a local Verba user (first sign-in).
+  created: boolean
 } | null> {
   const issuer = process.env.PLATFORM_ISSUER
   if (!issuer) return null
@@ -108,6 +110,7 @@ export async function verifyPlatformToken(token: string): Promise<{
       plan,
       platformSub: claims.sub,
       name: existing.name,
+      created: false,
     }
   }
 
@@ -129,6 +132,7 @@ export async function verifyPlatformToken(token: string): Promise<{
     plan,
     platformSub: claims.sub,
     name: user.name,
+    created: true,
   }
 }
 

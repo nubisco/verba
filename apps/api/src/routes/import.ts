@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import { requireProjectRole } from '../services/acl.service.js'
+import * as analytics from '../services/analytics.service.js'
 import { parseFile, previewImport, applyImport } from '../services/import.service.js'
 import { createImportRun, updateImportRun } from '../services/import-run.service.js'
 import { ImportMappingSchema } from '../schemas/import.schema.js'
@@ -63,11 +64,30 @@ export async function importRoutes(app: FastifyInstance) {
       try {
         const rows = parseFile(buffer, data.mimetype, mapping)
         const stats = await applyImport(req.params.projectId, rows, mapping, req.user.userId, importRun.id)
+        analytics.track('import_completed', {
+          userId: req.user.userId,
+          props: {
+            project_id: req.params.projectId,
+            mimetype: data.mimetype,
+            created: stats.created,
+            updated: stats.updated,
+            skipped: stats.skipped,
+            error_count: stats.errors.length,
+          },
+        })
         return { importRunId: importRun.id, stats }
       } catch (err) {
         await updateImportRun(importRun.id, 'FAILED', {}, [
           { row: 0, message: err instanceof Error ? err.message : String(err) },
         ])
+        analytics.track('import_failed', {
+          userId: req.user.userId,
+          props: {
+            project_id: req.params.projectId,
+            mimetype: data.mimetype,
+            reason: err instanceof Error ? err.message.slice(0, 200) : String(err).slice(0, 200),
+          },
+        })
         throw err
       }
     },

@@ -39,13 +39,12 @@ pnpm types:check
 
 Copy `.env.example` to `.env.local` for local overrides (gitignored). All `VITE_*` variables are inlined at build time.
 
-| Variable            | Default                    | Purpose                                                                                                        |
-| ------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `VITE_API_URL`      | `http://localhost:4000`    | Backend API base URL                                                                                           |
-| `VITE_POSTHOG_KEY`  | _(empty)_                  | PostHog project API key: leave empty to disable. Analytics are automatically skipped in dev regardless.        |
-| `VITE_POSTHOG_HOST` | `https://eu.i.posthog.com` | PostHog ingestion host. Defaults to EU cloud. Use `https://us.i.posthog.com` for US or your own reverse proxy. |
+| Variable             | Default                 | Purpose                                                                                                                          |
+| -------------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `VITE_API_URL`       | `http://localhost:4000` | Backend API base URL                                                                                                             |
+| `VITE_ANALYTICS_URL` | _(empty)_               | `@nubisco/analytics` base URL (e.g. `https://analytics.nubisco.io`). Leave empty to disable. Analytics are also disabled in dev. |
 
-Analytics are **automatically disabled in development**: the `initPostHog()` function checks `import.meta.env.PROD` before initializing.
+Analytics are **automatically disabled in development**: `initAnalytics()` only loads the tracker script when `import.meta.env.PROD` is true.
 
 ---
 
@@ -55,11 +54,10 @@ Analytics are **automatically disabled in development**: the `initPostHog()` fun
 
 Set the following in **Settings → Secrets and variables → Actions**:
 
-| Kind     | Name                | Value                        |
-| -------- | ------------------- | ---------------------------- |
-| Variable | `VITE_API_URL`      | Production API URL           |
-| Variable | `VITE_POSTHOG_HOST` | `https://eu.i.posthog.com`   |
-| Secret   | `VITE_POSTHOG_KEY`  | Your PostHog project API key |
+| Kind     | Name                 | Value                                      |
+| -------- | -------------------- | ------------------------------------------ |
+| Variable | `VITE_API_URL`       | Production API URL                         |
+| Variable | `VITE_ANALYTICS_URL` | `@nubisco/analytics` base URL (production) |
 
 ### Docker
 

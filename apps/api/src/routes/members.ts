@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { AddMemberSchema, UpdateMemberSchema, UpdateMemberLocalesSchema } from '../schemas/member.schema.js'
 import * as membershipService from '../services/membership.service.js'
+import * as analytics from '../services/analytics.service.js'
 import { requireProjectRole } from '../services/acl.service.js'
 import { Role } from '../types.js'
 
@@ -21,6 +22,12 @@ export async function memberRoutes(app: FastifyInstance) {
       await requireProjectRole(req.user.userId, req.params.projectId, Role.ADMIN)
       const body = AddMemberSchema.parse(req.body)
       const member = await membershipService.addMember(req.params.projectId, body)
+      // Verba has no email-invite flow: adding a member is the act of granting
+      // access to an existing platform user, so this collapses with "invite_sent".
+      analytics.track('collaborator_added', {
+        userId: req.user.userId,
+        props: { project_id: req.params.projectId, role: body.role },
+      })
       return reply.status(201).send(member)
     },
   )

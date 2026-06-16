@@ -171,6 +171,7 @@ import { apiFetch } from '../api'
 import { useAuthStore } from '../stores/auth'
 import { useProjectWs } from '../composables/useProjectWs'
 import KeyDetailPanel from '../components/KeyDetailPanel.vue'
+import { trackEvent } from '../composables/useAnalytics'
 import { useI18n } from 'vue-i18n'
 import { type NbSelectOption } from '@nubisco/ui'
 import LocaleBadge from '../components/LocaleBadge.vue'
@@ -253,6 +254,7 @@ const userRole = computed(() => {
 const isMaintainerPlus = computed(() => ['MAINTAINER', 'ADMIN'].includes(userRole.value))
 
 onMounted(async () => {
+  trackEvent('kanban_opened', { project_id: projectId.value })
   try {
     const [kanban, mems, ns] = await Promise.all([
       apiFetch<KanbanData>(`/projects/${projectId.value}/kanban`),
@@ -475,6 +477,13 @@ async function onDrop(e: DragEvent, toLaneId: string | null, toStatus: string) {
         body: JSON.stringify({ status: toStatus }),
       })
     }
+    trackEvent('kanban_card_moved', {
+      project_id: projectId.value,
+      lane_changed: laneChanged,
+      status_changed: statusChanged,
+      from_status: fromStatus,
+      to_status: toStatus,
+    })
   } catch (err: unknown) {
     moveCardLocal(t.id, fromLaneId, fromStatus)
     showToast(err instanceof Error ? err.message : 'Failed to update')

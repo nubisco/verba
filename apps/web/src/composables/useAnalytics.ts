@@ -1,50 +1,49 @@
-import type { PostHog } from 'posthog-js'
+// Thin wrapper around the @nubisco/analytics tracker script (window.nba.*).
+// The script is loaded from VITE_ANALYTICS_URL with data-app="verba" so every
+// event is tagged with app_id="verba". Identity is the platform user_id (OIDC
+// `sub`), which already lives in the auth store, no PII is sent.
 
-let _posthog: PostHog | null = null
+const APP_ID = 'verba'
 
-// ─── Initialization ────────────────────────────────────────────────────────
+interface Nba {
+  track: (name: string, props?: Record<string, unknown>) => void
+  identify: (userId: string, opts?: { appId?: string }) => void
+  reset: () => void
+}
 
-/** Initialize PostHog. Only runs in production when VITE_POSTHOG_KEY is set.
- *  Lazy-loads posthog-js to keep the dev bundle clean. Safe to call multiple times. */
-export async function initPostHog(): Promise<void> {
-  const key = import.meta.env.VITE_POSTHOG_KEY
-  if (!key || !import.meta.env.PROD || _posthog) return
+declare global {
+  interface Window {
+    nba?: Nba
+  }
+}
 
-  const { default: posthog } = await import('posthog-js')
-  const host = import.meta.env.VITE_POSTHOG_HOST || 'https://eu.i.posthog.com'
+let initialized = false
 
-  posthog.init(key, {
-    api_host: host,
-    capture_pageview: false, // Managed manually via trackPageView
-    capture_pageleave: true,
-    autocapture: false, // Selective tracking only: privacy conscious
+export async function initAnalytics(): Promise<void> {
+  if (initialized) return
+  const base = import.meta.env.VITE_ANALYTICS_URL
+  if (!base || !import.meta.env.PROD) return
+  initialized = true
+
+  await new Promise<void>((resolve) => {
+    const script = document.createElement('script')
+    script.src = `${base.replace(/\/$/, '')}/script.js`
+    script.defer = true
+    script.dataset.app = APP_ID
+    script.addEventListener('load', () => resolve(), { once: true })
+    script.addEventListener('error', () => resolve(), { once: true })
+    document.head.appendChild(script)
   })
-
-  _posthog = posthog
 }
 
-// ─── Event API ─────────────────────────────────────────────────────────────
-
-/** Track a pageview. Call from router.afterEach. */
-export function trackPageView(): void {
-  _posthog?.capture('$pageview', { $current_url: window.location.href })
-}
-
-/** Track a named product event with optional properties. */
 export function trackEvent(name: string, props?: Record<string, unknown>): void {
-  _posthog?.capture(name, props)
+  window.nba?.track(name, props)
 }
 
-// ─── Identity ──────────────────────────────────────────────────────────────
-
-/** Associate all subsequent events with an authenticated user.
- *  Call after a successful login or register. */
-export function identifyUser(id: string, traits?: Record<string, unknown>): void {
-  _posthog?.identify(id, traits)
+export function identifyUser(id: string): void {
+  window.nba?.identify(id, { appId: APP_ID })
 }
 
-/** Disassociate the current user and start a new anonymous session.
- *  Must be called on logout to prevent session bleed between accounts. */
 export function resetUser(): void {
-  _posthog?.reset()
+  window.nba?.reset()
 }

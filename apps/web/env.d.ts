@@ -9,9 +9,9 @@ declare module '*.vue' {
 
 interface ImportMetaEnv {
   readonly VITE_API_URL: string
-  // PostHog product analytics: leave empty to disable (automatically disabled in dev)
-  readonly VITE_POSTHOG_KEY: string
-  readonly VITE_POSTHOG_HOST: string
+  // @nubisco/analytics base URL (e.g. https://analytics.nubisco.io).
+  // Leave empty to disable; also automatically disabled in dev.
+  readonly VITE_ANALYTICS_URL: string
 }
 
 interface ImportMeta {

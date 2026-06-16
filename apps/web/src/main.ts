@@ -6,7 +6,7 @@ import App from './App.vue'
 import router from './router'
 import { i18n } from './i18n/index'
 import { useInstanceConfigStore } from './stores/instanceConfig'
-import { initPostHog, trackPageView } from './composables/useAnalytics'
+import { initAnalytics } from './composables/useAnalytics'
 import '@nubisco/ui/dist/ui.css'
 import '@/styles/index.scss'
 import { version } from '../package.json'
@@ -26,16 +26,12 @@ Sentry.init({
   tracesSampleRate: import.meta.env.PROD ? 0.1 : 1,
 })
 
-initPostHog()
+initAnalytics()
 
 app.use(pinia)
 app.use(router)
 app.use(i18n)
 app.use(NubiscoUI)
-
-router.afterEach(() => {
-  trackPageView()
-})
 
 // Fetch instance config before first render so feature-flagged nav items
 // are already resolved by the time DefaultLayout mounts. Fails silently.

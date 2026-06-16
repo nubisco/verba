@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { CreateProjectSchema, UpdateProjectSchema } from '../schemas/project.schema.js'
 import * as svc from '../services/project.service.js'
 import * as membershipService from '../services/membership.service.js'
+import * as analytics from '../services/analytics.service.js'
 import { requireProjectRole } from '../services/acl.service.js'
 import { Role } from '../types.js'
 
@@ -16,6 +17,10 @@ export async function projectRoutes(app: FastifyInstance) {
     await membershipService.addMember(project.id, {
       userId: req.user.userId,
       role: Role.ADMIN,
+    })
+    analytics.track('project_created', {
+      userId: req.user.userId,
+      props: { project_id: project.id },
     })
     return reply.status(201).send(project)
   })

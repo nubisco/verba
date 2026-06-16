@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { requireProjectRole } from '../services/acl.service.js'
+import * as analytics from '../services/analytics.service.js'
 import { Role } from '../types.js'
 import { prisma } from '../prisma.js'
 import { decrypt, isEncrypted } from '../services/encryption.service.js'
@@ -19,6 +20,11 @@ export async function aiRoutes(app: FastifyInstance) {
 
       const { projectId } = req.params
       const { keyId, localeCode } = SuggestBodySchema.parse(req.body)
+      const aiStartedAt = Date.now()
+      analytics.track('ai_translation_requested', {
+        userId: req.user.userId,
+        props: { project_id: projectId, locale: localeCode },
+      })
 
       // Load project AI config
       const project = await prisma.project.findUnique({
@@ -144,6 +150,15 @@ export async function aiRoutes(app: FastifyInstance) {
         })
       }
 
+      analytics.track('ai_translation_completed', {
+        userId: req.user.userId,
+        props: {
+          project_id: projectId,
+          locale: localeCode,
+          provider: project.aiProvider,
+          duration_ms: Date.now() - aiStartedAt,
+        },
+      })
       return { suggestion }
     },
   )
