@@ -8,6 +8,10 @@ RUN corepack enable && corepack prepare pnpm@9 --activate
 FROM base AS build
 # VITE_API_URL is intentionally not set so the app defaults to /api
 # (proxied by nginx to the API container). Pass as a build arg to override.
+# VITE_* variables are inlined into the JS bundle at build time; they must be
+# declared as ARG and re-exposed as ENV before `pnpm build` for Vite to see them.
+ARG VITE_ANALYTICS_URL=""
+ENV VITE_ANALYTICS_URL=$VITE_ANALYTICS_URL
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json ./apps/web/

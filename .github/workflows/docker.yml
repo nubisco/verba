@@ -78,6 +78,7 @@ jobs:
           build-args: |
             APP_VERSION=${{ steps.version.outputs.VERSION }}
             BUILD_HASH=${{ github.sha }}
+            VITE_ANALYTICS_URL=${{ vars.VITE_ANALYTICS_URL }}
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,name=${{ env.REGISTRY }}/nubisco/${{ matrix.package }},push-by-digest=true,name-canonical=true,push=true
           no-cache: true
