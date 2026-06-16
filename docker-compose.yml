@@ -21,6 +21,9 @@ services:
     pull_policy: always
     container_name: verba-api
     restart: unless-stopped
+    # tini as PID 1 so SIGTERM reaches node (Cmd is `sh -c ... && node`, and sh neither handles nor forwards the signal); short grace so stop returns promptly.
+    init: true
+    stop_grace_period: 5s
     depends_on:
       postgres:
         condition: service_healthy
@@ -52,6 +55,11 @@ services:
     pull_policy: always
     container_name: verba-web
     restart: unless-stopped
+    # SIGTERM = nginx fast shutdown (default SIGQUIT drains connections and hangs);
+    # init + short grace so Container Manager's stop returns promptly.
+    init: true
+    stop_signal: SIGTERM
+    stop_grace_period: 5s
     depends_on:
       - api
     ports:
