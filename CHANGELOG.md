@@ -1,3 +1,10 @@
+## [1.6.1](https://github.com/nubisco/verba/compare/v1.6.0...v1.6.1) (2026-06-16)
+
+
+### Bug Fixes
+
+* **web:** pipe VITE_ANALYTICS_URL through the Docker build ([4851b54](https://github.com/nubisco/verba/commit/4851b542f66626e51e8b5ca2af417662564d9a1a))
+
 # [1.6.0](https://github.com/nubisco/verba/compare/v1.5.0...v1.6.0) (2026-06-16)
 
 
