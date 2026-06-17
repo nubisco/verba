@@ -1,3 +1,100 @@
+<template>
+  <div class="project-import-panel">
+    <div class="section">
+      <NbFileUploader
+        :heading="t('import.selectFile')"
+        description="Max file size is 500 KB. Supported file types are .xlsx, .csv, and .json."
+        button-label="Add file"
+        accept=".xlsx,.csv,.json"
+        :max-size="512000"
+        @change="onFileChange"
+      />
+    </div>
+
+    <div v-if="isJsonFile" class="section json-info">
+      <h3>{{ t('import.columnMapping') }}</h3>
+      <div v-if="detectedJsonLocales.length > 0" class="json-detected">
+        ✅ Multi-locale JSON detected. Locales found:
+        <strong>{{ detectedJsonLocales.join(', ') }}</strong>
+      </div>
+      <div v-else class="field">
+        <label>
+          Single-locale JSON: select the target locale:
+          <NbSelect v-model="jsonSingleLocale" :options="jsonLocaleOptions" />
+        </label>
+      </div>
+    </div>
+
+    <div v-else class="section">
+      <h3>{{ t('import.columnMapping') }}</h3>
+      <div class="field">
+        <label>{{ t('import.keyColumn') }}</label>
+        <NbTextInput v-model="keyColumn" placeholder="key" />
+      </div>
+      <div class="field">
+        <label>{{ t('import.namespaceColumn') }}</label>
+        <NbTextInput v-model="namespaceColumn" placeholder="namespace" />
+      </div>
+      <div v-for="locale in locales" :key="locale.code" class="field">
+        <label><LocaleBadge :code="locale.code" /> {{ locale.name }} column</label>
+        <NbTextInput v-model="localeColumnMap[locale.code]" :placeholder="locale.code" />
+      </div>
+    </div>
+
+    <div class="actions">
+      <NbButton :disabled="loading" @click="doPreview">
+        {{ loading ? t('common.loading') : t('import.preview') }}
+      </NbButton>
+    </div>
+
+    <div v-if="error" class="error">{{ error }}</div>
+
+    <div v-if="preview" class="section preview">
+      <h3>{{ t('import.previewTitle') }}</h3>
+      <div class="counts">
+        <span class="badge create">{{ t('import.create', { count: preview.created }) }}</span>
+        <span class="badge update">{{ t('import.update', { count: preview.updated }) }}</span>
+        <span class="badge skip">{{ t('import.skip', { count: preview.skipped }) }}</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Key</th>
+            <th>Status</th>
+            <th>Changes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in preview.rows.slice(0, 10)" :key="row.keyName">
+            <td>{{ row.keyName }}</td>
+            <td>
+              <span :class="['badge', row.status]">{{ row.status }}</span>
+            </td>
+            <td>
+              <span v-for="c in row.localeChanges" :key="c.localeCode" class="change">
+                {{ c.localeCode }}: {{ c.oldText ?? '∅' }} → {{ c.newText }}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="actions">
+        <NbButton variant="primary" :disabled="loading" @click="doApply">
+          {{ loading ? t('import.applying') : t('import.applyImport') }}
+        </NbButton>
+      </div>
+    </div>
+
+    <div v-if="applyResult" class="section result">
+      <h3>{{ t('import.importComplete') }}</h3>
+      <pre>{{ JSON.stringify(applyResult.stats, null, 2) }}</pre>
+      <RouterLink :to="`/projects/${projectId}/import-runs/${applyResult.importRunId}`" class="nav-link">
+        {{ t('import.viewImportRun') }}
+      </RouterLink>
+    </div>
+  </div>
+</template>
+
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { apiFetch } from '../api'
@@ -158,103 +255,6 @@ async function doApply() {
   }
 }
 </script>
-
-<template>
-  <div class="project-import-panel">
-    <div class="section">
-      <NbFileUploader
-        :heading="t('import.selectFile')"
-        description="Max file size is 500 KB. Supported file types are .xlsx, .csv, and .json."
-        button-label="Add file"
-        accept=".xlsx,.csv,.json"
-        :max-size="512000"
-        @change="onFileChange"
-      />
-    </div>
-
-    <div v-if="isJsonFile" class="section json-info">
-      <h3>{{ t('import.columnMapping') }}</h3>
-      <div v-if="detectedJsonLocales.length > 0" class="json-detected">
-        ✅ Multi-locale JSON detected. Locales found:
-        <strong>{{ detectedJsonLocales.join(', ') }}</strong>
-      </div>
-      <div v-else class="field">
-        <label>
-          Single-locale JSON: select the target locale:
-          <NbSelect v-model="jsonSingleLocale" :options="jsonLocaleOptions" />
-        </label>
-      </div>
-    </div>
-
-    <div v-else class="section">
-      <h3>{{ t('import.columnMapping') }}</h3>
-      <div class="field">
-        <label>{{ t('import.keyColumn') }}</label>
-        <NbTextInput v-model="keyColumn" placeholder="key" />
-      </div>
-      <div class="field">
-        <label>{{ t('import.namespaceColumn') }}</label>
-        <NbTextInput v-model="namespaceColumn" placeholder="namespace" />
-      </div>
-      <div v-for="locale in locales" :key="locale.code" class="field">
-        <label><LocaleBadge :code="locale.code" /> {{ locale.name }} column</label>
-        <NbTextInput v-model="localeColumnMap[locale.code]" :placeholder="locale.code" />
-      </div>
-    </div>
-
-    <div class="actions">
-      <NbButton :disabled="loading" @click="doPreview">
-        {{ loading ? t('common.loading') : t('import.preview') }}
-      </NbButton>
-    </div>
-
-    <div v-if="error" class="error">{{ error }}</div>
-
-    <div v-if="preview" class="section preview">
-      <h3>{{ t('import.previewTitle') }}</h3>
-      <div class="counts">
-        <span class="badge create">{{ t('import.create', { count: preview.created }) }}</span>
-        <span class="badge update">{{ t('import.update', { count: preview.updated }) }}</span>
-        <span class="badge skip">{{ t('import.skip', { count: preview.skipped }) }}</span>
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th>Key</th>
-            <th>Status</th>
-            <th>Changes</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in preview.rows.slice(0, 10)" :key="row.keyName">
-            <td>{{ row.keyName }}</td>
-            <td>
-              <span :class="['badge', row.status]">{{ row.status }}</span>
-            </td>
-            <td>
-              <span v-for="c in row.localeChanges" :key="c.localeCode" class="change">
-                {{ c.localeCode }}: {{ c.oldText ?? '∅' }} → {{ c.newText }}
-              </span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <div class="actions">
-        <NbButton variant="primary" :disabled="loading" @click="doApply">
-          {{ loading ? t('import.applying') : t('import.applyImport') }}
-        </NbButton>
-      </div>
-    </div>
-
-    <div v-if="applyResult" class="section result">
-      <h3>{{ t('import.importComplete') }}</h3>
-      <pre>{{ JSON.stringify(applyResult.stats, null, 2) }}</pre>
-      <RouterLink :to="`/projects/${projectId}/import-runs/${applyResult.importRunId}`" class="nav-link">
-        {{ t('import.viewImportRun') }}
-      </RouterLink>
-    </div>
-  </div>
-</template>
 
 <style lang="scss" scoped>
 .project-import-panel {

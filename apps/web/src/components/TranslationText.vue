@@ -1,3 +1,29 @@
+<template>
+  <span class="translation-text">
+    <template v-for="(seg, i) in parse(text)" :key="i">
+      <span v-if="seg.type === 'placeholder'" class="chip chip-placeholder">{{ seg.value }}</span>
+      <template v-else-if="seg.type === 'keyref'">
+        <template v-if="keyMap !== undefined">
+          <span
+            v-if="keyMap[seg.keyName!] !== undefined && keyMap[seg.keyName!] !== ''"
+            class="keyref-resolved"
+            :title="`Resolves to: ${keyMap[seg.keyName!]}`"
+            >{{ seg.value }} (✓ {{ keyMap[seg.keyName!] }})</span
+          >
+          <span v-else-if="seg.keyName! in keyMap" class="keyref-warning" title="Key exists but has no translation yet"
+            >{{ seg.value }} ⚠️</span
+          >
+          <span v-else class="keyref-error" :title="`Key '${seg.value}' not found: translation will not resolve`"
+            >{{ seg.value }} ❌</span
+          >
+        </template>
+        <span v-else class="chip chip-keyref" :title="'Key reference: ' + seg.value">{{ seg.value }}</span>
+      </template>
+      <span v-else>{{ seg.value }}</span>
+    </template>
+  </span>
+</template>
+
 <script setup lang="ts">
 const { text, keyMap = {} } = defineProps<{
   text: string
@@ -25,32 +51,6 @@ function parse(text: string): Segment[] {
   return segments
 }
 </script>
-
-<template>
-  <span class="translation-text">
-    <template v-for="(seg, i) in parse(text)" :key="i">
-      <span v-if="seg.type === 'placeholder'" class="chip chip-placeholder">{{ seg.value }}</span>
-      <template v-else-if="seg.type === 'keyref'">
-        <template v-if="keyMap !== undefined">
-          <span
-            v-if="keyMap[seg.keyName!] !== undefined && keyMap[seg.keyName!] !== ''"
-            class="keyref-resolved"
-            :title="`Resolves to: ${keyMap[seg.keyName!]}`"
-            >{{ seg.value }} (✓ {{ keyMap[seg.keyName!] }})</span
-          >
-          <span v-else-if="seg.keyName! in keyMap" class="keyref-warning" title="Key exists but has no translation yet"
-            >{{ seg.value }} ⚠️</span
-          >
-          <span v-else class="keyref-error" :title="`Key '${seg.value}' not found: translation will not resolve`"
-            >{{ seg.value }} ❌</span
-          >
-        </template>
-        <span v-else class="chip chip-keyref" :title="'Key reference: ' + seg.value">{{ seg.value }}</span>
-      </template>
-      <span v-else>{{ seg.value }}</span>
-    </template>
-  </span>
-</template>
 
 <style lang="scss" scoped>
 .chip {

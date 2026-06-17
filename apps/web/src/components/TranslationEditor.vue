@@ -1,3 +1,46 @@
+<template>
+  <NbTextInput
+    ref="editorRef"
+    v-model="localValue"
+    :multiline="multiline"
+    :highlight="highlight"
+    :disabled="disabled"
+    :placeholder="placeholder ?? ''"
+    helper="Use {variables} for placeholders and @:key.name for key references"
+    class="t-editor"
+    @keydown="handleKeydown"
+    @focus="emit('focus')"
+    @input="nextTick(checkAutocomplete)"
+  >
+    <!-- AI suggest button in the trailing actions area -->
+    <template v-if="showSuggest && !disabled" #actions>
+      <NbButton
+        variant="secondary"
+        :title="suggesting ? 'Getting suggestion…' : 'AI suggest translation'"
+        tabindex="-1"
+        @mousedown.prevent="emit('suggest')"
+      >
+        <NbIcon :animation="suggesting ? 'heart' : null" name="sparkle" :size="14" />
+      </NbButton>
+    </template>
+
+    <!-- Autocomplete dropdown -->
+    <template v-if="autocomplete.visible" #dropdown>
+      <div class="t-editor__autocomplete">
+        <NbButton
+          v-for="(item, i) in autocomplete.filtered"
+          :key="item"
+          class="t-editor__ac-item"
+          :class="{ 'is-active': i === autocomplete.selectedIndex }"
+          @mousedown.prevent="insertAutocomplete(item)"
+        >
+          @:{{ item }}
+        </NbButton>
+      </div>
+    </template>
+  </NbTextInput>
+</template>
+
 <script setup lang="ts">
 import { ref, reactive, computed, nextTick } from 'vue'
 
@@ -107,49 +150,6 @@ function handleKeydown(e: KeyboardEvent) {
   }
 }
 </script>
-
-<template>
-  <NbTextInput
-    ref="editorRef"
-    v-model="localValue"
-    :multiline="multiline"
-    :highlight="highlight"
-    :disabled="disabled"
-    :placeholder="placeholder ?? ''"
-    helper="Use {variables} for placeholders and @:key.name for key references"
-    class="t-editor"
-    @keydown="handleKeydown"
-    @focus="emit('focus')"
-    @input="nextTick(checkAutocomplete)"
-  >
-    <!-- AI suggest button in the trailing actions area -->
-    <template v-if="showSuggest && !disabled" #actions>
-      <NbButton
-        variant="secondary"
-        :title="suggesting ? 'Getting suggestion…' : 'AI suggest translation'"
-        tabindex="-1"
-        @mousedown.prevent="emit('suggest')"
-      >
-        <NbIcon :animation="suggesting ? 'heart' : null" name="sparkle" :size="14" />
-      </NbButton>
-    </template>
-
-    <!-- Autocomplete dropdown -->
-    <template v-if="autocomplete.visible" #dropdown>
-      <div class="t-editor__autocomplete">
-        <NbButton
-          v-for="(item, i) in autocomplete.filtered"
-          :key="item"
-          class="t-editor__ac-item"
-          :class="{ 'is-active': i === autocomplete.selectedIndex }"
-          @mousedown.prevent="insertAutocomplete(item)"
-        >
-          @:{{ item }}
-        </NbButton>
-      </div>
-    </template>
-  </NbTextInput>
-</template>
 
 <style lang="scss" scoped>
 :deep(.hl-placeholder) {

@@ -1,10 +1,3 @@
-<script setup lang="ts">
-import { NbToast } from '@nubisco/ui'
-import { useNotificationsStore } from '@/stores/notifications'
-
-const store = useNotificationsStore()
-</script>
-
 <template>
   <Teleport to="body">
     <div class="notification-manager" aria-live="polite" aria-label="Notifications">
@@ -23,6 +16,13 @@ const store = useNotificationsStore()
     </div>
   </Teleport>
 </template>
+
+<script setup lang="ts">
+import { NbToast } from '@nubisco/ui'
+import { useNotificationsStore } from '@/stores/notifications'
+
+const store = useNotificationsStore()
+</script>
 
 <style scoped lang="scss">
 .notification-manager {

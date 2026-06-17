@@ -1,3 +1,51 @@
+<template>
+  <div class="project-export-panel">
+    <div class="section">
+      <h3>{{ t('export.format') }}</h3>
+      <div class="radio-group">
+        <label v-for="f in ['json', 'csv', 'xlsx']" :key="f" class="radio-label">
+          <input v-model="format" type="radio" :value="f" />
+          {{ f.toUpperCase() }}
+        </label>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>{{ t('export.filters') }}</h3>
+      <div class="field">
+        <label>{{ t('export.locale') }}</label>
+        <LocaleSelect v-model="selectedLocale" :options="locales" clearable :clear-label="t('export.allLocales')" />
+      </div>
+      <div class="field">
+        <label>{{ t('export.status') }}</label>
+        <NbSelect v-model="selectedStatus" :options="statusOptions" />
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>{{ t('export.options') }}</h3>
+      <label class="export-option">
+        <input v-model="resolveRefs" type="checkbox" />
+        <span>{{ t('export.resolveRefs') }}</span>
+        <span class="option-hint">{{ t('export.resolveHint') }}</span>
+      </label>
+      <label v-if="format === 'json'" class="export-option">
+        <input v-model="splitByNamespace" type="checkbox" />
+        <span>{{ t('export.splitByNamespace') }}</span>
+        <span class="option-hint">{{ t('export.splitHint') }}</span>
+      </label>
+    </div>
+
+    <div class="actions">
+      <NbButton variant="primary" :disabled="exporting" @click="doExport">
+        {{ exporting ? t('export.exporting') : t('export.submit', { format: format.toUpperCase() }) }}
+      </NbButton>
+    </div>
+
+    <div v-if="error" class="error">{{ error }}</div>
+  </div>
+</template>
+
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { apiFetch } from '../api'
@@ -81,54 +129,6 @@ async function doExport() {
   }
 }
 </script>
-
-<template>
-  <div class="project-export-panel">
-    <div class="section">
-      <h3>{{ t('export.format') }}</h3>
-      <div class="radio-group">
-        <label v-for="f in ['json', 'csv', 'xlsx']" :key="f" class="radio-label">
-          <input v-model="format" type="radio" :value="f" />
-          {{ f.toUpperCase() }}
-        </label>
-      </div>
-    </div>
-
-    <div class="section">
-      <h3>{{ t('export.filters') }}</h3>
-      <div class="field">
-        <label>{{ t('export.locale') }}</label>
-        <LocaleSelect v-model="selectedLocale" :options="locales" clearable :clear-label="t('export.allLocales')" />
-      </div>
-      <div class="field">
-        <label>{{ t('export.status') }}</label>
-        <NbSelect v-model="selectedStatus" :options="statusOptions" />
-      </div>
-    </div>
-
-    <div class="section">
-      <h3>{{ t('export.options') }}</h3>
-      <label class="export-option">
-        <input v-model="resolveRefs" type="checkbox" />
-        <span>{{ t('export.resolveRefs') }}</span>
-        <span class="option-hint">{{ t('export.resolveHint') }}</span>
-      </label>
-      <label v-if="format === 'json'" class="export-option">
-        <input v-model="splitByNamespace" type="checkbox" />
-        <span>{{ t('export.splitByNamespace') }}</span>
-        <span class="option-hint">{{ t('export.splitHint') }}</span>
-      </label>
-    </div>
-
-    <div class="actions">
-      <NbButton variant="primary" :disabled="exporting" @click="doExport">
-        {{ exporting ? t('export.exporting') : t('export.submit', { format: format.toUpperCase() }) }}
-      </NbButton>
-    </div>
-
-    <div v-if="error" class="error">{{ error }}</div>
-  </div>
-</template>
 
 <style lang="scss" scoped>
 .project-export-panel {

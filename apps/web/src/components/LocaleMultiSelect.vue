@@ -1,3 +1,12 @@
+<template>
+  <NbSelect
+    :model-value="modelValue"
+    :options="selectOptions"
+    :multiple="true"
+    @update:model-value="emit('update:modelValue', $event as string[])"
+  />
+</template>
+
 <script setup lang="ts">
 import { computed } from 'vue'
 import { type NbSelectOption } from '@nubisco/ui'
@@ -22,12 +31,3 @@ const selectOptions = computed<NbSelectOption[]>(() =>
   })),
 )
 </script>
-
-<template>
-  <NbSelect
-    :model-value="modelValue"
-    :options="selectOptions"
-    :multiple="true"
-    @update:model-value="emit('update:modelValue', $event as string[])"
-  />
-</template>
