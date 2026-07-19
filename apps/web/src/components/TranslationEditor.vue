@@ -43,9 +43,17 @@ const autocomplete = reactive({
 
 function highlight(text: string): string {
   const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  return escaped
-    .replace(/(@:[a-zA-Z0-9_.]+)/g, '<span class="hl-keyref">$1</span>')
-    .replace(/(\{[^}]+\})/g, '<span class="hl-placeholder">$1</span>')
+  return (
+    escaped
+      .replace(/(@:[a-zA-Z0-9_.]+)/g, '<span class="hl-keyref">$1</span>')
+      // ICU {variables}
+      .replace(/(\{[^}]+\})/g, '<span class="hl-placeholder">$1</span>')
+      // printf placeholders (%@, %lld, %.2f, positional %1$@, literal %%)
+      .replace(
+        /(%(?:\d+\$)?[-+ 0#]*\d*(?:\.\d+)?(?:hh|h|ll|l|q|L|z|j|t)?[@diouxXeEfFgGaAcspn%])/g,
+        '<span class="hl-placeholder">$1</span>',
+      )
+  )
 }
 
 function checkAutocomplete() {

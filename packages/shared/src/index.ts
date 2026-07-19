@@ -42,3 +42,7 @@ export const MembershipStatus = {
 } as const
 
 export type MembershipStatus = (typeof MembershipStatus)[keyof typeof MembershipStatus]
+
+// ─── XLIFF engine ─────────────────────────────────────────────────────────────
+
+export * from './xliff/index.js'

@@ -14,5 +14,8 @@
   "splitHint": "Exports a ZIP archive with one JSON file per namespace, organized in locale folders.",
   "submit": "Export {format}",
   "exporting": "Exporting…",
-  "error": "Export failed: {message}"
+  "error": "Export failed: {message}",
+  "xliffLocale": "Locale (required)",
+  "xliffHint": "XLIFF is regenerated from the file you imported for the selected locale, preserving its structure so Xcode can import it back. Pick one locale.",
+  "xliffLocaleRequired": "Select a locale to export XLIFF."
 }

@@ -15,7 +15,8 @@ interface Locale {
 }
 
 const locales = ref<Locale[]>([])
-const format = ref<'json' | 'csv' | 'xlsx'>('json')
+const format = ref<'json' | 'csv' | 'xlsx' | 'xliff'>('json')
+const isXliff = computed(() => format.value === 'xliff')
 const selectedLocale = ref('')
 const selectedStatus = ref('')
 const exporting = ref(false)
@@ -39,10 +40,15 @@ async function doExport() {
   exporting.value = true
   error.value = ''
   try {
+    // XLIFF is regenerated from the imported skeleton for one specific locale.
+    if (isXliff.value && !selectedLocale.value) {
+      error.value = t('export.xliffLocaleRequired')
+      return
+    }
     const params = new URLSearchParams({ format: format.value })
     if (selectedLocale.value) params.set('locale', selectedLocale.value)
-    if (selectedStatus.value) params.set('status', selectedStatus.value)
-    if (resolveRefs.value) params.set('resolve', 'true')
+    if (selectedStatus.value && !isXliff.value) params.set('status', selectedStatus.value)
+    if (resolveRefs.value && !isXliff.value) params.set('resolve', 'true')
     if (splitByNamespace.value && format.value === 'json') params.set('splitByNamespace', 'true')
 
     const res = await fetch(`${apiBase}/projects/${props.projectId}/export?${params.toString()}`, {
@@ -57,7 +63,7 @@ async function doExport() {
     const a = document.createElement('a')
     a.href = url
     const ext = splitByNamespace.value && format.value === 'json' ? 'zip' : format.value
-    a.download = `translations.${ext}`
+    a.download = isXliff.value ? `${selectedLocale.value}.xliff` : `translations.${ext}`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -75,26 +81,32 @@ async function doExport() {
     <div class="section">
       <h3>{{ t('export.format') }}</h3>
       <div class="radio-group">
-        <label v-for="f in ['json', 'csv', 'xlsx']" :key="f" class="radio-label">
+        <label v-for="f in ['json', 'csv', 'xlsx', 'xliff']" :key="f" class="radio-label">
           <input v-model="format" type="radio" :value="f" />
           {{ f.toUpperCase() }}
         </label>
       </div>
+      <p v-if="isXliff" class="option-hint xliff-hint">{{ t('export.xliffHint') }}</p>
     </div>
 
     <div class="section">
       <h3>{{ t('export.filters') }}</h3>
       <div class="field">
-        <label>{{ t('export.locale') }}</label>
-        <LocaleSelect v-model="selectedLocale" :options="locales" clearable :clear-label="t('export.allLocales')" />
+        <label>{{ isXliff ? t('export.xliffLocale') : t('export.locale') }}</label>
+        <LocaleSelect
+          v-model="selectedLocale"
+          :options="locales"
+          :clearable="!isXliff"
+          :clear-label="t('export.allLocales')"
+        />
       </div>
-      <div class="field">
+      <div v-if="!isXliff" class="field">
         <label>{{ t('export.status') }}</label>
         <NbSelect v-model="selectedStatus" :options="statusOptions" />
       </div>
     </div>
 
-    <div class="section">
+    <div v-if="!isXliff" class="section">
       <h3>{{ t('export.options') }}</h3>
       <label class="export-option">
         <input v-model="resolveRefs" type="checkbox" />
