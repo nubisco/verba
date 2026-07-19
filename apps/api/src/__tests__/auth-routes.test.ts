@@ -33,6 +33,7 @@ import { buildApp } from '../app.js'
 import { prisma } from '../prisma.js'
 import * as authService from '../services/auth.service.js'
 import * as otpService from '../services/otp.service.js'
+import * as platformAuthService from '../services/platform-auth.service.js'
 
 describe('auth and setup routes', () => {
   const originalEnv = {
@@ -215,5 +216,40 @@ describe('auth and setup routes', () => {
     expect(res.statusCode).toBe(201)
     expect(vi.mocked(authService.createOtpOnlyUser)).toHaveBeenCalledWith('admin@example.com')
     expect(res.cookies.some((cookie) => cookie.name === 'token')).toBe(true)
+  })
+
+  it('threads the platform subject through the callback session into /auth/me', async () => {
+    vi.mocked(platformAuthService.isPlatformAuthEnabled).mockReturnValueOnce(true)
+    vi.mocked(platformAuthService.verifyPlatformToken).mockResolvedValueOnce({
+      userId: 'u1',
+      email: 'jose@nubisco.io',
+      platformSub: 'u-jose',
+    })
+    vi.mocked(authService.getMe).mockResolvedValueOnce({
+      id: 'u1',
+      email: 'jose@nubisco.io',
+    } as unknown as Awaited<ReturnType<typeof authService.getMe>>)
+
+    const app = buildApp()
+    const callback = await app.inject({
+      method: 'POST',
+      url: '/auth/platform/callback',
+      payload: { token: 'platform-jwt' },
+    })
+    expect(callback.statusCode).toBe(200)
+    expect(callback.json()).toMatchObject({ id: 'u1', platformSub: 'u-jose' })
+
+    const session = callback.cookies.find((cookie) => cookie.name === 'token')
+    expect(session).toBeDefined()
+
+    const me = await app.inject({
+      method: 'GET',
+      url: '/auth/me',
+      cookies: { token: session!.value },
+    })
+    await app.close()
+
+    expect(me.statusCode).toBe(200)
+    expect(me.json()).toMatchObject({ platformSub: 'u-jose' })
   })
 })

@@ -15,10 +15,21 @@
           size="lg"
           class="platform-btn"
           :disabled="loading || auth.loading"
-          @click="startPlatformLogin"
+          @click="startPlatformLogin({ loginHint, redirectTarget })"
         >
           Continue with Platform
         </NbButton>
+        <p class="toggle">
+          <NbButton
+            type="button"
+            variant="ghost"
+            size="sm"
+            :disabled="loading || auth.loading"
+            @click="startPlatformLogin({ prompt: 'select_account', redirectTarget })"
+          >
+            {{ t('auth.login.platform.useAnotherAccount') }}
+          </NbButton>
+        </p>
       </template>
 
       <!-- Local auth (OTP / password) with optional Platform button -->
@@ -77,7 +88,7 @@
           size="lg"
           class="platform-btn"
           :disabled="loading || auth.loading"
-          @click="startPlatformLogin"
+          @click="startPlatformLogin({ loginHint, redirectTarget })"
         >
           Continue with Nubisco Platform
         </NbButton>
@@ -152,6 +163,8 @@ import { useAuthStore } from '../stores/auth'
 import { useInstanceConfigStore } from '../stores/instanceConfig'
 import { apiFetch } from '../api'
 import { useI18n } from 'vue-i18n'
+import { usePlatformSso, PLATFORM_STATE_KEY, PLATFORM_REDIRECT_KEY } from '../composables/usePlatformSso'
+import type { PlatformLoginOptions } from '../composables/usePlatformSso'
 
 const router = useRouter()
 const route = useRoute()
@@ -160,14 +173,14 @@ const instanceConfig = useInstanceConfigStore()
 const { t } = useI18n()
 const logoSrc = `${import.meta.env.BASE_URL}logo.svg`
 
+const platformSso = usePlatformSso()
+
 const mode = ref<'login' | 'register' | 'otp-request' | 'otp-verify'>('login')
 const email = ref('')
 const password = ref('')
 const otpCode = ref('')
 const error = ref('')
 const loading = ref(false)
-const PLATFORM_STATE_KEY = 'verba.platform.sso.state'
-const PLATFORM_REDIRECT_KEY = 'verba.platform.sso.redirect'
 
 // Platform-only: show only the Platform button when Platform is enabled
 // and no local auth methods are explicitly enabled
@@ -176,19 +189,62 @@ const platformOnly = computed(() => {
   return a.platformEnabled && !a.localPasswordEnabled
 })
 
+// The platform launchpad opens our launch URL with ?login_hint=<email>
+// appended. Forwarding it into the SSO request makes the user land already
+// signed in as the account they clicked (multi-account sessions).
+const loginHint = computed(() => {
+  const hint = route.query.login_hint
+  return typeof hint === 'string' && hint ? hint : undefined
+})
+
+const redirectTarget = computed(() => (route.query.redirect as string) || '/projects')
+
+const hasPlatformCallback = computed(
+  () => typeof route.query.token === 'string' || typeof route.query.error === 'string',
+)
+
+let autoStarted = false
+
 onMounted(() => {
-  if (auth.user) router.replace('/projects')
+  if (auth.user && !hasPlatformCallback.value && !loginHint.value) {
+    router.replace('/projects')
+    return
+  }
+  if (loginHint.value) email.value = loginHint.value
   syncModeWithConfig()
   handlePlatformCallback()
+  maybeAutoStartFromHint()
 })
 
 watch(
   () => instanceConfig.auth,
   () => {
     syncModeWithConfig()
+    maybeAutoStartFromHint()
   },
   { deep: true },
 )
+
+// When launched from the platform with a login_hint, go straight through SSO
+// as the hinted account (a no-interaction round-trip when that identity is
+// already in the browser session). Also covers being signed in locally as a
+// different user: the hinted authorize re-pins us to the account the user
+// actually clicked, instead of keeping the old session underneath them.
+function maybeAutoStartFromHint() {
+  if (autoStarted || !loginHint.value || hasPlatformCallback.value) return
+  if (!instanceConfig.auth.platformEnabled) {
+    if (instanceConfig.ready && auth.user) router.replace(redirectTarget.value)
+    return
+  }
+  const signedInAsHinted = auth.user?.email?.toLowerCase() === loginHint.value.toLowerCase()
+  if (signedInAsHinted) {
+    router.replace(redirectTarget.value)
+    return
+  }
+  if (!platformOnly.value && !auth.user) return // hybrid: prefill only, let the user choose
+  autoStarted = true
+  startPlatformLogin({ loginHint: loginHint.value, redirectTarget: redirectTarget.value })
+}
 
 function syncModeWithConfig() {
   if (mode.value === 'otp-verify') return
@@ -278,26 +334,11 @@ async function handlePlatformCallback() {
   }
 }
 
-function startPlatformLogin() {
-  const issuer = instanceConfig.auth.platformIssuer
-  if (!issuer) return
-
-  const state = crypto.randomUUID()
-  const callbackUrl = new URL(`${window.location.origin}${import.meta.env.BASE_URL}login`)
-  const redirectTarget = (route.query.redirect as string) || '/projects'
-
-  sessionStorage.setItem(PLATFORM_STATE_KEY, state)
-  sessionStorage.setItem(PLATFORM_REDIRECT_KEY, redirectTarget)
-
-  const ssoUrl = new URL('/api/auth/sso', issuer)
-  ssoUrl.searchParams.set('app_id', instanceConfig.auth.platformAppId || 'verba')
-  ssoUrl.searchParams.set('redirect_uri', callbackUrl.toString())
-  ssoUrl.searchParams.set('state', state)
-  // Force the platform to prompt for credentials so we never inherit
-  // a stale platform session belonging to a different identity.
-  ssoUrl.searchParams.set('prompt', 'login')
-
-  window.location.href = ssoUrl.toString()
+// No prompt by default: the platform resolves our app's pinned identity, or
+// shows its account chooser when several identities exist and we have no pin.
+// (The old forced prompt=login predates per-app pins and is no longer needed.)
+function startPlatformLogin(options: PlatformLoginOptions = {}) {
+  platformSso.startPlatformLogin({ redirectTarget: redirectTarget.value, ...options })
 }
 
 function redirect() {

@@ -56,6 +56,8 @@
     <template #sidebar-bottom>
       <NotificationBell sidebar />
 
+      <AccountSwitcher v-if="instanceConfig.auth.platformEnabled" />
+
       <NbSidebarLink
         to="/profile"
         :tooltip="auth.user ? displayName(auth.user) : 'Profile'"
@@ -102,6 +104,7 @@
 import { computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useInstanceConfigStore } from '../stores/instanceConfig'
 import { useNavigationStore } from '../stores/navigation'
 import { useProjectStore } from '../stores/project'
 import { displayName } from '../composables/useDisplayName'
@@ -110,9 +113,11 @@ import { setLocale } from '../i18n/index'
 import { useLayoutSlots } from '../composables/useLayoutSlots'
 import NotificationBell from '../components/NotificationBell.vue'
 import AppBreadcrumbs from '../components/AppBreadcrumbs.vue'
+import AccountSwitcher from '../components/AccountSwitcher.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
+const instanceConfig = useInstanceConfigStore()
 const navStore = useNavigationStore()
 const projectStore = useProjectStore()
 const { inspectorVisible } = useLayoutSlots()

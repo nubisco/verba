@@ -58,6 +58,23 @@ router.beforeEach(async (to) => {
   if (!auth.user) {
     await auth.fetchMe()
   }
+  // The platform launchpad appends ?login_hint=<email> to our launch URL.
+  // Forward it to the login page so the SSO round-trip resumes the account
+  // the user clicked (multi-account sessions).
+  const loginHint = typeof to.query.login_hint === 'string' ? to.query.login_hint : ''
+  if (loginHint) {
+    // Strip the hint from the post-login destination to avoid re-triggering.
+    const target = { ...to.query }
+    delete target.login_hint
+    const redirect = router.resolve({ path: to.path, query: target }).fullPath
+    // Signed in as someone else than the hinted account: switch explicitly
+    // through the login flow instead of keeping the old session underneath.
+    if (!auth.user || auth.user.email.toLowerCase() !== loginHint.toLowerCase()) {
+      return { path: '/login', query: { redirect, login_hint: loginHint } }
+    }
+    return { path: to.path, query: target }
+  }
+
   if (!auth.user) {
     return { path: '/login', query: { redirect: to.fullPath } }
   }

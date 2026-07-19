@@ -37,7 +37,10 @@ export async function authRoutes(app: FastifyInstance) {
   })
 
   app.get('/auth/me', { preHandler: [app.authenticate] }, async (req) => {
-    return authService.getMe(req.user.userId)
+    const me = await authService.getMe(req.user.userId)
+    // The platform subject this session was issued for (multi-account
+    // sessions): lets the account switcher mark the current identity by sub.
+    return { ...me, platformSub: req.user.platformSub ?? null }
   })
 
   app.get('/auth/me/tasks', { preHandler: [app.authenticate] }, async (req) => {
@@ -113,9 +116,13 @@ export async function authRoutes(app: FastifyInstance) {
     if (!payload) {
       return reply.status(401).send({ error: 'Invalid or expired platform token' })
     }
-    const localToken = app.jwt.sign({ userId: payload.userId, email: payload.email })
+    const localToken = app.jwt.sign({
+      userId: payload.userId,
+      email: payload.email,
+      platformSub: payload.platformSub,
+    })
     reply.setCookie('token', localToken, { httpOnly: true, path: '/' })
-    return reply.send({ id: payload.userId, email: payload.email })
+    return reply.send({ id: payload.userId, email: payload.email, platformSub: payload.platformSub })
   })
 
   // Returns whether platform auth is configured: used by the frontend to show the platform login button

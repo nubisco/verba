@@ -3,7 +3,6 @@ import { ref } from 'vue'
 import { apiFetch } from '../api'
 import router from '../router'
 import { identifyUser, resetUser, trackEvent } from '../composables/useAnalytics'
-import { useInstanceConfigStore } from './instanceConfig'
 
 interface User {
   id: string
@@ -11,6 +10,10 @@ interface User {
   name?: string | null
   isGlobalAdmin?: boolean
   notificationOpenMode?: string
+  // Platform subject (sub) this session was issued for, when signed in via
+  // the Nubisco Platform. Used by the account switcher to mark the current
+  // identity (per the multi-account guide, never platform_active).
+  platformSub?: string | null
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -66,21 +69,11 @@ export const useAuthStore = defineStore('auth', () => {
     resetUser()
     user.value = null
 
-    // If this instance signs in via the Nubisco platform, redirect through
-    // the platform's RP-initiated logout so the platform session is also
-    // destroyed. Otherwise the next sign-in would silently re-authenticate
-    // as whoever's still logged into platform.nubisco.io.
-    const instanceConfig = useInstanceConfigStore()
-    const issuer = instanceConfig.auth.platformIssuer
-    const appId = instanceConfig.auth.platformAppId
-    if (instanceConfig.auth.platformEnabled && issuer && appId) {
-      const postLogout = `${window.location.origin}${import.meta.env.BASE_URL}login`
-      const url = new URL('/api/auth/sso/end-session', issuer)
-      url.searchParams.set('app_id', appId)
-      url.searchParams.set('post_logout_redirect_uri', postLogout)
-      window.location.href = url.toString()
-      return
-    }
+    // Local sign-out only. With platform multi-account sessions, each app has
+    // its own identity pin, so ending the whole platform session here would
+    // sign every account out of every Nubisco app in this browser. Signing a
+    // single account out of the browser is offered separately in the account
+    // switcher (POST /api/auth/identities/remove).
     router.push('/login')
   }
 
