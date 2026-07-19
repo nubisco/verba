@@ -82,6 +82,20 @@ export function usePlatformIdentities() {
       method: 'POST',
       body: JSON.stringify({ platform_sub: identity.platform_sub }),
     })
+    // Best-effort: also sign this account out of the platform's browser
+    // session (multi-account guide), so it does not silently come back on the
+    // next hint-less authorize. Cross-origin; requires platform CORS
+    // credentials for this origin, so failures are ignored.
+    const instanceConfig = useInstanceConfigStore()
+    const issuer = instanceConfig.auth.platformIssuer
+    if (issuer) {
+      await fetch(new URL('/api/auth/identities/remove', issuer), {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: identity.platform_sub }),
+      }).catch(() => {})
+    }
     if (identity.is_active) return { activeRemoved: true }
     await load()
     return { activeRemoved: false }

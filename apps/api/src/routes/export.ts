@@ -2,11 +2,12 @@ import type { FastifyInstance } from 'fastify'
 import { requireProjectRole } from '../services/acl.service.js'
 import * as analytics from '../services/analytics.service.js'
 import { exportLocale, exportTranslations } from '../services/export.service.js'
+import { exportXliff } from '../services/xliff.service.js'
 import { Role } from '../types.js'
 import { z } from 'zod'
 
 const ExportQuerySchema = z.object({
-  format: z.enum(['json', 'csv', 'xlsx']).default('json'),
+  format: z.enum(['json', 'csv', 'xlsx', 'xliff']).default('json'),
   locale: z.string().optional(),
   status: z.string().optional(),
   resolve: z.coerce.boolean().optional().default(false),
@@ -40,7 +41,7 @@ export async function exportRoutes(app: FastifyInstance) {
   }>('/projects/:projectId/export', { preHandler: [app.authenticate] }, async (req, reply) => {
     await requireProjectRole(req.user.userId, req.params.projectId, Role.READER)
     const opts = ExportQuerySchema.parse(req.query)
-    const result = await exportTranslations(req.params.projectId, opts)
+    const format = opts.format
     analytics.track('export_completed', {
       userId: req.user.userId,
       props: {
@@ -50,6 +51,16 @@ export async function exportRoutes(app: FastifyInstance) {
         status_filter: opts.status,
       },
     })
+
+    if (format === 'xliff') {
+      if (!opts.locale) throw Object.assign(new Error('locale is required for XLIFF export'), { statusCode: 400 })
+      const xliff = await exportXliff(req.params.projectId, opts.locale)
+      reply.header('Content-Type', xliff.contentType)
+      reply.header('Content-Disposition', `attachment; filename="${xliff.filename}"`)
+      return reply.send(xliff.data)
+    }
+
+    const result = await exportTranslations(req.params.projectId, { ...opts, format })
     reply.header('Content-Type', result.contentType)
     reply.header('Content-Disposition', `attachment; filename="${result.filename}"`)
     return reply.send(result.data)

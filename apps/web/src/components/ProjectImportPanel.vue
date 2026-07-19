@@ -3,12 +3,16 @@
     <div class="section">
       <NbFileUploader
         :heading="t('import.selectFile')"
-        description="Max file size is 500 KB. Supported file types are .xlsx, .csv, and .json."
+        :description="t('import.uploaderDescription')"
         button-label="Add file"
-        accept=".xlsx,.csv,.json"
+        accept=".xlsx,.csv,.json,.xliff,.xlf"
         :max-size="512000"
         @change="onFileChange"
       />
+    </div>
+
+    <div v-if="isXliffFile" class="section json-info">
+      <div class="json-detected">{{ t('import.xliffDetected') }}</div>
     </div>
 
     <div v-if="isJsonFile" class="section json-info">
@@ -25,7 +29,7 @@
       </div>
     </div>
 
-    <div v-else class="section">
+    <div v-else-if="!isXliffFile" class="section">
       <h3>{{ t('import.columnMapping') }}</h3>
       <div class="field">
         <label>{{ t('import.keyColumn') }}</label>
@@ -55,6 +59,18 @@
         <span class="badge create">{{ t('import.create', { count: preview.created }) }}</span>
         <span class="badge update">{{ t('import.update', { count: preview.updated }) }}</span>
         <span class="badge skip">{{ t('import.skip', { count: preview.skipped }) }}</span>
+      </div>
+      <div v-if="preview.targetLanguage" class="xliff-meta">
+        {{ t('import.xliffTarget', { source: preview.sourceLanguage, target: preview.targetLanguage }) }}
+      </div>
+      <div v-if="preview.warnings && preview.warnings.length" class="warnings">
+        <strong>{{ t('import.placeholderWarnings', { count: preview.warnings.length }) }}</strong>
+        <ul>
+          <li v-for="w in preview.warnings.slice(0, 10)" :key="w.id">
+            <code>{{ w.id }}</code
+            >: {{ w.message }}
+          </li>
+        </ul>
       </div>
       <table>
         <thead>
@@ -91,6 +107,23 @@
       <RouterLink :to="`/projects/${projectId}/import-runs/${applyResult.importRunId}`" class="nav-link">
         {{ t('import.viewImportRun') }}
       </RouterLink>
+
+      <div v-if="isXliffFile && xliffTargetLocale" class="ai-fill">
+        <p class="ai-fill-hint">{{ t('import.aiFillHint', { locale: xliffTargetLocale }) }}</p>
+        <NbButton variant="primary" :disabled="aiFilling" @click="aiFill">
+          {{ aiFilling ? t('import.aiFilling') : t('import.aiFill', { locale: xliffTargetLocale }) }}
+        </NbButton>
+        <div v-if="aiFillError" class="error">{{ aiFillError }}</div>
+        <div v-if="aiFillResult" class="ai-fill-result">
+          {{ t('import.aiFillResult', { filled: aiFillResult.filled, skipped: aiFillResult.skipped }) }}
+          <ul v-if="aiFillResult.warnings.length">
+            <li v-for="w in aiFillResult.warnings.slice(0, 10)" :key="w.key">
+              <code>{{ w.key }}</code
+              >: {{ w.message }}
+            </li>
+          </ul>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -98,10 +131,10 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { apiFetch } from '../api'
+import { trackEvent } from '../composables/useAnalytics'
 import { useI18n } from 'vue-i18n'
 import { type NbSelectOption } from '@nubisco/ui'
 import LocaleBadge from './LocaleBadge.vue'
-import { trackEvent } from '../composables/useAnalytics'
 
 const props = defineProps<{ projectId: string }>()
 const apiBase = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? '/api' : 'http://localhost:4000')
@@ -126,11 +159,17 @@ interface PreviewResult {
   updated: number
   skipped: number
   rows: PreviewRow[]
+  // XLIFF-specific fields (present only for .xliff uploads)
+  format?: string
+  targetLanguage?: string
+  sourceLanguage?: string
+  warnings?: { id: string; message: string }[]
 }
 
 const locales = ref<Locale[]>([])
 const file = ref<File | null>(null)
 const isJsonFile = ref(false)
+const isXliffFile = ref(false)
 const jsonSingleLocale = ref('')
 const detectedJsonLocales = ref<string[]>([])
 const keyColumn = ref('key')
@@ -140,6 +179,12 @@ const preview = ref<PreviewResult | null>(null)
 const applyResult = ref<{ importRunId: string; stats: object } | null>(null)
 const loading = ref(false)
 const error = ref('')
+
+// AI batch-fill of the just-imported XLIFF locale.
+const xliffTargetLocale = ref('')
+const aiFilling = ref(false)
+const aiFillResult = ref<{ filled: number; skipped: number; warnings: { key: string; message: string }[] } | null>(null)
+const aiFillError = ref('')
 
 const jsonLocaleOptions = computed<NbSelectOption[]>(() => [
   { label: ': select locale : ', value: '' },
@@ -161,8 +206,14 @@ async function onFileChange(incoming: File[]) {
   file.value = f
   detectedJsonLocales.value = []
   jsonSingleLocale.value = ''
+  const name = (f?.name ?? '').toLowerCase()
 
-  if (f && f.name.endsWith('.json')) {
+  if (f && (name.endsWith('.xliff') || name.endsWith('.xlf'))) {
+    // XLIFF is self-describing: locales, keys, notes and states are embedded.
+    isXliffFile.value = true
+    isJsonFile.value = false
+  } else if (f && name.endsWith('.json')) {
+    isXliffFile.value = false
     isJsonFile.value = true
     try {
       const text = await f.text()
@@ -175,13 +226,17 @@ async function onFileChange(incoming: File[]) {
       /* server will report parse errors */
     }
   } else {
+    isXliffFile.value = false
     isJsonFile.value = false
   }
 }
 
 function buildFormData() {
   let mapping: Record<string, unknown>
-  if (isJsonFile.value) {
+  if (isXliffFile.value) {
+    // Server infers everything from the XLIFF; mapping is unused but harmless.
+    mapping = { keyColumn: 'id', localeColumns: {} }
+  } else if (isJsonFile.value) {
     const localeColumns: Record<string, string> = {}
     if (detectedJsonLocales.value.length === 0 && jsonSingleLocale.value) {
       localeColumns[jsonSingleLocale.value] = '__json__'
@@ -248,10 +303,28 @@ async function doApply() {
       throw new Error(d.error ?? 'Apply failed')
     }
     applyResult.value = await res.json()
+    xliffTargetLocale.value = preview.value?.targetLanguage ?? ''
+    aiFillResult.value = null
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : String(e)
   } finally {
     loading.value = false
+  }
+}
+
+async function aiFill() {
+  if (!xliffTargetLocale.value) return
+  aiFilling.value = true
+  aiFillError.value = ''
+  try {
+    aiFillResult.value = await apiFetch(`/projects/${props.projectId}/ai/fill-locale`, {
+      method: 'POST',
+      body: JSON.stringify({ localeCode: xliffTargetLocale.value, onlyEmpty: true }),
+    })
+  } catch (e: unknown) {
+    aiFillError.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    aiFilling.value = false
   }
 }
 </script>
@@ -340,6 +413,34 @@ table {
   color: #555;
 }
 
+.json-detected {
+  font-size: 0.9rem;
+  color: #27ae60;
+}
+
+.xliff-meta {
+  font-size: 0.85rem;
+  color: #555;
+  margin-bottom: 0.75rem;
+}
+
+.warnings {
+  background: #fef9e7;
+  border: 1px solid #f5d76e;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+  color: #9a6a00;
+  ul {
+    margin: 0.4rem 0 0;
+    padding-left: 1.1rem;
+  }
+  code {
+    font-family: monospace;
+  }
+}
+
 pre {
   background: #f7f7f9;
   padding: 1rem;
@@ -361,6 +462,30 @@ pre {
   margin-top: 0.75rem;
   &:hover {
     background: #eee;
+  }
+}
+
+.ai-fill {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid #eee;
+}
+.ai-fill-hint {
+  font-size: 0.85rem;
+  color: #555;
+  margin: 0 0 0.6rem;
+}
+.ai-fill-result {
+  margin-top: 0.6rem;
+  font-size: 0.85rem;
+  color: #333;
+  ul {
+    margin: 0.4rem 0 0;
+    padding-left: 1.1rem;
+    color: #9a6a00;
+  }
+  code {
+    font-family: monospace;
   }
 }
 </style>

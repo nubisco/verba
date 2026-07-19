@@ -69,10 +69,11 @@ model Project {
   locales       Locale[]
   namespaces    Namespace[]
   keys          Key[]
-  memberships   Membership[]
-  auditLogs     AuditLog[]
-  importRuns    ImportRun[]
-  notifications Notification[]
+  memberships    Membership[]
+  auditLogs      AuditLog[]
+  importRuns     ImportRun[]
+  notifications  Notification[]
+  xliffSkeletons XliffSkeleton[]
 }
 
 model Locale {
@@ -305,4 +306,24 @@ model PlatformIdentity {
 
   @@unique([bundleKey, platformSub])
   @@index([bundleKey])
+}
+
+/// Preserved original XLIFF document (skeleton) for lossless round-trip export.
+/// One row per (project, target-language): re-importing a locale replaces it.
+/// `document` holds the raw uploaded XLIFF text; export re-parses it and overlays
+/// only changed <target> values + states, so untouched structure is byte-stable.
+model XliffSkeleton {
+  id             String   @id @default(cuid())
+  projectId      String
+  targetLanguage String
+  sourceLanguage String
+  version        String   @default("1.2")
+  document       String // raw original XLIFF text
+  originals      String   @default("[]") // JSON array of <file original> paths
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, targetLanguage])
 }
