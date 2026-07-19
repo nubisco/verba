@@ -1,3 +1,11 @@
+# [1.7.0](https://github.com/nubisco/verba/compare/v1.6.1...v1.7.0) (2026-07-19)
+
+
+### Features
+
+* **auth:** support platform multi-account sessions ([eb9f874](https://github.com/nubisco/verba/commit/eb9f874e042dcf4a7ef0634636ce5078dbd6b0f4))
+* **xliff:** add XLIFF import/export interop with skeleton preservation ([491db56](https://github.com/nubisco/verba/commit/491db56308262b3752e03cae69528bedda38420f))
+
 ## [1.6.1](https://github.com/nubisco/verba/compare/v1.6.0...v1.6.1) (2026-06-16)
 
 
