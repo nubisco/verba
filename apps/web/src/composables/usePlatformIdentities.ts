@@ -21,7 +21,7 @@ const loaded = ref(false)
 const PLATFORM_STATE_KEY = 'verba.platform.sso.state'
 const PLATFORM_REDIRECT_KEY = 'verba.platform.sso.redirect'
 
-function buildSsoUrl(opts: { loginHint?: string; promptLogin?: boolean; redirect?: string }): string {
+function buildSsoUrl(opts: { loginHint?: string; prompt?: 'login' | 'select_account'; redirect?: string }): string {
   const instanceConfig = useInstanceConfigStore()
   const issuer = instanceConfig.auth.platformIssuer
   const appId = instanceConfig.auth.platformAppId || 'verba'
@@ -35,8 +35,17 @@ function buildSsoUrl(opts: { loginHint?: string; promptLogin?: boolean; redirect
   url.searchParams.set('redirect_uri', callbackUrl.toString())
   url.searchParams.set('state', state)
   if (opts.loginHint) url.searchParams.set('login_hint', opts.loginHint)
-  if (opts.promptLogin) url.searchParams.set('prompt', 'login')
+  if (opts.prompt) url.searchParams.set('prompt', opts.prompt)
   return url.toString()
+}
+
+/**
+ * Redirect through the platform SSO flow. Switching accounts must always be a
+ * redirect round-trip: only that re-pins this app on the platform and issues
+ * tokens for the new subject.
+ */
+export function startPlatformSso(opts: { loginHint?: string; prompt?: 'login' | 'select_account' } = {}): void {
+  window.location.href = buildSsoUrl(opts)
 }
 
 export function usePlatformIdentities() {
@@ -74,7 +83,7 @@ export function usePlatformIdentities() {
   }
 
   function addAnother() {
-    window.location.href = buildSsoUrl({ promptLogin: true })
+    window.location.href = buildSsoUrl({ prompt: 'login' })
   }
 
   async function remove(identity: PlatformIdentity): Promise<{ activeRemoved: boolean }> {

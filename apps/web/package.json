@@ -12,7 +12,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@nubisco/ui": "^1.27.1",
+    "@nubisco/ui": "^1.48.0",
     "@nubisco/verba-shared": "workspace:*",
     "@sentry/vue": "^10.45.0",
     "@vueuse/core": "^14.2.1",

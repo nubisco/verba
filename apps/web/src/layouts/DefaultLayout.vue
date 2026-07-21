@@ -56,16 +56,28 @@
     <template #sidebar-bottom>
       <NotificationBell sidebar />
 
-      <NbSidebarLink
-        ref="accountTriggerRef"
-        :tooltip="auth.user ? displayName(auth.user) : 'Profile'"
-        :active="accountMenuOpen"
-        @click.prevent="toggleAccountMenu"
+      <NbUserMenu
+        v-if="auth.user"
+        :user="menuUser"
+        :accounts="accounts"
+        :accounts-unknown="accountsUnknown"
+        :show-account-actions="platformEnabled"
+        @open="loadAccounts()"
+        @switch="switchTo"
+        @switch-account="selectAccount"
+        @add-account="addAccount"
+        @remove="remove"
+        @profile="router.push('/profile')"
+        @sign-out="auth.logout()"
       >
-        <div class="user-avatar-icon" :class="{ admin: auth.user?.isGlobalAdmin }">
-          {{ userInitials }}
-        </div>
-      </NbSidebarLink>
+        <template #trigger="{ open, toggle }">
+          <NbSidebarLink :tooltip="displayName(auth.user)" :active="open" @click.prevent="toggle">
+            <div class="user-avatar-icon" :class="{ admin: auth.user?.isGlobalAdmin }">
+              {{ userInitials }}
+            </div>
+          </NbSidebarLink>
+        </template>
+      </NbUserMenu>
 
       <NbSidebarLink
         v-if="availableLocales.length > 1"
@@ -92,51 +104,17 @@
     <!-- ═══ Main content ═══ -->
     <RouterView />
   </NbShell>
-
-  <!-- ═══ Account menu (rendered via Teleport from inside NbMenu) ═══ -->
-  <NbMenu
-    ref="accountMenuRef"
-    v-model:open="accountMenuOpen"
-    :min-width="240"
-    :max-width="320"
-    @close="accountMenuOpen = false"
-  >
-    <li v-if="auth.user" class="account-menu-header" role="presentation">
-      <div class="account-menu-header__avatar">{{ userInitials }}</div>
-      <div class="account-menu-header__text">
-        <div class="account-menu-header__name">{{ auth.user.name || auth.user.email.split('@')[0] }}</div>
-        <div class="account-menu-header__email">{{ auth.user.email }}</div>
-      </div>
-    </li>
-
-    <NbMenuDivider v-if="otherIdentities.length > 0" />
-
-    <NbMenuItem
-      v-for="i in otherIdentities"
-      :key="i.platform_sub"
-      icon="user-switch"
-      :label="`Switch to ${i.email}`"
-      @select="onSwitch(i)"
-    />
-
-    <NbMenuDivider v-if="platformEnabled" />
-
-    <NbMenuItem v-if="platformEnabled" icon="user-plus" label="Add another account" @select="onAddAccount" />
-    <NbMenuItem icon="user" :label="t('profile.profile') || 'Profile'" @select="onProfile" />
-    <NbMenuDivider />
-    <NbMenuItem danger icon="sign-out" :label="t('auth.logout')" @select="onLogout" />
-  </NbMenu>
 </template>
 
 <script setup lang="ts">
-import { computed, watch, onMounted, ref } from 'vue'
+import { computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useNavigationStore } from '../stores/navigation'
 import { useProjectStore } from '../stores/project'
 import { useInstanceConfigStore } from '../stores/instanceConfig'
 import { displayName } from '../composables/useDisplayName'
-import { usePlatformIdentities, type PlatformIdentity } from '../composables/usePlatformIdentities'
+import { usePlatformAccounts } from '../composables/usePlatformAccounts'
 import { useI18n } from 'vue-i18n'
 import { setLocale } from '../i18n/index'
 import { useLayoutSlots } from '../composables/useLayoutSlots'
@@ -150,66 +128,26 @@ const projectStore = useProjectStore()
 const instanceConfig = useInstanceConfigStore()
 const { inspectorVisible } = useLayoutSlots()
 
-// ── Account menu wiring ───────────────────────────────────────────────────
-// Trigger: the avatar NbSidebarLink in the bottom of the sidebar. Menu items:
-// other identities (switch), Add another account, Profile, Sign out.
-// All identity actions delegate to usePlatformIdentities so the standalone
-// ProfileView panel and this menu stay in sync.
-const accountTriggerRef = ref<{ $el: HTMLElement } | null>(null)
-const accountMenuRef = ref<{ setPosition: (rect: DOMRect) => void } | null>(null)
-const accountMenuOpen = ref(false)
+// ── Account menu wiring (NbUserMenu) ──────────────────────────────────────
+// The standardized menu is presentation-only; identity data and the SSO
+// redirect flows live in usePlatformAccounts. `right-end` placement (the
+// default) fits the left icon-rail trigger. When this instance does not use
+// platform auth it is single-account: account actions are hidden entirely.
 const platformEnabled = computed(() => instanceConfig.auth.platformEnabled)
-const { identities, load: loadIdentities, switchTo, addAnother, remove } = usePlatformIdentities()
-const otherIdentities = computed(() => identities.value.filter((i) => !i.is_active))
+const {
+  accounts,
+  accountsUnknown,
+  load: loadAccounts,
+  switchTo,
+  selectAccount,
+  addAccount,
+  remove,
+} = usePlatformAccounts()
 
-function toggleAccountMenu() {
-  if (accountMenuOpen.value) {
-    accountMenuOpen.value = false
-    return
-  }
-  const triggerEl = accountTriggerRef.value?.$el
-  if (triggerEl && accountMenuRef.value) {
-    const rect = triggerEl.getBoundingClientRect()
-    // Sidebar is on the left; we want the menu to appear to the right of the
-    // trigger rather than below it. Pass a synthetic rect with top=row-top,
-    // left=row-right to keep the menu vertically aligned with the avatar.
-    accountMenuRef.value.setPosition({
-      ...rect,
-      top: rect.top,
-      bottom: rect.top,
-      left: rect.right + 8,
-    } as DOMRect)
-  }
-  accountMenuOpen.value = true
-}
-
-async function onSwitch(identity: PlatformIdentity) {
-  accountMenuOpen.value = false
-  try {
-    await switchTo(identity)
-  } catch (e: unknown) {
-    alert(e instanceof Error ? e.message : 'Failed to switch account.')
-  }
-}
-
-function onAddAccount() {
-  accountMenuOpen.value = false
-  addAnother()
-}
-
-function onProfile() {
-  accountMenuOpen.value = false
-  router.push('/profile')
-}
-
-async function onLogout() {
-  accountMenuOpen.value = false
-  await auth.logout()
-}
-
-// Reference to keep `remove` from being tree-shaken when only the trigger is
-// used: the actual call lives on ProfileView. (No-op binding.)
-void remove
+const menuUser = computed(() => ({
+  email: auth.user?.email ?? '',
+  name: auth.user?.name ?? undefined,
+}))
 
 watch(
   () => navStore.projectId,
@@ -221,7 +159,7 @@ watch(
 
 onMounted(async () => {
   if (!auth.user) await auth.fetchMe()
-  if (platformEnabled.value) void loadIdentities()
+  if (platformEnabled.value) void loadAccounts()
 })
 
 const { t, locale } = useI18n()
@@ -378,55 +316,5 @@ const userInitials = computed(() => {
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
-}
-</style>
-
-<!-- Menu lives in document.body via Teleport, so its styles must be unscoped. -->
-<style lang="scss">
-.account-menu-header {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  padding: 0.7rem 0.85rem;
-  list-style: none;
-}
-
-.account-menu-header__avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: #1a1a2e;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 0.75rem;
-  flex-shrink: 0;
-}
-
-.account-menu-header__text {
-  min-width: 0;
-  flex: 1;
-}
-
-.account-menu-header__name {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #111;
-  line-height: 1.2;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.account-menu-header__email {
-  font-size: 0.75rem;
-  color: #888;
-  line-height: 1.2;
-  margin-top: 0.1rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 </style>
