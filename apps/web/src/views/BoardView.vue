@@ -173,7 +173,7 @@ import { useProjectWs } from '../composables/useProjectWs'
 import KeyDetailPanel from '../components/KeyDetailPanel.vue'
 import { trackEvent } from '../composables/useAnalytics'
 import { useI18n } from 'vue-i18n'
-import { type NbSelectOption } from '@nubisco/ui'
+import { type ISelectOption } from '@nubisco/ui'
 import LocaleBadge from '../components/LocaleBadge.vue'
 
 const route = useRoute()
@@ -220,7 +220,7 @@ const filterNamespaceId = ref<string>('')
 const toast = ref('')
 let toastTimer: ReturnType<typeof setTimeout> | null = null
 
-const nsSelectOptions = computed<NbSelectOption[]>(() => [
+const nsSelectOptions = computed<ISelectOption[]>(() => [
   { label: t('board.allNamespaces'), value: '' },
   ...namespaces.value.map((ns) => ({ label: ns.slug, value: ns.id })),
 ])

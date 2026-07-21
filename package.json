@@ -11,7 +11,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "pnpm -r test",
-    "types:check": "pnpm run build",
+    "types:check": "pnpm -r --if-present run types:check && pnpm run build",
     "quality:check": "pnpm run test && pnpm run lint && pnpm run format:check && pnpm run types:check",
     "prepare": "simple-git-hooks",
     "docs:dev": "vitepress dev docs",

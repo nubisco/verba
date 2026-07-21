@@ -321,7 +321,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useProjectStore, type Locale, type Namespace, type Member } from '../stores/project'
 import { apiFetch } from '../api'
 import { useI18n } from 'vue-i18n'
-import { type NbSelectOption } from '@nubisco/ui'
+import { type ISelectOption } from '@nubisco/ui'
 import LocaleBadge from '../components/LocaleBadge.vue'
 import LocaleSelect from '../components/LocaleSelect.vue'
 import LocaleMultiSelect from '../components/LocaleMultiSelect.vue'
@@ -542,7 +542,7 @@ const memberAdding = ref(false)
 const editingLocalesForUser = ref<string | null>(null)
 const editingLocaleIds = ref<string[]>([])
 
-const roleOptions = computed<NbSelectOption[]>(() => [
+const roleOptions = computed<ISelectOption[]>(() => [
   { label: t('common.roles.READER'), value: 'READER' },
   { label: t('common.roles.TRANSLATOR'), value: 'TRANSLATOR' },
   { label: t('common.roles.MAINTAINER'), value: 'MAINTAINER' },
@@ -634,7 +634,7 @@ const aiModel = ref('')
 const aiSaving = ref(false)
 const aiSaveMsg = ref('')
 
-const aiProviderOptions: NbSelectOption[] = [
+const aiProviderOptions: ISelectOption[] = [
   { label: 'OpenAI', value: 'openai' },
   { label: 'Anthropic', value: 'anthropic' },
   { label: 'Gemini', value: 'gemini' },

@@ -501,7 +501,7 @@ import { trackEvent } from '../composables/useAnalytics'
 import ProjectAvatar from '../components/ProjectAvatar.vue'
 import ProjectLogoUpload from '../components/ProjectLogoUpload.vue'
 import { useI18n } from 'vue-i18n'
-import { type NbSelectOption } from '@nubisco/ui'
+import { type ISelectOption } from '@nubisco/ui'
 import LocaleBadge from '../components/LocaleBadge.vue'
 
 const route = useRoute()
@@ -812,7 +812,7 @@ const newMemberRole = ref('TRANSLATOR')
 const memberError = ref('')
 const memberAdding = ref(false)
 
-const roleOptions = computed<NbSelectOption[]>(() => [
+const roleOptions = computed<ISelectOption[]>(() => [
   { label: t('common.roles.READER'), value: 'READER' },
   { label: t('common.roles.TRANSLATOR'), value: 'TRANSLATOR' },
   { label: t('common.roles.MAINTAINER'), value: 'MAINTAINER' },
@@ -972,7 +972,7 @@ const aiModel = ref('')
 const aiSaving = ref(false)
 const aiSaveMsg = ref('')
 
-const aiProviderOptions: NbSelectOption[] = [
+const aiProviderOptions: ISelectOption[] = [
   { label: 'OpenAI', value: 'openai' },
   { label: 'Anthropic', value: 'anthropic' },
   { label: 'Gemini', value: 'gemini' },

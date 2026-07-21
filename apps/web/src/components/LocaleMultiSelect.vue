@@ -9,7 +9,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { type NbSelectOption } from '@nubisco/ui'
+import { type ISelectOption } from '@nubisco/ui'
 import { localeFlag } from '../utils/localeUtils'
 
 const props = withDefaults(
@@ -24,7 +24,7 @@ const props = withDefaults(
 )
 const emit = defineEmits<{ 'update:modelValue': [value: string[]] }>()
 
-const selectOptions = computed<NbSelectOption[]>(() =>
+const selectOptions = computed<ISelectOption[]>(() =>
   props.options.map((opt) => ({
     label: `${localeFlag(opt.code)} ${opt.code}: ${opt.name}`,
     value: props.valueField === 'code' ? opt.code : opt.id,

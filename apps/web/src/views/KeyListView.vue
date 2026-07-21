@@ -154,7 +154,7 @@ import { apiFetch } from '../api'
 import { useI18n } from 'vue-i18n'
 import { useLayoutSlots } from '../composables/useLayoutSlots'
 import KeyDetailPanel from '../components/KeyDetailPanel.vue'
-import { NbTextInput, NbSelect, type NbSelectOption } from '@nubisco/ui'
+import { NbTextInput, NbSelect, type ISelectOption } from '@nubisco/ui'
 
 const route = useRoute()
 const router = useRouter()
@@ -188,7 +188,7 @@ const loading = ref(true)
 const limit = 50
 const selectedKeyId = ref<string | null>(null)
 
-const nsSelectOptions = computed<NbSelectOption[]>(() =>
+const nsSelectOptions = computed<ISelectOption[]>(() =>
   namespaces.value.map((ns) => ({ label: ns.slug, value: ns.id })),
 )
 

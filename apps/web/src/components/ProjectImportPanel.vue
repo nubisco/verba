@@ -133,7 +133,7 @@ import { ref, onMounted, computed } from 'vue'
 import { apiFetch } from '../api'
 import { trackEvent } from '../composables/useAnalytics'
 import { useI18n } from 'vue-i18n'
-import { type NbSelectOption } from '@nubisco/ui'
+import { type ISelectOption } from '@nubisco/ui'
 import LocaleBadge from './LocaleBadge.vue'
 
 const props = defineProps<{ projectId: string }>()
@@ -186,7 +186,7 @@ const aiFilling = ref(false)
 const aiFillResult = ref<{ filled: number; skipped: number; warnings: { key: string; message: string }[] } | null>(null)
 const aiFillError = ref('')
 
-const jsonLocaleOptions = computed<NbSelectOption[]>(() => [
+const jsonLocaleOptions = computed<ISelectOption[]>(() => [
   { label: ': select locale : ', value: '' },
   ...locales.value.map((l) => ({
     label: `${l.code} (${l.name})`,
