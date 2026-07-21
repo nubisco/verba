@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/nubisco/verba/compare/v1.7.0...v1.8.0) (2026-07-21)
+
+
+### Features
+
+* **web:** adopt NbUserMenu for the sidebar account menu ([f5be074](https://github.com/nubisco/verba/commit/f5be0748ef43a5be3abbd68f1122bf84249dcad1))
+
 # [1.7.0](https://github.com/nubisco/verba/compare/v1.6.1...v1.7.0) (2026-07-19)
 
 
