@@ -1,3 +1,11 @@
+## [1.8.1](https://github.com/nubisco/verba/compare/v1.8.0...v1.8.1) (2026-08-14)
+
+
+### Bug Fixes
+
+* **web:** consume the platform SSO token before it can leak from the URL ([ed48ded](https://github.com/nubisco/verba/commit/ed48dedaa82f08b43a2ead21b4014608d8fb811b))
+* **web:** consume the platform SSO token before it can leak from the URL ([adf468b](https://github.com/nubisco/verba/commit/adf468b9ba674de9dcd5ec4e6d3a85b89a6953b2))
+
 # [1.8.0](https://github.com/nubisco/verba/compare/v1.7.0...v1.8.0) (2026-07-21)
 
 
