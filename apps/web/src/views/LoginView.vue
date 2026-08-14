@@ -162,6 +162,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useInstanceConfigStore } from '../stores/instanceConfig'
 import { apiFetch } from '../api'
+import { takeSsoToken } from '../utils/ssoToken'
 import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
@@ -197,9 +198,12 @@ const loginHint = computed(() => {
 
 const redirectTarget = computed(() => (route.query.redirect as string) || '/projects')
 
-const hasPlatformCallback = computed(
-  () => typeof route.query.token === 'string' || typeof route.query.error === 'string',
-)
+// main.ts strips the SSO token from the URL before anything else can read it,
+// so the token arrives here in memory instead of via route.query. Taken once,
+// at setup, so revisiting /login later cannot replay it.
+const platformToken = takeSsoToken()
+
+const hasPlatformCallback = computed(() => platformToken !== null || typeof route.query.error === 'string')
 
 let autoStarted = false
 
@@ -291,7 +295,7 @@ async function submit() {
 }
 
 async function handlePlatformCallback() {
-  const token = route.query.token
+  const token = platformToken
   const state = route.query.state
   const platformError = route.query.error
 

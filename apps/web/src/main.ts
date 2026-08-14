@@ -7,9 +7,15 @@ import router from './router'
 import { i18n } from './i18n/index'
 import { useInstanceConfigStore } from './stores/instanceConfig'
 import { initAnalytics } from './composables/useAnalytics'
+import { consumeSsoTokenFromUrl } from './utils/ssoToken'
 import '@nubisco/ui/dist/ui.css'
 import '@/styles/index.scss'
 import { version } from '../package.json'
+
+// First statement on purpose. The platform SSO callback carries a live access
+// token in the query string, so it has to leave the address bar before Sentry,
+// the analytics script or the router ever read location.href.
+consumeSsoTokenFromUrl()
 
 const app = createApp(App)
 const pinia = createPinia()
