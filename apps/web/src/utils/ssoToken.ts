@@ -35,11 +35,31 @@ export function consumeSsoTokenFromUrl(): void {
   if (typeof window === 'undefined' || !window.location) return
 
   const url = new URL(window.location.href)
-  const token = url.searchParams.get(TOKEN_PARAM)
+
+  // The platform can deliver the token in the fragment instead of the query,
+  // opt-in per app via platform_apps.token_delivery. A fragment is never sent
+  // to a server, so it closes the exposure this module cannot reach: the
+  // platform's own 302 Location header, the follow-up request line, and every
+  // proxy, CDN and access log in between.
+  //
+  // Both shapes are read so the client can ship before the flag is flipped and
+  // keep working if it is flipped back. Fragment wins when both are present:
+  // it is the newer path, and the query copy is the one worth discarding.
+  const fragment = new URLSearchParams(url.hash.startsWith('#') ? url.hash.slice(1) : url.hash)
+  const fragmentToken = fragment.get(TOKEN_PARAM)
+  const queryToken = url.searchParams.get(TOKEN_PARAM)
+  const token = fragmentToken ?? queryToken
   if (!token) return
 
   pendingToken = token
+
   url.searchParams.delete(TOKEN_PARAM)
+  if (fragmentToken) {
+    fragment.delete(TOKEN_PARAM)
+    const rest = fragment.toString()
+    url.hash = rest ? `#${rest}` : ''
+  }
+
   // Keep the rest of the URL byte-identical, including a bare "?" free path
   // when the token was the only parameter.
   const cleaned = `${url.pathname}${url.search}${url.hash}`

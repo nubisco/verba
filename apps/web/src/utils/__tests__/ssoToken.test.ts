@@ -80,3 +80,45 @@ describe('boot ordering', () => {
     expect(analyticsAt).toBeGreaterThan(consumeAt)
   })
 })
+
+describe('fragment delivery', () => {
+  beforeEach(() => {
+    resetSsoTokenForTests()
+  })
+
+  it('captures a token delivered in the fragment', () => {
+    visit('/login#token=jwt_frag&state=abc')
+    consumeSsoTokenFromUrl()
+
+    expect(takeSsoToken()).toBe('jwt_frag')
+    // The fragment copy has to go too, or the credential simply moved from one
+    // visible part of the URL to another.
+    expect(window.location.href).not.toContain('jwt_frag')
+  })
+
+  it('keeps other fragment parameters', () => {
+    visit('/login#token=jwt_frag&state=abc')
+    consumeSsoTokenFromUrl()
+
+    expect(window.location.href).toContain('state=abc')
+  })
+
+  it('leaves a plain anchor alone', () => {
+    visit('/docs#getting-started')
+    consumeSsoTokenFromUrl()
+
+    expect(takeSsoToken()).toBeNull()
+    expect(window.location.href).toContain('#getting-started')
+  })
+
+  it('prefers the fragment when both are present', () => {
+    // Belt and braces during the migration: the fragment is the newer path and
+    // the query copy is the one worth discarding.
+    visit('/login?token=jwt_query#token=jwt_frag')
+    consumeSsoTokenFromUrl()
+
+    expect(takeSsoToken()).toBe('jwt_frag')
+    expect(window.location.href).not.toContain('jwt_query')
+    expect(window.location.href).not.toContain('jwt_frag')
+  })
+})
