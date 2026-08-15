@@ -1,3 +1,10 @@
+# [1.9.0](https://github.com/nubisco/verba/compare/v1.8.1...v1.9.0) (2026-08-15)
+
+
+### Features
+
+* **web:** accept the SSO token from the URL fragment ([571afda](https://github.com/nubisco/verba/commit/571afda468aa562b147f99e035722e17c9327658))
+
 ## [1.8.1](https://github.com/nubisco/verba/compare/v1.8.0...v1.8.1) (2026-08-14)
 
 
