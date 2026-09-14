@@ -6,6 +6,11 @@
 </template>
 
 <script setup lang="ts">
+// The flag name is derived from a project's locale at runtime, so the
+// @nubisco/ui 4.0.0 compile-time resolver cannot name it. The set of locales
+// is open-ended, so this component loads the full flag catalogue; it is the
+// only file that does, so no other page pays for it.
+import '@nubisco/ui/flags/all'
 import { localeToFlagName } from '../utils/localeUtils'
 
 withDefaults(

@@ -270,6 +270,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+// @nubisco/ui 5.0.0 types NbButton's `variant` as a union instead of `string`,
+// so the status actions below have to be typed against it rather than `string`.
+// Only exported from the per-component entry, not the package root.
+import type { TButtonVariant } from '@nubisco/ui/components/Button'
 
 import { useRoute, useRouter } from 'vue-router'
 import { apiFetch } from '../api'
@@ -820,8 +824,8 @@ async function deleteKey() {
   }
 }
 
-function nextStatuses(status: string, role: string): { label: string; value: string; variant: string }[] {
-  const actions: { label: string; value: string; variant: string }[] = []
+function nextStatuses(status: string, role: string): { label: string; value: string; variant: TButtonVariant }[] {
+  const actions: { label: string; value: string; variant: TButtonVariant }[] = []
   const isTranslator = ['TRANSLATOR', 'MAINTAINER', 'ADMIN'].includes(role)
   const isMaintainer = ['MAINTAINER', 'ADMIN'].includes(role)
 

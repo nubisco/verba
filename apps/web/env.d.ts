@@ -1,13 +1,10 @@
 /// <reference types="vite/client" />
-import type * as NubiscoUI from '@nubisco/ui'
 
-// @nubisco/ui is installed as a plugin in main.ts, which registers every
-// component globally. The package advertises a `@nubisco/ui/global` subpath
-// for the matching GlobalComponents declaration, but 1.48.0 does not actually
-// ship dist/global.d.ts, so we derive the same mapping from the `Nb*` value
-// exports instead. Drop this in favour of `import '@nubisco/ui/global'` once
-// the package ships that file.
-type NbComponents = Pick<typeof NubiscoUI, Extract<keyof typeof NubiscoUI, `Nb${string}`>>
+// The `Nb*` tags are resolved at compile time by `nubiscoUI()` in vite.config.ts
+// and declared globally by this subpath, which @nubisco/ui ships as of 5.0.0.
+// This replaces the mapping we used to derive from the package's value exports
+// while dist/global.d.ts was missing.
+import '@nubisco/ui/global'
 
 declare global {
   interface ImportMetaEnv {
@@ -20,13 +17,6 @@ declare global {
   interface ImportMeta {
     readonly env: ImportMetaEnv
   }
-}
-
-declare module 'vue' {
-  // Augmenting GlobalComponents requires an interface, so the empty body is
-  // structural, not an oversight.
-  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-  interface GlobalComponents extends NbComponents {}
 }
 
 export {}
