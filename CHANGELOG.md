@@ -1,3 +1,10 @@
+## [1.9.2](https://github.com/nubisco/verba/compare/v1.9.1...v1.9.2) (2026-09-14)
+
+
+### Bug Fixes
+
+* **deps:** upgrade @nubisco/ui to 5.0.0 ([cbb0afb](https://github.com/nubisco/verba/commit/cbb0afb342459457f579339918d0f15793f7baba))
+
 ## [1.9.1](https://github.com/nubisco/verba/compare/v1.9.0...v1.9.1) (2026-09-01)
 
 
