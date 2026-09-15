@@ -53,6 +53,26 @@ export async function getSsoRuntime(): Promise<EeModule | null> {
   return runtimePromise
 }
 
+/**
+ * Build the provider URL for a handover sign-in.
+ *
+ * Here rather than in the route because this module is the one place allowed
+ * to name the EE package, and it does so through a loader typed as `any`. The
+ * Community image compiles against a stub `packages/ee/src/index.ts` that
+ * exports only the entitlement helpers, so a statically typed
+ * `import('@nubisco/verba-ee')` naming anything else builds everywhere except
+ * in the image that ships.
+ */
+export async function handoverAuthorizeUrl(
+  config: unknown,
+  redirectUri: string,
+  state: string,
+  opts: { loginHint?: string; prompt?: string } = {},
+): Promise<string> {
+  const ee = await loadEE()
+  return ee.handoverAuthorizeUrl(config, redirectUri, state, opts) as string
+}
+
 export interface SsoPublicConfig {
   enabled: boolean
   mode: 'oidc' | 'handover' | null

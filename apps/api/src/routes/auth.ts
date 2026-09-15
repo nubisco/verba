@@ -181,9 +181,12 @@ export async function authRoutes(app: FastifyInstance) {
 
     const state = randomBytes(16).toString('hex')
     reply.setCookie(SSO_STATE_COOKIE, state, ssoCookieOptions())
-    const ee = await import('@nubisco/verba-ee')
+    // Through sso.service, never by importing the EE package here. The
+    // Community image builds with packages/ee/src/index.ts replaced by a stub
+    // carrying only the entitlement functions, so a directly typed import of
+    // anything else fails to compile in exactly the build that ships.
     return reply.redirect(
-      ee.handoverAuthorizeUrl(runtime.config, redirectUri, state, {
+      await ssoService.handoverAuthorizeUrl(runtime.config, redirectUri, state, {
         loginHint: ssoService.loginHintOf(req),
         prompt: (req.query as { prompt?: string })?.prompt,
       }),
