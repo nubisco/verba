@@ -19,7 +19,14 @@ export function getAuthConfig(): AuthConfig {
   const localOtpEnabled = process.env.DISABLE_LOCAL_OTP !== 'true'
   const platformIssuer = process.env.PLATFORM_ISSUER ?? null
   const platformAppId = process.env.PLATFORM_APP_ID ?? null
-  const platformEnabled = Boolean(platformIssuer)
+  // Both, not just the issuer. The app id is the slug the platform knows this
+  // deployment by, and it is not guessable: ours is registered as
+  // `nubisco-verba`, while the frontend used to fall back to `verba` when the
+  // variable was unset. That fallback is why platform sign-in was returning
+  // `unknown_app` rather than a login screen, and a wrong guess is
+  // indistinguishable from an outage from the browser. An issuer with no app
+  // id is a half-configured instance, so the button is not offered at all.
+  const platformEnabled = Boolean(platformIssuer && platformAppId)
 
   if (localPasswordEnabled && localOtpEnabled) {
     return {

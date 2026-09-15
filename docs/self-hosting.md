@@ -64,7 +64,8 @@ Configure the API via environment variables in `apps/api/.env`:
 | `JWT_SECRET`            | _(required in production)_ | Random 48-byte hex string. Rotate periodically                    |
 | `ENABLE_LOCAL_PASSWORD` | `false`                    | Enable password login/register endpoints; CE defaults to OTP-only |
 | `DISABLE_LOCAL_OTP`     | `false`                    | Disable local OTP login                                           |
-| `PLATFORM_ISSUER`       | _(unset)_                  | Enable Nubisco Platform token verification for delegated auth     |
+| `PLATFORM_ISSUER`       | _(unset)_                  | Nubisco Platform issuer URL. Required with `PLATFORM_APP_ID`      |
+| `PLATFORM_APP_ID`       | _(unset)_                  | The app slug this deployment is registered under on Platform      |
 | `SMTP_HOST`             | _(unset = log to stdout)_  | SMTP host for email / OTP delivery                                |
 | `SMTP_PORT`             | `587`                      | SMTP port                                                         |
 | `SMTP_FROM`             | `noreply@verba.app`        | From address for outgoing email                                   |
@@ -84,9 +85,9 @@ For CE, the first user can be bootstrapped without creating a permanent password
 
 ### Platform SSO for EE
 
-When `PLATFORM_ISSUER` is configured, the login screen exposes a **Continue with Nubisco Platform** action.
+When both `PLATFORM_ISSUER` and `PLATFORM_APP_ID` are configured, the login screen exposes a **Continue with Nubisco Platform** action. Setting only the issuer is treated as a half-configured instance and the action stays hidden: the app id is the slug Platform knows your deployment by, it is not derivable from the product name, and sending the wrong one gets `unknown_app` back from Platform rather than a login screen. Nubisco's own instance is registered as `nubisco-verba`.
 
-Register this redirect URI in Platform for your Verba app:
+Find the slug in the Platform admin UI under **Apps**, and register this redirect URI for the same app:
 
 ```text
 https://your-verba-domain.example/login

@@ -54,6 +54,7 @@ describe('auth and setup routes', () => {
     ENABLE_LOCAL_PASSWORD: process.env.ENABLE_LOCAL_PASSWORD,
     DISABLE_LOCAL_OTP: process.env.DISABLE_LOCAL_OTP,
     PLATFORM_ISSUER: process.env.PLATFORM_ISSUER,
+    PLATFORM_APP_ID: process.env.PLATFORM_APP_ID,
     JWT_SECRET: process.env.JWT_SECRET,
   }
 
@@ -63,6 +64,7 @@ describe('auth and setup routes', () => {
     delete process.env.ENABLE_LOCAL_PASSWORD
     delete process.env.DISABLE_LOCAL_OTP
     delete process.env.PLATFORM_ISSUER
+    delete process.env.PLATFORM_APP_ID
 
     vi.mocked(prisma.user.count).mockResolvedValue(0)
     vi.mocked(authService.register).mockResolvedValue({
@@ -89,6 +91,7 @@ describe('auth and setup routes', () => {
     process.env.ENABLE_LOCAL_PASSWORD = originalEnv.ENABLE_LOCAL_PASSWORD
     process.env.DISABLE_LOCAL_OTP = originalEnv.DISABLE_LOCAL_OTP
     process.env.PLATFORM_ISSUER = originalEnv.PLATFORM_ISSUER
+    process.env.PLATFORM_APP_ID = originalEnv.PLATFORM_APP_ID
     process.env.JWT_SECRET = originalEnv.JWT_SECRET
   })
 
@@ -115,6 +118,7 @@ describe('auth and setup routes', () => {
   it('exposes hybrid mode when local password and platform are enabled', async () => {
     process.env.ENABLE_LOCAL_PASSWORD = 'true'
     process.env.PLATFORM_ISSUER = 'https://platform.example.com'
+    process.env.PLATFORM_APP_ID = 'nubisco-verba'
 
     const app = buildApp()
     const res = await app.inject({ method: 'GET', url: '/config' })
@@ -128,7 +132,27 @@ describe('auth and setup routes', () => {
         localPasswordEnabled: true,
         platformEnabled: true,
         platformIssuer: 'https://platform.example.com',
+        platformAppId: 'nubisco-verba',
       },
+    })
+  })
+
+  // Regression: the frontend used to fall back to app_id 'verba' when
+  // PLATFORM_APP_ID was unset, and no platform app carries that slug (ours is
+  // 'nubisco-verba'), so every sign-in bounced off `unknown_app`. A
+  // half-configured instance must not advertise the button at all.
+  it('does not enable platform auth when the app id is missing', async () => {
+    process.env.PLATFORM_ISSUER = 'https://platform.example.com'
+
+    const app = buildApp()
+    const res = await app.inject({ method: 'GET', url: '/config' })
+    await app.close()
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json().auth).toMatchObject({
+      platformEnabled: false,
+      platformIssuer: 'https://platform.example.com',
+      platformAppId: null,
     })
   })
 
