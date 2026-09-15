@@ -42,8 +42,20 @@ services:
       ENABLE_LOCAL_PASSWORD: ${ENABLE_LOCAL_PASSWORD:-false}
       PLATFORM_ISSUER: ${PLATFORM_ISSUER:-}
       PLATFORM_APP_ID: ${PLATFORM_APP_ID:-}
-      PLATFORM_CLIENT_ID: ${PLATFORM_CLIENT_ID:-}
-      PLATFORM_CLIENT_SECRET: ${PLATFORM_CLIENT_SECRET:-}
+      # Opt-in: needs /api/auth/sso/callback registered on Platform first.
+      PLATFORM_SERVER_FLOW: ${PLATFORM_SERVER_FLOW:-}
+      # Standards-based OIDC against any provider (EE; needs LICENSE_KEY).
+      # These replace PLATFORM_CLIENT_ID/PLATFORM_CLIENT_SECRET, which were
+      # passed to the container but read nowhere in the code.
+      OIDC_ISSUER: ${OIDC_ISSUER:-}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
+      OIDC_SCOPES: ${OIDC_SCOPES:-}
+      OIDC_LABEL: ${OIDC_LABEL:-}
+      OIDC_AUTO_PROVISION: ${OIDC_AUTO_PROVISION:-}
+      LICENSE_KEY: ${LICENSE_KEY:-}
+      # Only needed when this API is not reachable at <web origin>/api.
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-}
       ANALYTICS_URL: ${ANALYTICS_URL:-}
       ANALYTICS_TOKEN: ${ANALYTICS_TOKEN:-}
       ANALYTICS_DOMAIN: ${ANALYTICS_DOMAIN:-}

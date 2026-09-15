@@ -5,12 +5,42 @@ import * as otpService from '../services/otp.service.js'
 import * as platformAuthService from '../services/platform-auth.service.js'
 import * as bundleService from '../services/identity-bundle.service.js'
 import * as analytics from '../services/analytics.service.js'
+import * as ssoService from '../services/sso.service.js'
 import { prisma } from '../prisma.js'
 import { getAuthConfig } from '../services/instance-config.service.js'
+import { randomBytes } from 'node:crypto'
 
 function readBundleKey(req: FastifyRequest): string | undefined {
   const raw = req.cookies?.[bundleService.BUNDLE_COOKIE]
   return typeof raw === 'string' && raw.length > 0 ? raw : undefined
+}
+
+// Short-lived cookies that carry a sign-in across the trip to the provider.
+// httpOnly because the browser must hold them but the page must never read
+// them: the PKCE verifier is what proves an intercepted code belongs to this
+// browser, and it is worth nothing once script can reach it.
+const SSO_STATE_COOKIE = 'verba_sso_state'
+const SSO_HANDSHAKE_COOKIE = 'verba_oidc_handshake'
+const SSO_LANDING_COOKIE = 'verba_sso_landing'
+const SSO_COOKIE_TTL_SECONDS = 600
+
+function ssoCookieOptions() {
+  return {
+    httpOnly: true,
+    path: '/',
+    // Lax, not Strict: the provider returns the browser here by a top-level
+    // navigation from its own origin, and Strict would withhold the cookie on
+    // exactly that request, failing every sign-in with a state mismatch.
+    sameSite: 'lax' as const,
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: SSO_COOKIE_TTL_SECONDS,
+  }
+}
+
+function clearSsoCookies(reply: FastifyReply): void {
+  for (const name of [SSO_STATE_COOKIE, SSO_HANDSHAKE_COOKIE, SSO_LANDING_COOKIE]) {
+    reply.clearCookie(name, { path: '/' })
+  }
 }
 
 function setBundleKeyCookie(reply: FastifyReply, key: string): void {
@@ -116,6 +146,145 @@ export async function authRoutes(app: FastifyInstance) {
     })
     reply.setCookie('token', token, { httpOnly: true, path: '/' })
     return reply.send({ id: payload.userId, email: payload.email })
+  })
+
+  // ── Federated sign-in ──────────────────────────────────────────────────────
+  //
+  // Both legs run here. The browser is handed to the provider and comes back
+  // with a code (OIDC) or a token (Platform handover); neither reaches the
+  // page, and the session cookie is already set by the time the SPA loads.
+
+  app.get('/auth/sso/start', async (req, reply) => {
+    const runtime = await ssoService.getSsoRuntime()
+    if (!runtime) return reply.status(404).send({ error: 'Single sign-on is not configured on this instance' })
+
+    const redirectUri = ssoService.ssoCallbackUrl()
+    const landing = (req.query as { redirect?: unknown })?.redirect
+    if (typeof landing === 'string') {
+      reply.setCookie(SSO_LANDING_COOKIE, landing, ssoCookieOptions())
+    }
+
+    if (runtime.mode === 'oidc') {
+      let authorize: { url: string; handshake: unknown }
+      try {
+        authorize = await runtime.client.authorizeUrl(redirectUri)
+      } catch (err) {
+        // Discovery is a network call to someone else's server, so it fails in
+        // ways a sign-in page cannot act on. Log the reason and send the
+        // person somewhere that says so.
+        req.log.error({ err }, 'oidc discovery failed')
+        return reply.redirect(ssoService.loginErrorUrl('sso_discovery'))
+      }
+      reply.setCookie(SSO_HANDSHAKE_COOKIE, JSON.stringify(authorize.handshake), ssoCookieOptions())
+      return reply.redirect(authorize.url)
+    }
+
+    const state = randomBytes(16).toString('hex')
+    reply.setCookie(SSO_STATE_COOKIE, state, ssoCookieOptions())
+    const ee = await import('@nubisco/verba-ee')
+    return reply.redirect(
+      ee.handoverAuthorizeUrl(runtime.config, redirectUri, state, {
+        loginHint: ssoService.loginHintOf(req),
+        prompt: (req.query as { prompt?: string })?.prompt,
+      }),
+    )
+  })
+
+  app.get('/auth/sso/callback', async (req, reply) => {
+    const runtime = await ssoService.getSsoRuntime()
+    if (!runtime) return reply.status(404).send({ error: 'Single sign-on is not configured on this instance' })
+
+    const query = req.query as Record<string, string | undefined>
+    const landing = ssoService.safeLandingUrl(req.cookies?.[SSO_LANDING_COOKIE])
+
+    if (query.error) {
+      clearSsoCookies(reply)
+      return reply.redirect(ssoService.loginErrorUrl(query.error))
+    }
+
+    let claims: { sub: string; email: string; name?: string; app_plan?: string }
+    if (runtime.mode === 'oidc') {
+      const raw = req.cookies?.[SSO_HANDSHAKE_COOKIE]
+      if (!raw || !query.code || !query.state) {
+        clearSsoCookies(reply)
+        return reply.redirect(ssoService.loginErrorUrl('sso_state'))
+      }
+      let handshake: { state: string; nonce: string; verifier: string }
+      try {
+        handshake = JSON.parse(raw)
+      } catch {
+        clearSsoCookies(reply)
+        return reply.redirect(ssoService.loginErrorUrl('sso_state'))
+      }
+      if (query.state !== handshake.state) {
+        clearSsoCookies(reply)
+        return reply.redirect(ssoService.loginErrorUrl('sso_state'))
+      }
+      try {
+        claims = await runtime.client.exchange(query.code, ssoService.ssoCallbackUrl(), handshake)
+      } catch (err) {
+        // The reason never reaches the browser: telling an attacker which half
+        // of a check failed is telling them how to pass it. It does reach the
+        // log, because without it an SSO outage is indistinguishable from a
+        // wrong code, and an exchange fails identically from here for a wrong
+        // secret, an unregistered redirect_uri, a rotated key or a replay.
+        req.log.error({ err }, 'oidc exchange failed')
+        clearSsoCookies(reply)
+        return reply.redirect(ssoService.loginErrorUrl('sso_token'))
+      }
+    } else {
+      const expectedState = req.cookies?.[SSO_STATE_COOKIE]
+      if (!query.token || !query.state || !expectedState || query.state !== expectedState) {
+        clearSsoCookies(reply)
+        return reply.redirect(ssoService.loginErrorUrl('sso_state'))
+      }
+      try {
+        claims = await runtime.verifier.verify(query.token)
+      } catch (err) {
+        req.log.error({ err }, 'sso token verification failed')
+        clearSsoCookies(reply)
+        return reply.redirect(ssoService.loginErrorUrl('sso_token'))
+      }
+    }
+
+    clearSsoCookies(reply)
+
+    const identity = await platformAuthService.upsertUserFromClaims(claims, {
+      autoProvision: runtime.config.autoProvision,
+    })
+    // Deactivated locally, or unknown on an instance that does not provision.
+    // One answer for both on purpose: which of the two it is tells an outsider
+    // whether an address has an account here.
+    if (!identity) return reply.redirect(ssoService.loginErrorUrl('not_a_member'))
+
+    let bundleKey = readBundleKey(req)
+    if (!bundleKey) {
+      bundleKey = bundleService.newBundleKey()
+      setBundleKeyCookie(reply, bundleKey)
+    }
+    await bundleService.upsertActiveIdentity(bundleKey, {
+      platformSub: identity.platformSub,
+      email: identity.email,
+      name: identity.name,
+    })
+
+    const localToken = app.jwt.sign({
+      userId: identity.userId,
+      email: identity.email,
+      plan: identity.plan,
+      platformSub: identity.platformSub,
+    })
+    reply.setCookie('token', localToken, { httpOnly: true, path: '/' })
+
+    if (identity.created) {
+      analytics.track('app_first_opened', { userId: identity.userId, props: { plan: identity.plan } })
+    }
+    analytics.track('app_session_started', {
+      userId: identity.userId,
+      props: { plan: identity.plan, source: `sso_${runtime.mode}` },
+    })
+
+    return reply.redirect(landing)
   })
 
   // Platform auth callback: validates a Nubisco Platform JWT and issues a local verba session.

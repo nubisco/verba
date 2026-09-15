@@ -78,6 +78,74 @@ async function verifyPlatformJwt(
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
+export interface ResolvedIdentity {
+  userId: string
+  email: string
+  plan: string
+  platformSub: string
+  name: string | null
+  // True when this call auto-provisioned a local Verba user (first sign-in).
+  created: boolean
+}
+
+/**
+ * Map verified provider claims onto a local Verba user.
+ *
+ * Shared by every federation mode. The difference between a JWT handed over in
+ * the query, an id_token fetched through a code exchange, and a token posted
+ * to the legacy callback ends at the claims; if provisioning drifted between
+ * them, the same person would get a different account depending on how their
+ * provider happened to be wired.
+ *
+ * `autoProvision: false` means users must exist in Verba first, and someone
+ * unknown gets null rather than an account.
+ */
+export async function upsertUserFromClaims(
+  claims: { sub: string; email: string; name?: string; app_plan?: string },
+  opts: { autoProvision?: boolean } = {},
+): Promise<ResolvedIdentity | null> {
+  const email = claims.email.toLowerCase().trim()
+  const plan = claims.app_plan ?? 'free'
+
+  const existing = await prisma.user.findUnique({ where: { email } })
+  if (existing) {
+    if (existing.deactivatedAt != null) return null
+    return {
+      userId: existing.id,
+      email: existing.email,
+      plan,
+      platformSub: claims.sub,
+      name: existing.name,
+      created: false,
+    }
+  }
+
+  if (opts.autoProvision === false) return null
+
+  // First user through the door administers the instance. Only ever promotes
+  // into a vacuum: the moment one user exists this is inert, so it cannot be
+  // used to escalate on an established deployment.
+  const isFirstUser = (await prisma.user.count()) === 0
+  const user = await prisma.user.create({
+    data: {
+      email,
+      passwordHash: '',
+      name: claims.name ?? email.split('@')[0],
+      isGlobalAdmin: isFirstUser,
+    },
+    select: { id: true, email: true, name: true },
+  })
+
+  return {
+    userId: user.id,
+    email: user.email,
+    plan,
+    platformSub: claims.sub,
+    name: user.name,
+    created: true,
+  }
+}
+
 /**
  * Verify a Nubisco Platform JWT and return the corresponding local user id.
  * Upserts the user by email on first login.
@@ -98,42 +166,7 @@ export async function verifyPlatformToken(token: string): Promise<{
   const claims = await verifyPlatformJwt(token, issuer)
   if (!claims) return null
 
-  const email = claims.email.toLowerCase().trim()
-  const plan = claims.app_plan ?? 'free'
-
-  const existing = await prisma.user.findUnique({ where: { email } })
-  if (existing) {
-    if (existing.deactivatedAt != null) return null
-    return {
-      userId: existing.id,
-      email: existing.email,
-      plan,
-      platformSub: claims.sub,
-      name: existing.name,
-      created: false,
-    }
-  }
-
-  // Auto-provision on first platform login
-  const isFirstUser = (await prisma.user.count()) === 0
-  const user = await prisma.user.create({
-    data: {
-      email,
-      passwordHash: '',
-      name: claims.email.split('@')[0],
-      isGlobalAdmin: isFirstUser,
-    },
-    select: { id: true, email: true, name: true },
-  })
-
-  return {
-    userId: user.id,
-    email: user.email,
-    plan,
-    platformSub: claims.sub,
-    name: user.name,
-    created: true,
-  }
+  return upsertUserFromClaims(claims)
 }
 
 /** Returns true when platform auth is configured. */

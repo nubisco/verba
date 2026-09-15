@@ -7,6 +7,14 @@ interface InstanceFeatures {
   [key: string]: boolean
 }
 
+/** Federated sign-in, when this instance has a provider configured. */
+interface InstanceSsoConfig {
+  enabled: boolean
+  mode: 'oidc' | 'handover' | null
+  /** What to call the provider on the button, e.g. "Okta". */
+  label: string | null
+}
+
 interface InstanceAuthConfig {
   mode: 'local_otp' | 'local_password' | 'hybrid'
   localOtpEnabled: boolean
@@ -14,11 +22,14 @@ interface InstanceAuthConfig {
   platformEnabled: boolean
   platformIssuer: string | null
   platformAppId: string | null
+  sso: InstanceSsoConfig
 }
 
 interface InstanceConfig {
   features: InstanceFeatures
-  auth: InstanceAuthConfig
+  // `sso` is optional on the wire: an API that predates server-side federated
+  // sign-in omits the block, and the store fills in the disabled default.
+  auth: Omit<InstanceAuthConfig, 'sso'> & { sso?: InstanceSsoConfig }
 }
 
 export const useInstanceConfigStore = defineStore('instanceConfig', () => {
@@ -30,6 +41,7 @@ export const useInstanceConfigStore = defineStore('instanceConfig', () => {
     platformEnabled: false,
     platformIssuer: null,
     platformAppId: null,
+    sso: { enabled: false, mode: null, label: null },
   })
   const ready = ref(false)
 
@@ -37,7 +49,9 @@ export const useInstanceConfigStore = defineStore('instanceConfig', () => {
     try {
       const config = await apiFetch<InstanceConfig>('/config')
       features.value = config.features
-      auth.value = config.auth
+      // An older API that predates server-side SSO omits the block entirely,
+      // so default it rather than letting every read of it throw.
+      auth.value = { ...config.auth, sso: config.auth.sso ?? { enabled: false, mode: null, label: null } }
     } catch {
       // Fail silently: all feature flags default to false (off)
     } finally {

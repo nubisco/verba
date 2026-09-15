@@ -8,16 +8,16 @@
 
       <!-- Platform-only login (like Analytics) -->
       <template v-if="platformOnly">
-        <p class="subtitle">Sign in with Nubisco Platform to continue.</p>
+        <p class="subtitle">Sign in with {{ ssoLabel }} to continue.</p>
         <p v-if="error" class="error">{{ error }}</p>
         <NbButton
           variant="primary"
           size="lg"
           class="platform-btn"
           :disabled="loading || auth.loading"
-          @click="startPlatformLogin({ loginHint })"
+          @click="startSignIn({ loginHint })"
         >
-          Continue with Platform
+          Continue with {{ ssoLabel }}
         </NbButton>
         <p class="toggle">
           <NbButton
@@ -25,7 +25,7 @@
             variant="ghost"
             size="sm"
             :disabled="loading || auth.loading"
-            @click="startPlatformLogin({ prompt: 'select_account' })"
+            @click="startSignIn({ prompt: 'select_account' })"
           >
             {{ t('auth.login.platform.useAnotherAccount') }}
           </NbButton>
@@ -82,15 +82,15 @@
         </p>
 
         <NbButton
-          v-if="instanceConfig.auth.platformEnabled"
+          v-if="providerAvailable"
           variant="secondary"
           outlined
           size="lg"
           class="platform-btn"
           :disabled="loading || auth.loading"
-          @click="startPlatformLogin({ loginHint })"
+          @click="startSignIn({ loginHint })"
         >
-          Continue with Nubisco Platform
+          Continue with {{ ssoLabel }}
         </NbButton>
 
         <form @submit.prevent="submit">
@@ -161,7 +161,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useInstanceConfigStore } from '../stores/instanceConfig'
-import { apiFetch } from '../api'
+import { apiFetch, API_BASE } from '../api'
 import { takeSsoToken } from '../utils/ssoToken'
 import { useI18n } from 'vue-i18n'
 
@@ -181,12 +181,31 @@ const loading = ref(false)
 const PLATFORM_STATE_KEY = 'verba.platform.sso.state'
 const PLATFORM_REDIRECT_KEY = 'verba.platform.sso.redirect'
 
-// Platform-only: show only the Platform button when Platform is enabled
+/**
+ * Is there a federated provider to offer at all?
+ *
+ * Two mechanisms answer this, and the newer one wins. `auth.sso` is the
+ * server-side flow: the API owns both legs, so the provider can be any OIDC
+ * one (Keycloak, Auth0, Okta, Entra, Google) as well as Nubisco Platform.
+ * `auth.platformEnabled` is the original browser-driven handover, kept
+ * working for instances that have not configured the server-side flow.
+ */
+const serverSso = computed(() => instanceConfig.auth.sso?.enabled === true)
+const providerAvailable = computed(() => serverSso.value || instanceConfig.auth.platformEnabled)
+
+/**
+ * What to call the provider on the button.
+ *
+ * This said "Nubisco Platform" in the markup, which is right on exactly one
+ * instance. A self-hoster pointing Verba at their own Okta was being told to
+ * sign in with a product their users have no account on, so the name comes
+ * from the server and an operator sets it with OIDC_LABEL.
+ */
+const ssoLabel = computed(() => instanceConfig.auth.sso?.label ?? 'Nubisco Platform')
+
+// Platform-only: show only the provider button when a provider is enabled
 // and no local auth methods are explicitly enabled
-const platformOnly = computed(() => {
-  const a = instanceConfig.auth
-  return a.platformEnabled && !a.localPasswordEnabled
-})
+const platformOnly = computed(() => providerAvailable.value && !instanceConfig.auth.localPasswordEnabled)
 
 // The platform launchpad opens our launch URL with ?login_hint=<email>
 // appended. Forwarding it into the SSO request makes the user land already
@@ -234,7 +253,7 @@ watch(
 // actually clicked, instead of keeping the old session underneath them.
 function maybeAutoStartFromHint() {
   if (autoStarted || !loginHint.value || hasPlatformCallback.value) return
-  if (!instanceConfig.auth.platformEnabled) {
+  if (!providerAvailable.value) {
     if (instanceConfig.ready && auth.user) router.replace(redirectTarget.value)
     return
   }
@@ -245,7 +264,7 @@ function maybeAutoStartFromHint() {
   }
   if (!platformOnly.value && !auth.user) return // hybrid: prefill only, let the user choose
   autoStarted = true
-  startPlatformLogin({ loginHint: loginHint.value })
+  startSignIn({ loginHint: loginHint.value })
 }
 
 function syncModeWithConfig() {
@@ -300,7 +319,16 @@ async function handlePlatformCallback() {
   const platformError = route.query.error
 
   if (typeof platformError === 'string') {
-    error.value = `Platform login failed: ${platformError}`
+    // The server never says which half of a check failed, because telling an
+    // attacker that is telling them how to pass it. These are the codes it
+    // does emit, turned into something a person can act on.
+    const messages: Record<string, string> = {
+      not_a_member: 'That account cannot sign in to this instance',
+      sso_state: 'The sign-in attempt expired; try again',
+      sso_token: 'Single sign-on failed; try again',
+      sso_discovery: 'The identity provider could not be reached; try again shortly',
+    }
+    error.value = messages[platformError] ?? `Sign-in failed: ${platformError}`
     clearPlatformCallbackQuery()
     return
   }
@@ -334,6 +362,24 @@ async function handlePlatformCallback() {
   } finally {
     loading.value = false
   }
+}
+
+/**
+ * Begin a sign-in, by whichever mechanism this instance has.
+ *
+ * The server-side flow is a plain navigation: the API builds the authorize
+ * URL, keeps the state, PKCE verifier and nonce in httpOnly cookies, and has
+ * already set the session cookie by the time the browser lands back here. No
+ * state in sessionStorage, and no credential ever in the address bar.
+ */
+function startSignIn(options: { loginHint?: string; prompt?: 'login' | 'select_account' } = {}) {
+  if (!serverSso.value) return startPlatformLogin(options)
+
+  const url = new URL(`${API_BASE}/auth/sso/start`, window.location.origin)
+  url.searchParams.set('redirect', redirectTarget.value)
+  if (options.loginHint) url.searchParams.set('login_hint', options.loginHint)
+  if (options.prompt) url.searchParams.set('prompt', options.prompt)
+  window.location.href = url.toString()
 }
 
 function startPlatformLogin(options: { loginHint?: string; prompt?: 'login' | 'select_account' } = {}) {

@@ -7,11 +7,18 @@ export interface AuthConfig {
   platformAppId: string | null
 }
 
+/** Federated sign-in, resolved asynchronously from the EE package in routes/config. */
+export interface SsoPublicConfig {
+  enabled: boolean
+  mode: 'oidc' | 'handover' | null
+  label: string | null
+}
+
 export interface PublicInstanceConfig {
   features: {
     organizations: boolean
   }
-  auth: AuthConfig
+  auth: AuthConfig & { sso?: SsoPublicConfig }
 }
 
 export function getAuthConfig(): AuthConfig {
