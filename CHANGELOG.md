@@ -1,3 +1,10 @@
+## [1.10.1](https://github.com/nubisco/verba/compare/v1.10.0...v1.10.1) (2026-09-15)
+
+
+### Bug Fixes
+
+* **auth:** reach the EE package only through the typed boundary ([72c22ff](https://github.com/nubisco/verba/commit/72c22ffac295dd8c71d915eb0dc992ca3527a8ca))
+
 # [1.10.0](https://github.com/nubisco/verba/compare/v1.9.2...v1.10.0) (2026-09-15)
 
 
