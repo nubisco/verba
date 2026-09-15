@@ -1,3 +1,15 @@
+# [1.10.0](https://github.com/nubisco/verba/compare/v1.9.2...v1.10.0) (2026-09-15)
+
+
+### Bug Fixes
+
+* **auth:** send the app id Platform actually knows this deployment by ([1ed02a8](https://github.com/nubisco/verba/commit/1ed02a83d9e96bba6c1689c95e8f02712d57d79c))
+
+
+### Features
+
+* **auth:** OpenID Connect against any provider, run server-side ([aca3b4f](https://github.com/nubisco/verba/commit/aca3b4f6b3c984bb0f6130807a486e71c3aacb55))
+
 ## [1.9.2](https://github.com/nubisco/verba/compare/v1.9.1...v1.9.2) (2026-09-14)
 
 
