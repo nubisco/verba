@@ -1,3 +1,10 @@
+## [1.10.2](https://github.com/nubisco/verba/compare/v1.10.1...v1.10.2) (2026-09-17)
+
+
+### Bug Fixes
+
+* generate the Prisma client before building ([7e118ee](https://github.com/nubisco/verba/commit/7e118ee84a79a3172f4bc768b5af6d1da1d8da5d))
+
 ## [1.10.1](https://github.com/nubisco/verba/compare/v1.10.0...v1.10.1) (2026-09-15)
 
 
