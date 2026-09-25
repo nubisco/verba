@@ -1,3 +1,10 @@
+# [1.11.0](https://github.com/nubisco/verba/compare/v1.10.2...v1.11.0) (2026-09-25)
+
+
+### Features
+
+* **theme:** take the accent from the engineers category ([8b315e2](https://github.com/nubisco/verba/commit/8b315e23afbee0d0568a61c3b0947daf98ba6e4d)), closes [#5b48c9](https://github.com/nubisco/verba/issues/5b48c9) [#a99dff](https://github.com/nubisco/verba/issues/a99dff)
+
 ## [1.10.2](https://github.com/nubisco/verba/compare/v1.10.1...v1.10.2) (2026-09-17)
 
 
