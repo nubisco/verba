@@ -1,7 +1,7 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import * as Sentry from '@sentry/vue'
-import NubiscoUI, { registerIcons } from '@nubisco/ui'
+import NubiscoUI, { configureNamedTheme, registerIcons } from '@nubisco/ui'
 import App from './App.vue'
 import router from './router'
 import { i18n } from './i18n/index'
@@ -44,6 +44,10 @@ app.use(pinia)
 app.use(router)
 app.use(i18n)
 app.use(NubiscoUI)
+
+// Verba ships one named theme, its own. This selects it. The accent behind it
+// comes from the engineers category in @nubisco/ui, not from anything here.
+configureNamedTheme({ themes: ['verba'], defaultTheme: 'verba' })
 
 // Sidebar glyphs are named in route meta and reach NbIcon as `:name="item.icon"`,
 // so the @nubisco/ui 4.0.0 compile-time resolver cannot see them. The set is

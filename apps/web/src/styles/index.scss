@@ -1,5 +1,6 @@
 // Import nubisco-ui design tokens and theme (CSS custom properties, grid, typography)
 @use '@nubisco/ui/styles';
+@use './theme';
 
 html {
   font-size: 100%;

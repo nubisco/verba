@@ -143,8 +143,8 @@ importers:
   apps/web:
     dependencies:
       '@nubisco/ui':
-        specifier: ^5.0.0
-        version: 5.0.0(pixi.js@8.19.0)(unplugin-fonts@1.4.0(vite@8.0.5(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)(@types/node@25.5.2)(esbuild@0.27.7)(jiti@2.6.1)(sass-embedded@1.99.0)(sass@1.99.0)(tsx@4.21.0)(yaml@2.8.3)))(vue-i18n@11.3.1(vue@3.5.32(typescript@5.9.3)))(vue@3.5.32(typescript@5.9.3))
+        specifier: ^5.9.1
+        version: 5.9.1(pixi.js@8.19.0)(unplugin-fonts@1.4.0(vite@8.0.5(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)(@types/node@25.5.2)(esbuild@0.27.7)(jiti@2.6.1)(sass-embedded@1.99.0)(sass@1.99.0)(tsx@4.21.0)(yaml@2.8.3)))(vue-i18n@11.3.1(vue@3.5.32(typescript@5.9.3)))(vue@3.5.32(typescript@5.9.3))
       '@nubisco/verba-shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -1073,9 +1073,6 @@ packages:
     resolution: {integrity: sha512-bRISgCIjP20/tbWSPWMEi54QVPRZExkuD9lJL+UIxUKtwVJA8wW1Trb1jMs1RFXo1CBTNZ/5hpC9QvmKWdopKw==}
     engines: {node: '>=6.0.0'}
 
-  '@jridgewell/sourcemap-codec@1.5.5':
-    resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
-
   '@jridgewell/sourcemap-codec@1.6.0':
     resolution: {integrity: sha512-T7jf+5zgsZHwNJ4lvQ7/aezbyk0nNX+zJVWpmHA7VYsEx7a7qr5Rg5IbtJFqkgze5Y2sruq1RUY8Q837Od7iFw==}
 
@@ -1107,8 +1104,8 @@ packages:
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
 
-  '@nubisco/ui@5.0.0':
-    resolution: {integrity: sha512-41u9azfVgW8vP+EHSXV04v2vk/yMFbh0gfl85Uqj2gXxF0VW/KtG1Nhdyh4gOeRT1w0KKbCyi498i9HlJPvn9A==}
+  '@nubisco/ui@5.9.1':
+    resolution: {integrity: sha512-HGyEq1kxsAhWGy5c8JGADyclAP6448wM4hKP/pFYTDSXYB5CTbesr/f3u/DKSuTr7ADgl5BvHWCAxzNz8mnBuw==}
     engines: {node: '>=20.0.0'}
     peerDependencies:
       pixi.js: ^8.0.0
@@ -6012,7 +6009,7 @@ snapshots:
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
-      '@jridgewell/sourcemap-codec': 1.5.5
+      '@jridgewell/sourcemap-codec': 1.6.0
       '@jridgewell/trace-mapping': 0.3.31
 
   '@jridgewell/remapping@2.3.5':
@@ -6022,14 +6019,12 @@ snapshots:
 
   '@jridgewell/resolve-uri@3.1.2': {}
 
-  '@jridgewell/sourcemap-codec@1.5.5': {}
-
   '@jridgewell/sourcemap-codec@1.6.0': {}
 
   '@jridgewell/trace-mapping@0.3.31':
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
-      '@jridgewell/sourcemap-codec': 1.5.5
+      '@jridgewell/sourcemap-codec': 1.6.0
 
   '@lukeed/ms@2.0.2': {}
 
@@ -6054,7 +6049,7 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.1
 
-  '@nubisco/ui@5.0.0(pixi.js@8.19.0)(unplugin-fonts@1.4.0(vite@8.0.5(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)(@types/node@25.5.2)(esbuild@0.27.7)(jiti@2.6.1)(sass-embedded@1.99.0)(sass@1.99.0)(tsx@4.21.0)(yaml@2.8.3)))(vue-i18n@11.3.1(vue@3.5.32(typescript@5.9.3)))(vue@3.5.32(typescript@5.9.3))':
+  '@nubisco/ui@5.9.1(pixi.js@8.19.0)(unplugin-fonts@1.4.0(vite@8.0.5(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)(@types/node@25.5.2)(esbuild@0.27.7)(jiti@2.6.1)(sass-embedded@1.99.0)(sass@1.99.0)(tsx@4.21.0)(yaml@2.8.3)))(vue-i18n@11.3.1(vue@3.5.32(typescript@5.9.3)))(vue@3.5.32(typescript@5.9.3))':
     dependencies:
       magic-string: 1.3.1
       pixi.js: 8.19.0
@@ -8574,7 +8569,7 @@ snapshots:
 
   magic-string@0.30.21:
     dependencies:
-      '@jridgewell/sourcemap-codec': 1.5.5
+      '@jridgewell/sourcemap-codec': 1.6.0
 
   magic-string@1.3.1:
     dependencies:
