@@ -1,3 +1,10 @@
+# [1.12.0](https://github.com/nubisco/verba/compare/v1.11.3...v1.12.0) (2026-10-23)
+
+
+### Features
+
+* **shell:** collapsible rail with the toggle beside the brand ([8f6fc58](https://github.com/nubisco/verba/commit/8f6fc58e30b1b701514e2e0f73893730491ecb8b))
+
 ## [1.11.3](https://github.com/nubisco/verba/compare/v1.11.2...v1.11.3) (2026-10-23)
 
 
