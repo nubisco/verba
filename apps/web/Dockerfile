@@ -19,6 +19,10 @@ COPY packages/shared/package.json ./packages/shared/
 RUN pnpm install --frozen-lockfile --filter @nubisco/verba-web --filter @nubisco/verba-shared
 
 COPY tsconfig.base.json tsconfig.json ./
+# Vite 8.3 follows the root tsconfig's project references, so every referenced
+# tsconfig has to exist even though the web build does not compile those packages.
+COPY packages/ee/tsconfig.json ./packages/ee/
+COPY apps/api/tsconfig.json ./apps/api/
 COPY packages/shared ./packages/shared
 COPY apps/web ./apps/web
 RUN pnpm --filter @nubisco/verba-shared build && pnpm --filter @nubisco/verba-web build
