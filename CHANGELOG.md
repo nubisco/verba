@@ -1,3 +1,10 @@
+## [1.11.2](https://github.com/nubisco/verba/compare/v1.11.1...v1.11.2) (2026-10-23)
+
+
+### Bug Fixes
+
+* **deps:** take xlsx 0.20.3 from SheetJS to clear two high advisories ([69a373c](https://github.com/nubisco/verba/commit/69a373cc0272f8e7ec1e34a3f5f26b6855fadb52))
+
 ## [1.11.1](https://github.com/nubisco/verba/compare/v1.11.0...v1.11.1) (2026-10-23)
 
 
