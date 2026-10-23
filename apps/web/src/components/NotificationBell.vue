@@ -1,13 +1,18 @@
 <template>
-  <div id="notif-bell-root" class="notif-bell" :class="{ 'sidebar-mode': sidebar }">
-    <NbButton class="bell-btn" aria-label="Notifications" @click.stop="toggleDropdown">
-      <NbIcon
-        :name="unreadCount > 0 ? 'bell-ringing' : 'bell'"
-        :animation="unreadCount > 0 ? 'mouse-pointer' : null"
-        :size="18"
+  <div id="notif-bell-root" class="notif-bell">
+    <!-- The bell is the rail's own menu item: a labelled row with the count
+         when the rail is expanded, the icon with the count and a flyout label
+         when it is collapsed. -->
+    <NbSidebarMenu density="compact">
+      <NbSidebarMenuItem
+        label="Notifications"
+        :icon="unreadCount > 0 ? 'bell-ringing' : 'bell'"
+        :active="open"
+        :badge="unreadCount > 0 ? (unreadCount > 99 ? '99+' : unreadCount) : undefined"
+        badge-variant="danger"
+        @click="toggleDropdown"
       />
-      <span v-if="unreadCount > 0" class="badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
-    </NbButton>
+    </NbSidebarMenu>
 
     <div v-if="open" class="notif-dropdown" @click.stop>
       <div class="notif-header">
@@ -45,8 +50,6 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiFetch } from '../api'
 import { useAuthStore } from '../stores/auth'
-
-withDefaults(defineProps<{ sidebar?: boolean }>(), { sidebar: false })
 
 interface NotifActor {
   id: string
@@ -206,41 +209,11 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
   position: relative;
 }
 
-.bell-btn {
-  background: transparent;
-  border: none;
-  color: #fff;
-  font-size: 1.1rem;
-  cursor: pointer;
-  padding: 0.25rem 0.4rem;
-  border-radius: 4px;
-  position: relative;
-  line-height: 1;
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.1);
-  }
-}
-
-.badge {
-  position: absolute;
-  top: -2px;
-  right: -4px;
-  background: #ef4444;
-  color: #fff;
-  font-size: 0.6rem;
-  font-weight: 700;
-  padding: 0.05rem 0.25rem;
-  border-radius: 999px;
-  min-width: 14px;
-  text-align: center;
-  line-height: 1.4;
-}
-
+// Opens beside the rail, level with the bell's bottom edge.
 .notif-dropdown {
   position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
+  bottom: 0;
+  left: calc(100% + 10px);
   width: 340px;
   max-height: 400px;
   background: #fff;
@@ -251,23 +224,6 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
   display: flex;
   flex-direction: column;
   overflow: hidden;
-}
-
-// When embedded in the sidebar, open to the right instead of below
-.sidebar-mode {
-  .bell-btn {
-    color: rgba(255, 255, 255, 0.55);
-    &:hover {
-      background: rgba(255, 255, 255, 0.08);
-      color: rgba(255, 255, 255, 0.9);
-    }
-  }
-  .notif-dropdown {
-    bottom: 0;
-    top: auto;
-    right: auto;
-    left: calc(100% + 10px);
-  }
 }
 
 .notif-header {

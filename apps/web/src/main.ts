@@ -10,8 +10,11 @@ import { initAnalytics } from './composables/useAnalytics'
 import { consumeSsoTokenFromUrl } from './utils/ssoToken'
 import '@/styles/index.scss'
 import { version } from '../package.json'
+import * as bell from '@nubisco/ui/icons/bell'
+import * as bellRinging from '@nubisco/ui/icons/bell-ringing'
 import * as building from '@nubisco/ui/icons/building'
 import * as checkCircle from '@nubisco/ui/icons/check-circle'
+import * as globe from '@nubisco/ui/icons/globe'
 import * as house from '@nubisco/ui/icons/house'
 import * as kanban from '@nubisco/ui/icons/kanban'
 import * as key from '@nubisco/ui/icons/key'
@@ -53,9 +56,13 @@ configureNamedTheme({ themes: ['verba'], defaultTheme: 'verba' })
 // so the @nubisco/ui 4.0.0 compile-time resolver cannot see them. The set is
 // closed (every `nav.icon` in src/router/modules), so register it rather than
 // pulling in the ~1,500-icon catalogue. Add a route icon here or NbIcon throws.
+// The rail's bell and language items pass their glyphs as props too.
 registerIcons({
+  bell,
+  'bell-ringing': bellRinging,
   building,
   'check-circle': checkCircle,
+  globe,
   house,
   kanban,
   key,

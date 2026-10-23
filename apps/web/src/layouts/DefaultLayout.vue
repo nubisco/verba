@@ -1,67 +1,73 @@
 <template>
-  <NbShell :inspector-visible="inspectorVisible">
-    <!-- ═══ Logo ═══ -->
+  <!-- The rail collapses from the top, beside the brand (the fleet standard in
+       the workspace AGENTS.md). One NbSidebarMenu serves both states: a
+       labelled row expanded, an icon with a flyout label collapsed. The choice
+       is the person's, remembered per browser, never the route's. On a phone
+       the rail is a drawer, the shell renders no header toggle there, and the
+       drawer always shows labels. -->
+  <NbShell
+    :inspector-visible="inspectorVisible"
+    :sidebar-variant="nav.variant.value"
+    sidebar-header-action-position="start"
+    sidebar-header-action-compact="swap"
+  >
+    <!-- ═══ Brand ═══ -->
+    <!-- The brand is only the brand. Picking a project is Home, the first
+         entry in the rail. -->
     <template #sidebar-logo>
-      <RouterLink to="/dashboard" data-tooltip="Verba">
-        <img src="/logo.svg" width="32" height="32" alt="Verba logo" />
+      <RouterLink to="/dashboard" class="sidebar-brand-link" aria-label="Verba, home">
+        <NbSidebarBrand title="Verba">
+          <template #icon>
+            <img src="/logo.svg" width="28" height="28" alt="" />
+          </template>
+        </NbSidebarBrand>
       </RouterLink>
+    </template>
+
+    <template #sidebar-header-action>
+      <NbSidebarHeaderToggle @toggle="nav.toggle" />
     </template>
 
     <!-- ═══ Navigation ═══ -->
     <template #sidebar-nav>
-      <!-- Global nav -->
-      <NbSidebarLink
-        v-for="item in navStore.globalItems"
-        :key="item.routeName"
-        :to="item.href"
-        :tooltip="t(item.label)"
-        :active="item.isActive"
-        @click.prevent="router.push(item.href)"
-      >
-        <NbIcon :name="item.icon" :size="18" />
-      </NbSidebarLink>
-
-      <!-- Project section -->
-      <template v-if="navStore.projectId && projectStore.project">
-        <div class="sidebar-divider" />
-
-        <RouterLink
-          :to="`/projects/${navStore.projectId}`"
-          class="sidebar-project-avatar"
-          :data-tooltip="projectStore.project.name"
-        >
-          <img
-            v-if="projectStore.project.avatar?.startsWith('data:image/')"
-            :src="projectStore.project.avatar"
-            class="sidebar-project-avatar__img"
-            alt=""
-          />
-          <template v-else>{{ projectStore.project.avatar || avatarLetters(projectStore.project.name) }}</template>
-        </RouterLink>
-
-        <NbSidebarLink
-          v-for="item in navStore.projectItems"
+      <NbSidebarMenu density="compact">
+        <!-- Global nav. Home is where the person picks the project. -->
+        <NbSidebarMenuItem
+          v-for="item in navStore.globalItems"
           :key="item.routeName"
+          :label="t(item.label)"
+          :icon="item.icon"
           :to="item.href"
-          :tooltip="t(item.label)"
           :active="item.isActive"
-          @click.prevent="router.push(item.href)"
-        >
-          <NbIcon :name="item.icon" :size="18" />
-        </NbSidebarLink>
-      </template>
+        />
+
+        <!-- The selected project, then its destinations. -->
+        <NbSidebarMenuGroup v-if="navStore.projectId && projectStore.project" :label="projectStore.project.name">
+          <NbSidebarMenuItem
+            v-for="item in navStore.projectItems"
+            :key="item.routeName"
+            :label="t(item.label)"
+            :icon="item.icon"
+            :to="item.href"
+            :active="item.isActive"
+          />
+        </NbSidebarMenuGroup>
+      </NbSidebarMenu>
     </template>
 
     <!-- ═══ Bottom actions ═══ -->
     <template #sidebar-bottom>
-      <NotificationBell sidebar />
+      <NotificationBell />
 
+      <!-- `identity` follows the rail: a labelled row with name and email
+           expanded, the round avatar collapsed. -->
       <NbUserMenu
         v-if="auth.user"
         :user="menuUser"
         :accounts="accounts"
         :accounts-unknown="accountsUnknown"
         :show-account-actions="platformEnabled"
+        trigger="identity"
         @open="loadAccounts()"
         @switch="switchTo"
         @switch-account="selectAccount"
@@ -69,23 +75,15 @@
         @remove="remove"
         @profile="router.push('/profile')"
         @sign-out="auth.logout()"
-      >
-        <template #trigger="{ open, toggle }">
-          <NbSidebarLink :tooltip="displayName(auth.user)" :active="open" @click.prevent="toggle">
-            <div class="user-avatar-icon" :class="{ admin: auth.user?.isGlobalAdmin }">
-              {{ userInitials }}
-            </div>
-          </NbSidebarLink>
-        </template>
-      </NbUserMenu>
+      />
 
-      <NbSidebarLink
-        v-if="availableLocales.length > 1"
-        :tooltip="`Language: ${locale}`"
-        @click="changeLocale(locale === 'en' ? 'pt' : 'en')"
-      >
-        <NbIcon name="globe" :size="18" />
-      </NbSidebarLink>
+      <NbSidebarMenu v-if="availableLocales.length > 1" density="compact">
+        <NbSidebarMenuItem
+          :label="`Language: ${locale}`"
+          icon="globe"
+          @click="changeLocale(locale === 'en' ? 'pt' : 'en')"
+        />
+      </NbSidebarMenu>
     </template>
 
     <!-- ═══ Topbar ═══ -->
@@ -109,11 +107,11 @@
 <script setup lang="ts">
 import { computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useSidebarVariant } from '@nubisco/ui'
 import { useAuthStore } from '../stores/auth'
 import { useNavigationStore } from '../stores/navigation'
 import { useProjectStore } from '../stores/project'
 import { useInstanceConfigStore } from '../stores/instanceConfig'
-import { displayName } from '../composables/useDisplayName'
 import { usePlatformAccounts } from '../composables/usePlatformAccounts'
 import { useI18n } from 'vue-i18n'
 import { setLocale } from '../i18n/index'
@@ -128,10 +126,13 @@ const projectStore = useProjectStore()
 const instanceConfig = useInstanceConfigStore()
 const { inspectorVisible } = useLayoutSlots()
 
+// Expanded or collapsed rail: the person's choice, remembered under a namespaced
+// key and starting expanded. Never derived from the route.
+const nav = useSidebarVariant({ storageKey: 'verba.sidebar' })
+
 // ── Account menu wiring (NbUserMenu) ──────────────────────────────────────
 // The standardized menu is presentation-only; identity data and the SSO
-// redirect flows live in usePlatformAccounts. `right-end` placement (the
-// default) fits the left icon-rail trigger. When this instance does not use
+// redirect flows live in usePlatformAccounts. When this instance does not use
 // platform auth it is single-account: account actions are hidden entirely.
 const platformEnabled = computed(() => instanceConfig.auth.platformEnabled)
 const {
@@ -206,107 +207,17 @@ watch(
   },
   { immediate: true },
 )
-
-function avatarLetters(name: string) {
-  return name.slice(0, 2).toUpperCase()
-}
-
-const userInitials = computed(() => {
-  const u = auth.user
-  if (!u) return '?'
-  const n = u.name?.trim()
-  if (n) {
-    const parts = n.split(' ')
-    return parts.length > 1 ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase() : n.slice(0, 2).toUpperCase()
-  }
-  return u.email.slice(0, 2).toUpperCase()
-})
 </script>
 
 <style scoped lang="scss">
-// Project avatar section header
-.sidebar-divider {
-  width: 24px;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.1);
-  margin: 0.4rem 0;
-  flex-shrink: 0;
-}
-
-.sidebar-project-avatar {
-  width: 32px;
-  height: 32px;
-  background: rgba(124, 58, 237, 0.3);
-  border: 1.5px solid rgba(167, 139, 250, 0.4);
-  border-radius: 6px;
+// The brand links home. It takes the row the shell gives it and draws nothing
+// of its own.
+.sidebar-brand-link {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.62rem;
-  font-weight: 700;
-  color: #c4b5fd;
-  letter-spacing: 0.03em;
+  min-width: 0;
+  width: 100%;
+  color: inherit;
   text-decoration: none;
-  margin: 0.25rem 0;
-  cursor: pointer;
-  flex-shrink: 0;
-  position: relative;
-  transition: background 0.15s;
-
-  &:hover {
-    background: rgba(124, 58, 237, 0.45);
-  }
-
-  &[data-tooltip]::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    left: calc(100% + 10px);
-    top: 50%;
-    transform: translateY(-50%);
-    background: rgba(15, 15, 30, 0.95);
-    color: #fff;
-    padding: 0.3rem 0.65rem;
-    border-radius: 5px;
-    font-size: 0.76rem;
-    white-space: nowrap;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.12s;
-    z-index: 500;
-  }
-
-  &[data-tooltip]:hover::after {
-    opacity: 1;
-  }
-
-  &__img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: inherit;
-    display: block;
-  }
-}
-
-// User initials avatar (used inside NbSidebarLink)
-.user-avatar-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1.5px solid rgba(255, 255, 255, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.62rem;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.85);
-  letter-spacing: 0.02em;
-
-  &.admin {
-    border-color: #a78bfa;
-    color: #c4b5fd;
-  }
 }
 
 // Inspector slot content area
