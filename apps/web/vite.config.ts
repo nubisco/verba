@@ -2,7 +2,6 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
-import { fonts } from '@nubisco/ui/plugins/fonts'
 import { nubiscoUI } from '@nubisco/ui/vite'
 
 /**
@@ -33,7 +32,7 @@ export default defineConfig({
   // supply their own artwork instead: DefaultLayout's sidebar names are
   // registered in main.ts, and LocaleBadge imports the flag catalogue itself.
   // Adding a third such binding without doing one of those throws on render.
-  plugins: [vue(), vueDevTools(), fonts(), ...nubiscoUI({ components: { dts: false }, glyphs: { catalog: 'off' } })],
+  plugins: [vue(), vueDevTools(), ...nubiscoUI({ components: { dts: false }, glyphs: { catalog: 'off' } })],
   css: {
     preprocessorOptions: {
       scss: {
