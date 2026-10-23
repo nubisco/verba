@@ -1,3 +1,12 @@
+## [1.11.1](https://github.com/nubisco/verba/compare/v1.11.0...v1.11.1) (2026-10-23)
+
+
+### Bug Fixes
+
+* **deps:** patch api security advisories ([d331481](https://github.com/nubisco/verba/commit/d3314811f6d41f586114d4bd462d55fb643a5ce0))
+* **deps:** refresh web vue and vite within their majors ([c3f1a77](https://github.com/nubisco/verba/commit/c3f1a77a07e228b86345d81e1df46829eb12858a))
+* **docker:** copy referenced tsconfigs into the web build stage ([02a4911](https://github.com/nubisco/verba/commit/02a49119a40ffc31af12b740260f285088711e76))
+
 # [1.11.0](https://github.com/nubisco/verba/compare/v1.10.2...v1.11.0) (2026-09-25)
 
 
