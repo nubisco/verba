@@ -67,3 +67,86 @@ describe('parseFile', () => {
     expect(rows[0].namespaceName).toBeUndefined()
   })
 })
+
+describe('parseFile: text encodings and cell types', () => {
+  // Translations are mostly non-ASCII, so a CSV that loses its encoding
+  // corrupts exactly the data Verba exists to hold.
+  const intl: ImportMapping = {
+    keyColumn: 'key',
+    localeColumns: { pt: 'Português', ja: '日本語', fr: 'fr' },
+  }
+  const csv = 'key,Português,日本語,fr\ngreeting,Olá,こんにちは,Ça va 👋\n'
+
+  it('reads a UTF-8 CSV without mangling non-ASCII text, including in headers', () => {
+    const rows = parseFile(Buffer.from(csv, 'utf-8'), 'text/csv', intl)
+    expect(rows).toEqual([
+      { keyName: 'greeting', namespaceName: undefined, translations: { pt: 'Olá', ja: 'こんにちは', fr: 'Ça va 👋' } },
+    ])
+  })
+
+  it('ignores a UTF-8 byte order mark, so the first header still matches', () => {
+    const rows = parseFile(
+      Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(csv, 'utf-8')]),
+      'text/csv',
+      intl,
+    )
+    expect(rows[0].keyName).toBe('greeting')
+    expect(rows[0].translations.pt).toBe('Olá')
+  })
+
+  it('decodes CSV by its content, not its MIME type (Windows browsers send application/vnd.ms-excel)', () => {
+    const rows = parseFile(Buffer.from(csv, 'utf-8'), 'application/vnd.ms-excel', intl)
+    expect(rows[0].translations.ja).toBe('こんにちは')
+  })
+
+  it('still reads a legacy single-byte CSV that is not valid UTF-8', () => {
+    // "café" as Windows-1252, the encoding older Excel exports use.
+    const cp1252 = Buffer.from([...Buffer.from('key,fr\nk,caf'), 0xe9, 0x0a])
+    const rows = parseFile(cp1252, 'text/csv', { keyColumn: 'key', localeColumns: { fr: 'fr' } })
+    expect(rows[0].translations.fr).toBe('café')
+  })
+
+  it('keeps CSV values as written, so keys like 007 are not turned into numbers', () => {
+    const rows = parseFile(Buffer.from('key,en\n007,1.50\n'), 'text/csv', {
+      keyColumn: 'key',
+      localeColumns: { en: 'en' },
+    })
+    expect(rows[0]).toMatchObject({ keyName: '007', translations: { en: '1.50' } })
+  })
+
+  it('reads numeric spreadsheet cells as text instead of throwing', () => {
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(
+      wb,
+      XLSX.utils.aoa_to_sheet([
+        ['key', 'en'],
+        [42, 3],
+      ]),
+      'Sheet1',
+    )
+    const buf = Buffer.from(XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }))
+    const rows = parseFile(buf, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', {
+      keyColumn: 'key',
+      localeColumns: { en: 'en' },
+    })
+    expect(rows[0]).toMatchObject({ keyName: '42', translations: { en: '3' } })
+  })
+
+  it('reads non-ASCII text from an xlsx file', () => {
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(
+      wb,
+      XLSX.utils.aoa_to_sheet([
+        ['key', 'Português'],
+        ['k', 'Olá 👋'],
+      ]),
+      'Sheet1',
+    )
+    const buf = Buffer.from(XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }))
+    const rows = parseFile(buf, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', {
+      keyColumn: 'key',
+      localeColumns: { pt: 'Português' },
+    })
+    expect(rows[0].translations.pt).toBe('Olá 👋')
+  })
+})

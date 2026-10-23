@@ -91,11 +91,39 @@ function parseJsonFile(buffer: Buffer, mapping: ImportMapping): ImportRow[] {
   return Array.from(keyMap.values())
 }
 
+/**
+ * Spreadsheet containers (xlsx and ods are zip archives, legacy xls is OLE2)
+ * carry their own encoding, so SheetJS reads them as bytes. Anything else is a
+ * text format such as CSV, and SheetJS reads raw text bytes as a single-byte
+ * codepage, which turns every non-ASCII character of a UTF-8 file into mojibake
+ * ("Português" became "PortuguÃªs"). So text is decoded as UTF-8 here first,
+ * judged by content rather than MIME type, because Windows browsers upload
+ * .csv as application/vnd.ms-excel. A file that is not valid UTF-8 (an older
+ * Windows-1252 Excel export) falls back to the codepage read. `raw` keeps CSV
+ * values as written, so a key like 007 stays 007 instead of becoming 7.
+ */
+function readWorkbook(buffer: Buffer): XLSX.WorkBook {
+  const isZip = buffer[0] === 0x50 && buffer[1] === 0x4b
+  const isOle2 = buffer.subarray(0, 4).equals(Buffer.from([0xd0, 0xcf, 0x11, 0xe0]))
+  if (isZip || isOle2) return XLSX.read(buffer, { type: 'buffer' })
+
+  let text: string
+  try {
+    text = new TextDecoder('utf-8', { fatal: true }).decode(buffer)
+  } catch {
+    return XLSX.read(buffer, { type: 'buffer', raw: true })
+  }
+  return XLSX.read(text, { type: 'string', raw: true })
+}
+
 function parseTabularFile(buffer: Buffer, mapping: ImportMapping): ImportRow[] {
-  const workbook = XLSX.read(buffer, { type: 'buffer' })
+  const workbook = readWorkbook(buffer)
   const sheet = workbook.Sheets[workbook.SheetNames[0]]
+  // raw: false returns every cell as its displayed text, so a numeric cell
+  // arrives as "42" rather than a number that .trim() below would throw on.
   const data = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, {
     defval: '',
+    raw: false,
   })
 
   const rows: ImportRow[] = []
