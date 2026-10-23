@@ -12,7 +12,7 @@ pnpm install
 # Initialise the database
 cd apps/api
 cp .env.example .env
-npx prisma migrate dev
+npx prisma db push
 npx prisma generate
 cd ../..
 
@@ -131,7 +131,7 @@ docs/production-deployment
 
 ## New Feature Checklist
 
-- [ ] Prisma schema updated (if new model/field) + migration created
+- [ ] Prisma schema updated (if new model/field) and applied with `prisma db push`
 - [ ] Zod schema in `src/schemas/`
 - [ ] Service function with `requireProjectRole` guard
 - [ ] Route registered in `src/routes/`

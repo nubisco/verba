@@ -38,17 +38,36 @@ The wizard:
 3. Optionally configures SMTP for email / OTP delivery
 4. Creates the initial admin user
 5. Writes `apps/api/.env`
-6. Runs `prisma migrate deploy`
+6. Creates the database schema with `prisma db push`
 
-### Running Migrations
+### Keeping the database schema up to date
 
-When upgrading Verba to a new version, run pending migrations:
+Verba brings the database in line with `apps/api/prisma/schema.prisma` using
+`prisma db push`. This is the one supported path, for SQLite and PostgreSQL
+alike. The files in `apps/api/prisma/migrations` are SQLite history from early
+development: they cannot be applied to PostgreSQL, so do not run
+`prisma migrate deploy`.
+
+**Docker:** nothing to run. The API image runs
+`prisma db push --accept-data-loss` every time it starts, so a new image brings
+the schema up to date on its own. `--accept-data-loss` means a release that
+removes a column or a table drops it, with its data, without asking. Back up the
+database before you pull a new image (see [Data Backup](#data-backup)).
+
+**From source:** after updating the code, run
 
 ```bash
 node packages/cli/dist/index.js migrate
 ```
 
-This is equivalent to `prisma migrate deploy` but uses the correct connection string automatically.
+It runs `prisma db push` from `apps/api`, against the `DATABASE_URL` in
+`apps/api/.env`. A change that would lose data stops with Prisma's warning and
+changes nothing. Back up the database, then run it again with
+`--accept-data-loss` to apply it:
+
+```bash
+node packages/cli/dist/index.js migrate --accept-data-loss
+```
 
 ---
 
@@ -169,7 +188,7 @@ SQLite requires no extra infrastructure and stores everything in a single file. 
 DATABASE_URL=file:./prisma/dev.db
 ```
 
-The file is created automatically on first migration.
+The file is created the first time the schema is pushed (`verba setup` or `verba migrate`).
 
 ### PostgreSQL (recommended for production)
 
@@ -182,15 +201,11 @@ DATABASE_URL=postgresql://verba:strongpassword@db:5432/verba
 The `docker-compose.yml` already defines a `db` Postgres service. To use it:
 
 ```bash
-# Start only the database first
-docker compose up -d db
-
-# Run migrations against it
-docker compose exec api npx prisma migrate deploy
-
-# Start all services
 docker compose up -d
 ```
+
+The API container waits for Postgres to report healthy, then creates or updates
+the schema with `prisma db push --accept-data-loss` before it starts serving.
 
 ---
 
@@ -243,7 +258,7 @@ Set `CORS_ORIGIN=https://verba.example.com` in your `.env` when behind a proxy.
 - [ ] HTTPS is enabled on the reverse proxy
 - [ ] SMTP is configured (or users will need console access to retrieve OTP codes)
 - [ ] Database is backed up regularly (see below)
-- [ ] `verba migrate` is run after each upgrade
+- [ ] The database is backed up before each upgrade (the API image applies schema changes, including ones that drop data, when it starts)
 
 ---
 
@@ -253,15 +268,11 @@ Set `CORS_ORIGIN=https://verba.example.com` in your `.env` when behind a proxy.
 # Pull the latest code
 git pull
 
-# Rebuild Docker images
+# Back up the database first: the new API image applies schema changes on start,
+# including ones that drop columns or tables (prisma db push --accept-data-loss)
+
+# Pull the new images and restart. The API brings the schema up to date as it starts.
 docker compose pull
-docker compose build
-
-# Apply any pending migrations
-docker compose exec api node /app/packages/cli/dist/index.js migrate
-# or: docker compose exec api npx prisma migrate deploy
-
-# Restart all services
 docker compose up -d
 ```
 

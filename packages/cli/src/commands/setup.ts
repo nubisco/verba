@@ -4,8 +4,8 @@ import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import inquirer from 'inquirer'
 import chalk from 'chalk'
-import ora from 'ora'
 import crypto from 'node:crypto'
+import { pushSchema } from './migrate.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -196,18 +196,24 @@ export async function runSetupWizard(): Promise<void> {
     {
       type: 'confirm',
       name: 'runMigrateNow',
-      message: 'Run database migrations now?',
+      message: 'Create the database schema now (prisma db push)?',
       default: true,
     },
   ])
 
   if (runMigrateNow) {
-    const spinner = ora('Running prisma migrate deploy…').start()
     try {
-      execSync('npx prisma migrate deploy', { cwd: apiDir, stdio: 'pipe' })
-      spinner.succeed('Migrations applied.')
+      pushSchema(
+        apiDir,
+        {},
+        {
+          exec: (command, cwd) => execSync(command, { cwd, stdio: 'inherit' }),
+          log: (message) => console.log(message),
+        },
+      )
+      console.log(chalk.green('Database schema applied.'))
     } catch (err) {
-      spinner.fail('Migration failed. Check your database connection.')
+      console.error(chalk.red('prisma db push failed. Check your database connection.'))
       console.error(chalk.red((err as Error).message))
     }
   }

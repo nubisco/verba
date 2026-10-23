@@ -12,6 +12,13 @@ program
   .description('Interactive setup wizard: configure database, create admin user, generate .env')
   .action(runSetupWizard)
 
-program.command('migrate').description('Run database migrations (prisma migrate deploy)').action(runMigrate)
+program
+  .command('migrate')
+  .description(
+    'Bring the database in line with the schema (prisma db push, as the Docker image does on start). ' +
+      'Changes that would lose data stop unless --accept-data-loss is given.',
+  )
+  .option('--accept-data-loss', 'apply changes that drop columns, tables or their data (back up first)')
+  .action((options: { acceptDataLoss?: boolean }) => runMigrate({ acceptDataLoss: options.acceptDataLoss === true }))
 
 program.parse()

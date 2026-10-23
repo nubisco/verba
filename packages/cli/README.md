@@ -24,10 +24,10 @@ brew install verba
 
 ## Commands
 
-| Command         | Description                                                                  |
-| --------------- | ---------------------------------------------------------------------------- |
-| `verba setup`   | Interactive first-run wizard: configures DB, creates admin, generates `.env` |
-| `verba migrate` | Run database migrations (`prisma migrate deploy`)                            |
+| Command         | Description                                                                                                        |
+| --------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `verba setup`   | Interactive first-run wizard: configures DB, creates admin, generates `.env`                                       |
+| `verba migrate` | Apply the schema with `prisma db push`. Stops on changes that would lose data unless `--accept-data-loss` is given |
 
 ## Development
 

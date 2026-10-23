@@ -10,7 +10,7 @@
     "start": "node dist/index.js",
     "test": "vitest run",
     "prisma:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev"
+    "db:push": "prisma db push"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",

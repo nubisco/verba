@@ -88,7 +88,7 @@ pnpm install
 cp apps/api/.env.example apps/api/.env
 
 # 4. Create the database and generate the Prisma client
-pnpm --filter @nubisco/verba-api exec prisma migrate dev
+pnpm --filter @nubisco/verba-api exec prisma db push
 pnpm --filter @nubisco/verba-api prisma:generate
 
 # 5. Start both services
@@ -143,10 +143,10 @@ npx @nubisco/verba-cli --help
 
 **Commands:**
 
-| Command         | Description                     |
-| --------------- | ------------------------------- |
-| `verba setup`   | Interactive first-run wizard    |
-| `verba migrate` | Run pending database migrations |
+| Command         | Description                                                                              |
+| --------------- | ---------------------------------------------------------------------------------------- |
+| `verba setup`   | Interactive first-run wizard                                                             |
+| `verba migrate` | Apply the schema (`prisma db push`); add `--accept-data-loss` for changes that drop data |
 
 ---
 

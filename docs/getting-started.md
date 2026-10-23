@@ -30,7 +30,7 @@ The `verba setup` wizard will:
 2. Generate a secure random `JWT_SECRET`
 3. Optionally configure **SMTP** for email / OTP login
 4. Write `apps/api/.env` with all your settings
-5. Run database migrations automatically
+5. Create the database schema (`prisma db push`)
 
 > **Tip:** If you prefer to configure manually, copy `apps/api/.env.example` to `apps/api/.env` and edit the values. See [Self-Hosting](./self-hosting) for the full variable reference.
 
@@ -80,14 +80,14 @@ DATABASE_URL=file:./dev.db
 JWT_SECRET=change-me-in-production
 ```
 
-### 3. Run database migrations
+### 3. Create the database
 
 ```bash
-pnpm --filter @nubisco/verba-api exec prisma migrate dev
+pnpm --filter @nubisco/verba-api exec prisma db push
 pnpm --filter @nubisco/verba-api prisma:generate
 ```
 
-This creates `apps/api/prisma/dev.db` with the full schema and generates the Prisma client into `apps/api/src/generated/prisma`. Prisma 7 no longer generates the client as part of `migrate dev`, so run `prisma:generate` again whenever the schema changes.
+This creates `apps/api/prisma/dev.db` with the full schema and generates the Prisma client into `apps/api/src/generated/prisma`. `prisma db push` is how every Verba database is kept in line with the schema, in development and in production. Run both commands again whenever the schema changes.
 
 ### 4. Start the dev servers
 
@@ -184,15 +184,15 @@ verba/
 
 ## Useful Commands
 
-| Command                                                    | Description                    |
-| ---------------------------------------------------------- | ------------------------------ |
-| `pnpm dev`                                                 | Start all services (API + web) |
-| `pnpm build`                                               | Build all packages             |
-| `pnpm --filter @nubisco/verba-api test`                    | Run API tests                  |
-| `pnpm --filter @nubisco/verba-api exec prisma migrate dev` | Run DB migrations (dev)        |
-| `pnpm docs:dev`                                            | Start docs dev server          |
-| `node packages/cli/dist/index.js setup`                    | Run the setup wizard           |
-| `node packages/cli/dist/index.js migrate`                  | Run migrations (production)    |
+| Command                                                | Description                    |
+| ------------------------------------------------------ | ------------------------------ |
+| `pnpm dev`                                             | Start all services (API + web) |
+| `pnpm build`                                           | Build all packages             |
+| `pnpm --filter @nubisco/verba-api test`                | Run API tests                  |
+| `pnpm --filter @nubisco/verba-api exec prisma db push` | Apply the schema (dev)         |
+| `pnpm docs:dev`                                        | Start docs dev server          |
+| `node packages/cli/dist/index.js setup`                | Run the setup wizard           |
+| `node packages/cli/dist/index.js migrate`              | Apply the schema (from source) |
 
 ## Next Steps
 
