@@ -137,7 +137,7 @@ Project
 ## Adding a New Feature
 
 1. Define or update the **Prisma schema** (`apps/api/prisma/schema.prisma`).
-2. Run `pnpm --filter @nubisco/verba-api exec prisma migrate dev --name <name>`.
+2. Run `pnpm --filter @nubisco/verba-api exec prisma migrate dev --name <name>`, then `pnpm --filter @nubisco/verba-api prisma:generate` (Prisma 7 no longer regenerates the client during `migrate dev`).
 3. Add or update **Zod schemas** in `apps/api/src/schemas/`.
 4. Implement the **service** method with ACL, event emission, and audit entry.
 5. Add a **route handler** that calls the service.

@@ -12,6 +12,8 @@ export default defineConfig(
       '**/dist/**',
       '**/node_modules/**',
       '**/coverage/**',
+      // Prisma client, written by `prisma generate`
+      'apps/api/src/generated/**',
       'docs/.vitepress/cache/**',
       'docs/.vitepress/dist/**',
     ],

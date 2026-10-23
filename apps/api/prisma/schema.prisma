@@ -1,10 +1,14 @@
+// The connection string lives in prisma.config.ts (CLI) and src/prisma.ts
+// (runtime driver adapter), as Prisma 7 requires.
 generator client {
-  provider = "prisma-client-js"
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
 }
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
 }
 
 model User {

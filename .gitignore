@@ -21,6 +21,8 @@ docs/.vitepress/dist/
 !.env.example
 
 # Prisma
+# Generated client (prisma generate writes it, see apps/api/prisma/schema.prisma)
+apps/api/src/generated/
 **/prisma/*.db
 **/prisma/*.db-journal
 

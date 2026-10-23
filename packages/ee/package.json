@@ -14,8 +14,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@nubisco/verba-shared": "workspace:*",
-    "@prisma/client": "^6.19.3"
+    "@nubisco/verba-shared": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",

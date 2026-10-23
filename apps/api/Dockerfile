@@ -16,7 +16,8 @@ COPY tsconfig.base.json tsconfig.json ./
 COPY packages/shared ./packages/shared
 COPY apps/api ./apps/api
 
-# Switch Prisma provider to PostgreSQL for production and generate client.
+# Switch Prisma provider to PostgreSQL for production and generate the client
+# into apps/api/src/generated (no database needed, so DATABASE_URL is unset).
 RUN sed -i 's/provider = "sqlite"/provider = "postgresql"/' apps/api/prisma/schema.prisma \
     && sed -i 's/provider = "sqlite"/provider = "postgresql"/' apps/api/prisma/migrations/migration_lock.toml \
     && pnpm --filter @nubisco/verba-api exec prisma generate \
@@ -27,22 +28,21 @@ RUN sed -i 's/provider = "sqlite"/provider = "postgresql"/' apps/api/prisma/sche
     && pnpm --filter @nubisco/verba-api build
 
 # ---- deploy bundle: standalone dir with only prod deps (no symlinks) ----
+# The Prisma client is generated into src/generated and compiled into dist, so
+# it travels with the build output. The Prisma CLI is a production dependency
+# of the API, so the bundle carries the exact version the lockfile pins.
 FROM build AS bundle
 RUN pnpm deploy --filter @nubisco/verba-api --prod /bundle
-# Copy the generated Prisma client into the pnpm store path where ESM resolves it
-RUN PRISMA_STORE=$(find /app/node_modules/.pnpm -path '*/@prisma+client*/node_modules/.prisma/client' -type d | head -1) \
-    && BUNDLE_STORE=$(find /bundle/node_modules/.pnpm -path '*/@prisma+client*/node_modules/.prisma/client' -type d | head -1) \
-    && if [ -n "$PRISMA_STORE" ] && [ -n "$BUNDLE_STORE" ]; then cp -r "$PRISMA_STORE"/* "$BUNDLE_STORE"/; fi
 
 # ---- runtime: minimal, non-root ----
 FROM node:22.23.4-alpine AS runtime
-RUN npm install -g prisma@6
 WORKDIR /app
 
 # Copy the self-contained bundle
 COPY --from=bundle --chown=node:node /bundle .
-# Copy Prisma schema and migrations for runtime migrate deploy
+# Prisma schema (postgresql), migrations and CLI config for the boot-time db push
 COPY --from=build --chown=node:node /app/apps/api/prisma ./prisma
+COPY --from=build --chown=node:node /app/apps/api/prisma.config.ts ./prisma.config.ts
 
 # Build provenance, surfaced by GET /version. CI passes BUILD_HASH=${{ github.sha }}
 # via docker/build-push-action build-args; version itself comes from package.json.
@@ -52,4 +52,4 @@ ENV VERBA_GIT_SHA=$BUILD_HASH
 ENV NODE_ENV=production
 EXPOSE 4000
 USER node
-CMD ["sh", "-c", "prisma db push --skip-generate --accept-data-loss 2>/dev/null || prisma db push --skip-generate && node dist/index.js"]
+CMD ["sh", "-c", "node_modules/.bin/prisma db push --accept-data-loss 2>/dev/null || node_modules/.bin/prisma db push && node dist/index.js"]

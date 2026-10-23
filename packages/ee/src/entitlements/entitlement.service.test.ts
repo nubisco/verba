@@ -3,7 +3,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { resolveEntitlements, hasFeature, serializeEntitlements } from './entitlement.service.js'
-import type { PrismaClient } from '@prisma/client'
+import type { EntitlementsDb } from './entitlement.service.js'
 
 // ---------------------------------------------------------------------------
 // Minimal Prisma mock factory
@@ -13,7 +13,7 @@ function makePrisma(overrides: {
   subscription?: Record<string, unknown> | null
   entitlementOverride?: Record<string, unknown> | null
   licenseState?: Record<string, unknown> | null
-}): PrismaClient {
+}): EntitlementsDb {
   return {
     subscription: {
       findUnique: async () => overrides.subscription ?? null,
@@ -24,7 +24,7 @@ function makePrisma(overrides: {
     licenseState: {
       findFirst: async () => overrides.licenseState ?? null,
     },
-  } as unknown as PrismaClient
+  } as unknown as EntitlementsDb
 }
 
 // ---------------------------------------------------------------------------

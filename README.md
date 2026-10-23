@@ -87,8 +87,9 @@ pnpm install
 # 3. Configure the API (defaults work out of the box)
 cp apps/api/.env.example apps/api/.env
 
-# 4. Create the database
+# 4. Create the database and generate the Prisma client
 pnpm --filter @nubisco/verba-api exec prisma migrate dev
+pnpm --filter @nubisco/verba-api prisma:generate
 
 # 5. Start both services
 pnpm dev

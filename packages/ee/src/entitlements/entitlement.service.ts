@@ -9,7 +9,6 @@
 //
 // OSS self-hosted mode works without any billing provider or license key.
 
-import type { PrismaClient } from '@prisma/client'
 import type {
   EntitlementContext,
   EntitlementFeature,
@@ -25,6 +24,66 @@ import type {
 import { getPlan, getDefaultPlan } from './plans.js'
 
 // ---------------------------------------------------------------------------
+// Database access
+// ---------------------------------------------------------------------------
+
+/**
+ * The part of the API's Prisma client this service reads. The generated
+ * client lives in apps/api (Prisma 7 no longer generates into
+ * `@prisma/client`), so EE describes the shape it needs instead of importing
+ * it, and the API passes its client in.
+ */
+export interface EntitlementsDb {
+  subscription: {
+    findUnique(args: { where: { orgId: string } }): Promise<SubscriptionRow | null>
+  }
+  entitlementOverride: {
+    findUnique(args: { where: { orgId: string } }): Promise<EntitlementOverrideRow | null>
+  }
+  licenseState: {
+    findFirst(args: { where: { orgId: string | null } }): Promise<LicenseStateRow | null>
+  }
+}
+
+interface SubscriptionRow {
+  id: string
+  orgId: string
+  planId: string
+  status: string
+  stripeSubscriptionId: string | null
+  stripeCustomerId: string | null
+  currentPeriodStart: Date | null
+  currentPeriodEnd: Date | null
+  cancelAtPeriodEnd: boolean
+  createdAt: Date
+  updatedAt: Date
+}
+
+interface EntitlementOverrideRow {
+  orgId: string
+  features: string | null
+  featureAdditions: string | null
+  maxProjects: number | null
+  maxSeatsPerProject: number | null
+  maxKeysPerProject: number | null
+  maxLocalesPerProject: number | null
+  maxMonthlyApiCalls: number | null
+  note: string | null
+  expiresAt: Date | null
+}
+
+interface LicenseStateRow {
+  status: string
+  licensee: string | null
+  planId: string | null
+  seats: number | null
+  features: string
+  expiresAt: Date | null
+  graceEndsAt: Date | null
+  lastVerifiedAt: Date | null
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -32,7 +91,7 @@ import { getPlan, getDefaultPlan } from './plans.js'
  * Resolve the effective entitlement context for an org.
  * Pass `orgId = null` for single-org / OSS installs that have no org model.
  */
-export async function resolveEntitlements(prisma: PrismaClient, orgId: string | null): Promise<EntitlementContext> {
+export async function resolveEntitlements(prisma: EntitlementsDb, orgId: string | null): Promise<EntitlementContext> {
   const [subscription, override, licenseState] = await Promise.all([
     orgId ? loadSubscription(prisma, orgId) : null,
     orgId ? loadOverride(prisma, orgId) : null,
@@ -74,7 +133,7 @@ export async function resolveEntitlements(prisma: PrismaClient, orgId: string | 
  * Convenience wrapper: resolves the full context internally.
  */
 export async function hasFeature(
-  prisma: PrismaClient,
+  prisma: EntitlementsDb,
   orgId: string | null,
   feature: EntitlementFeature,
 ): Promise<boolean> {
@@ -154,7 +213,7 @@ function applyOverride(base: EntitlementSet, override: EntitlementOverride): Ent
 // DB loaders
 // ---------------------------------------------------------------------------
 
-async function loadSubscription(prisma: PrismaClient, orgId: string): Promise<Subscription | null> {
+async function loadSubscription(prisma: EntitlementsDb, orgId: string): Promise<Subscription | null> {
   const row = await prisma.subscription.findUnique({ where: { orgId } })
   if (!row) return null
   return {
@@ -172,7 +231,7 @@ async function loadSubscription(prisma: PrismaClient, orgId: string): Promise<Su
   }
 }
 
-async function loadOverride(prisma: PrismaClient, orgId: string): Promise<EntitlementOverride | null> {
+async function loadOverride(prisma: EntitlementsDb, orgId: string): Promise<EntitlementOverride | null> {
   const row = await prisma.entitlementOverride.findUnique({ where: { orgId } })
   if (!row) return null
   return {
@@ -189,7 +248,7 @@ async function loadOverride(prisma: PrismaClient, orgId: string): Promise<Entitl
   }
 }
 
-async function loadLicenseState(prisma: PrismaClient, orgId: string | null): Promise<LicenseState> {
+async function loadLicenseState(prisma: EntitlementsDb, orgId: string | null): Promise<LicenseState> {
   const where = orgId ? { orgId } : { orgId: null }
   const row = await prisma.licenseState.findFirst({ where })
 

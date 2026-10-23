@@ -13,6 +13,7 @@ pnpm install
 cd apps/api
 cp .env.example .env
 npx prisma migrate dev
+npx prisma generate
 cd ../..
 
 # Start all services

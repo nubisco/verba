@@ -84,9 +84,10 @@ JWT_SECRET=change-me-in-production
 
 ```bash
 pnpm --filter @nubisco/verba-api exec prisma migrate dev
+pnpm --filter @nubisco/verba-api prisma:generate
 ```
 
-This creates `apps/api/prisma/dev.db` with the full schema.
+This creates `apps/api/prisma/dev.db` with the full schema and generates the Prisma client into `apps/api/src/generated/prisma`. Prisma 7 no longer generates the client as part of `migrate dev`, so run `prisma:generate` again whenever the schema changes.
 
 ### 4. Start the dev servers
 

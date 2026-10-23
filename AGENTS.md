@@ -122,6 +122,7 @@ Invalid transitions return HTTP 422. Implemented in `canTransitionStatus()` in `
 - Prisma enums are stored as **string constants** (not native DB enums) for SQLite compatibility. Types are in `src/types.ts`.
 - After schema changes: `pnpm prisma migrate dev --name <name>` from `apps/api/`.
 - After pulling migrations: `pnpm prisma:generate` from the repo root.
+- Prisma 7: `prisma generate` writes the client to `apps/api/src/generated/prisma` (gitignored, compiled into `dist`). Import it only through `src/prisma.ts`, which picks the driver adapter from `DATABASE_URL` (`@prisma/adapter-pg` for Postgres, `@prisma/adapter-better-sqlite3` for `file:` URLs). The CLI reads the connection from `apps/api/prisma.config.ts`, not from the schema.
 
 ## Frontend Conventions
 
