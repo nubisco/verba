@@ -1,3 +1,10 @@
+## [1.11.3](https://github.com/nubisco/verba/compare/v1.11.2...v1.11.3) (2026-10-23)
+
+
+### Bug Fixes
+
+* **import:** read CSV as UTF-8 and every cell as text ([220eaa4](https://github.com/nubisco/verba/commit/220eaa433261f170c6c06645c4baa356fcaedf8f))
+
 ## [1.11.2](https://github.com/nubisco/verba/compare/v1.11.1...v1.11.2) (2026-10-23)
 
 
