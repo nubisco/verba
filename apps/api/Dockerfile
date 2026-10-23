@@ -1,8 +1,10 @@
 # syntax=docker/dockerfile:1
 
 # ---- base: node 22 LTS with pnpm via corepack ----
+# pnpm is the exact version in package.json "packageManager", so the image,
+# CI and local installs agree. Bump both together.
 FROM node:22.23.4-alpine AS base
-RUN corepack enable && corepack prepare pnpm@9 --activate
+RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 
 # ---- build: full install + compile ----
 FROM base AS build

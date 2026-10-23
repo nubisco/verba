@@ -1,3 +1,21 @@
 packages:
   - 'apps/*'
   - 'packages/*'
+
+# pnpm 10 and later run a dependency's install scripts only when it is listed
+# here. pnpm 9 (this repo's pinned version) ignores this block and runs them all,
+# so these values keep a newer pnpm doing what pnpm 9 does today.
+allowBuilds:
+  # Downloads Prisma's schema engine at install time rather than on first use.
+  '@prisma/engines': true
+  # Prisma CLI's preinstall: only checks the Node version.
+  prisma: true
+  # Native SQLite driver behind the local development database.
+  better-sqlite3: true
+  # Installs the platform binary for tsx, vitepress and vite.
+  esbuild: true
+  # Installs the git hooks (root "prepare" does the same).
+  simple-git-hooks: true
+  # Only compiles from source when npm_config_build_from_source=true. The
+  # prebuilt binary comes from an optional dependency.
+  '@parcel/watcher': false

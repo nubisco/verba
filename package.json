@@ -2,7 +2,7 @@
   "name": "@nubisco/verba",
   "version": "1.12.0",
   "private": true,
-  "packageManager": "pnpm@9.0.0",
+  "packageManager": "pnpm@9.15.9",
   "scripts": {
     "dev": "pnpm -r --parallel dev",
     "build": "pnpm --filter @nubisco/verba-api prisma:generate && pnpm -r build",
