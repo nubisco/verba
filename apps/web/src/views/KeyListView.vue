@@ -1,25 +1,4 @@
 <template>
-  <!-- Topbar: teleported into #verba-topbar -->
-  <Teleport defer to="#verba-topbar">
-    <NbGrid align="center" gap="md">
-      <span v-if="!loading" class="topbar-meta">{{ t('keys.list.total', { count: total }) }}</span>
-      <NbTextInput
-        :v-model="search"
-        type="search"
-        size="sm"
-        :placeholder="t('keys.list.search')"
-        @input="onSearchInput(($event.target as HTMLInputElement).value)"
-      >
-        <template #leading>
-          <NbIcon name="magnifying-glass" :size="16" color="#6b7280" style="margin-left: 12px" />
-        </template>
-      </NbTextInput>
-      <NbButton variant="primary" @click="showCreate = !showCreate">
-        {{ showCreate ? t('common.cancel') : t('keys.list.newKey') }}
-      </NbButton>
-    </NbGrid>
-  </Teleport>
-
   <!-- Inspector: teleported into #verba-inspector -->
   <Teleport defer to="#verba-inspector">
     <div v-if="selectedKeyId" class="key-inspector-wrap">
@@ -47,6 +26,27 @@
   <!-- Main content -->
   <NbGrid dir="col" gap="md" class="key-list-view">
     <h2>{{ t('keys.list.title') }}</h2>
+    <!-- Topbar: teleported into #verba-topbar. On a phone it stays here, under
+           the title, where the search and New Key fit without scrolling sideways. -->
+    <Teleport defer to="#verba-topbar" :disabled="phone">
+      <NbGrid align="center" gap="md" class="keys-toolbar">
+        <span v-if="!loading" class="topbar-meta">{{ t('keys.list.total', { count: total }) }}</span>
+        <NbTextInput
+          :v-model="search"
+          type="search"
+          size="sm"
+          :placeholder="t('keys.list.search')"
+          @input="onSearchInput(($event.target as HTMLInputElement).value)"
+        >
+          <template #leading>
+            <NbIcon name="magnifying-glass" :size="16" color="#6b7280" style="margin-left: 12px" />
+          </template>
+        </NbTextInput>
+        <NbButton variant="primary" @click="showCreate = !showCreate">
+          {{ showCreate ? t('common.cancel') : t('keys.list.newKey') }}
+        </NbButton>
+      </NbGrid>
+    </Teleport>
     <!-- Create Key form -->
     <div v-if="showCreate" class="create-form card">
       <h3>{{ t('keys.create.title') }}</h3>
@@ -154,13 +154,14 @@ import { apiFetch } from '../api'
 import { useI18n } from 'vue-i18n'
 import { useLayoutSlots } from '../composables/useLayoutSlots'
 import KeyDetailPanel from '../components/KeyDetailPanel.vue'
-import { NbTextInput, NbSelect, type ISelectOption } from '@nubisco/ui'
+import { NbTextInput, NbSelect, usePhoneLayout, type ISelectOption } from '@nubisco/ui'
 
 const route = useRoute()
 const router = useRouter()
 const projectId = route.params.id as string
 const { t } = useI18n()
 const { openInspector, closeInspector } = useLayoutSlots()
+const { phone } = usePhoneLayout()
 
 interface Key {
   id: string
@@ -320,6 +321,18 @@ onUnmounted(() => closeInspector())
 </script>
 
 <style lang="scss" scoped>
+// On a phone the toolbar renders in the page (see the Teleport), so it wraps
+// and the search takes a full row.
+@include variables.phone {
+  .keys-toolbar {
+    flex-wrap: wrap;
+
+    :deep(.nb-text-input) {
+      flex: 1 1 100%;
+    }
+  }
+}
+
 .key-list-view {
   flex: 1;
   min-width: 0;

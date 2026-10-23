@@ -1,35 +1,36 @@
 <template>
-  <Teleport defer to="#verba-topbar">
-    <NbGrid align="center" gap="md">
-      <NbGrid gap="sm" align="center">
-        <button
-          class="avatar-filter-chip"
-          :class="{ active: filterUserIds.size === 0 }"
-          @click="filterUserIds = new Set()"
-        >
-          {{ t('common.all') }}
-        </button>
-        <button
-          v-for="m in members"
-          :key="m.userId"
-          class="avatar-filter-chip"
-          :class="{ active: filterUserIds.has(m.userId) }"
-          :title="m.user.name?.trim() || m.user.email"
-          @click="toggleUserFilter(m.userId)"
-        >
-          {{ (m.user.name?.trim() || m.user.email).slice(0, 2).toUpperCase() }}
-        </button>
-        <NbSelect v-model="filterNamespaceId" :options="nsSelectOptions" />
-        <NbButton v-if="hasActiveFilters" variant="secondary" outlined size="sm" @click="clearFilters">
-          {{ t('common.clearFilters') }}
-        </NbButton>
-      </NbGrid>
-      <span v-if="connected" class="live-badge">● {{ t('board.liveIndicator') }}</span>
-      <span v-else class="offline-badge">● {{ t('board.offlineIndicator') }}</span>
-    </NbGrid>
-  </Teleport>
-
   <div class="board-view">
+    <!-- Filters: teleported into #verba-topbar. On a phone they stay here, above
+         the board, where they can wrap instead of scrolling sideways. -->
+    <Teleport defer to="#verba-topbar" :disabled="phone">
+      <NbGrid align="center" gap="md" class="board-toolbar">
+        <NbGrid gap="sm" align="center" class="board-toolbar__filters">
+          <button
+            class="avatar-filter-chip"
+            :class="{ active: filterUserIds.size === 0 }"
+            @click="filterUserIds = new Set()"
+          >
+            {{ t('common.all') }}
+          </button>
+          <button
+            v-for="m in members"
+            :key="m.userId"
+            class="avatar-filter-chip"
+            :class="{ active: filterUserIds.has(m.userId) }"
+            :title="m.user.name?.trim() || m.user.email"
+            @click="toggleUserFilter(m.userId)"
+          >
+            {{ (m.user.name?.trim() || m.user.email).slice(0, 2).toUpperCase() }}
+          </button>
+          <NbSelect v-model="filterNamespaceId" :options="nsSelectOptions" />
+          <NbButton v-if="hasActiveFilters" variant="secondary" outlined size="sm" @click="clearFilters">
+            {{ t('common.clearFilters') }}
+          </NbButton>
+        </NbGrid>
+        <span v-if="connected" class="live-badge">● {{ t('board.liveIndicator') }}</span>
+        <span v-else class="offline-badge">● {{ t('board.offlineIndicator') }}</span>
+      </NbGrid>
+    </Teleport>
     <div v-if="loading" class="loading">{{ t('common.loading') }}</div>
 
     <div v-else class="board-and-inspector">
@@ -173,7 +174,7 @@ import { useProjectWs } from '../composables/useProjectWs'
 import KeyDetailPanel from '../components/KeyDetailPanel.vue'
 import { trackEvent } from '../composables/useAnalytics'
 import { useI18n } from 'vue-i18n'
-import { type ISelectOption } from '@nubisco/ui'
+import { usePhoneLayout, type ISelectOption } from '@nubisco/ui'
 import LocaleBadge from '../components/LocaleBadge.vue'
 
 const route = useRoute()
@@ -184,6 +185,7 @@ const projectId = computed(() => route.params.id as string)
 const inspectorKeyId = computed(() => (route.params.keyId as string | undefined) ?? null)
 const auth = useAuthStore()
 const { t } = useI18n()
+const { phone } = usePhoneLayout()
 
 interface Translation {
   id: string
@@ -509,6 +511,19 @@ function onCardDblClick(card: Translation) {
 </script>
 
 <style lang="scss" scoped>
+// On a phone the filters render in the page (see the Teleport), so they wrap.
+@include variables.phone {
+  .board-toolbar,
+  .board-toolbar__filters {
+    flex-wrap: wrap;
+  }
+
+  .board-toolbar {
+    flex-shrink: 0;
+    margin-bottom: 0.75rem;
+  }
+}
+
 .board-view {
   height: 100%;
   display: flex;

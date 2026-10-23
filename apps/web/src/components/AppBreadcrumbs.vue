@@ -1,5 +1,5 @@
 <template>
-  <NbBreadcrumbs title="Nubisco" subtitle="Verba">
+  <NbBreadcrumbs title="Nubisco" subtitle="Verba" class="app-breadcrumbs">
     <template v-for="(crumb, i) in crumbs" :key="i">
       <NbIcon v-if="i > 0" name="caret-right" :size="12" class="bc-sep" />
       <code v-if="crumb.isCode" class="bc-key">{{ crumb.label }}</code>
@@ -14,7 +14,44 @@ import { useBreadcrumbs } from '../composables/useBreadcrumbs'
 const { crumbs } = useBreadcrumbs()
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+// A phone has room for one crumb beside the page actions: the page you are on.
+// The brand stays only where there is no crumb to show, and the crumb gives way
+// with an ellipsis rather than running off the screen.
+@include variables.phone {
+  .app-breadcrumbs {
+    min-width: 0;
+    overflow: hidden;
+
+    &:has(.nb-breadcrumbs__crumbs > *) {
+      :deep(.nb-breadcrumbs__brand),
+      :deep(> .nb-breadcrumbs__sep) {
+        display: none;
+      }
+    }
+
+    :deep(.nb-breadcrumbs__crumbs) {
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    :deep(.nb-breadcrumbs__crumbs > :not(:last-child)) {
+      display: none;
+    }
+
+    :deep(.nb-breadcrumbs__crumbs > :last-child) {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+
+      &::before {
+        content: none;
+      }
+    }
+  }
+}
+
 .bc-sep {
   opacity: 0.4;
   flex-shrink: 0;

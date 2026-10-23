@@ -81,6 +81,15 @@ body {
   }
 }
 
+// On a phone the shell's own breadcrumb (AppBreadcrumbs, in topbar-left)
+// already names the page. The copy some views put beside their actions would
+// only push those actions off the screen.
+@include variables.phone {
+  #verba-topbar .page-topbar > .nb-breadcrumbs {
+    display: none;
+  }
+}
+
 // Views render <div class="page-header"> as their first element.
 // DefaultLayout's .app-main provides the scrollable container.
 .page-header {
