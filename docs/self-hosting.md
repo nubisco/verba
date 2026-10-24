@@ -181,16 +181,32 @@ For CE, the operator account can be bootstrapped without creating a permanent pa
 
 ### AI provider keys
 
-Each project can use its own OpenAI, Anthropic or Gemini key. Keys are encrypted
-at rest (AES-256-GCM) with `AI_ENCRYPTION_KEY`, a secret used for nothing else:
-generate one with `openssl rand -hex 32`. Without it, saving a key is refused.
-There is no fallback to `JWT_SECRET` or to a built-in value. For local
-development only, `AI_DEV_SECRET=true` opts in to a built-in secret.
+Each project brings its own Anthropic, OpenAI or Gemini key, set by a project
+admin under **Settings, AI**. Verba never ships a key and never falls back to
+one: with no key, AI suggestions are off and translating by hand works as
+always. Keys are encrypted at rest (AES-GCM) with `AI_ENCRYPTION_KEY`, a secret
+used for nothing else: generate one with `openssl rand -hex 32`. Without it,
+saving a key is refused. There is no fallback to `JWT_SECRET` or to a built-in
+value. For local development only, `AI_DEV_SECRET=true` opts in to a built-in
+secret. The API reports whether a key is stored, never the key.
 
-A key stored by an earlier release in plain text, or encrypted with a different
-secret (earlier releases used `ENCRYPTION_KEY`, or `JWT_SECRET` when that was
-unset), is refused with a request to enter it again. `ENCRYPTION_KEY` is still
-read, so an instance that set it keeps its keys.
+A key stored by an earlier release (in plain text, or encrypted in the older
+format with `AI_ENCRYPTION_KEY`, `ENCRYPTION_KEY`, or `JWT_SECRET` when neither
+was set) is not lost. It is
+never used in its old form: the first time the API starts with
+`AI_ENCRYPTION_KEY` set, it is re-encrypted under that secret, and the project
+keeps using it without entering it again. Until then the key stays stored and
+AI suggestions for that project wait. `ENCRYPTION_KEY` is still read as the
+secret, so an instance that set it keeps its keys as they are. Changing
+`AI_ENCRYPTION_KEY` later makes the stored keys unreadable, and each project
+must enter its key again.
+
+Usage is logged per request with the provider's own token counts and shown
+beside the key for the last 30 days. The cost estimate reads LiteLLM's public
+price list, fetched at most once a day, so the API needs outbound access to
+`raw.githubusercontent.com` for it. Without that, usage shows tokens and no
+cost. Every suggestion is checked against its source (placeholders, markup and
+links) before it is shown or written, and one that fails is discarded.
 
 ### Instance operators
 

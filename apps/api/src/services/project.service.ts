@@ -1,6 +1,5 @@
 import { prisma } from '../prisma.js'
 import type { CreateProjectInput, UpdateProjectInput } from '../schemas/project.schema.js'
-import { encrypt } from './encryption.service.js'
 import { isOperator } from './operator.service.js'
 
 function notFound(): never {
@@ -18,18 +17,25 @@ export async function listProjects(userId: string) {
     where: { id: { in: projectIds } },
     orderBy: { createdAt: 'desc' },
   })
-  return projects.map(maskAiKey)
+  return projects.map(toClientProject)
 }
 
-/** Never send the stored key, encrypted or not, to a client: only whether there is one. */
-function maskAiKey<T extends { aiApiKey: string | null }>(project: T): T {
-  return { ...project, aiApiKey: project.aiApiKey ? '***' : null }
+/**
+ * What a client may see of a project. The stored AI key never leaves the
+ * server, encrypted or not: only whether there is one. AI settings are read
+ * and written through /projects/:id/ai/settings (ai-settings.service.ts).
+ */
+export function toClientProject<T extends { aiApiKey: string | null }>(
+  project: T,
+): Omit<T, 'aiApiKey'> & { aiHasKey: boolean } {
+  const { aiApiKey, ...rest } = project
+  return { ...rest, aiHasKey: Boolean(aiApiKey) }
 }
 
 export async function getProject(id: string) {
   const project = await prisma.project.findUnique({ where: { id } })
   if (!project) notFound()
-  return maskAiKey(project)
+  return toClientProject(project)
 }
 
 // Project cap per platform plan. Platform owns the plan name; Verba owns the
@@ -72,7 +78,7 @@ export async function createProject(userId: string, plan: string | undefined, da
     }
   }
   const slug = await resolveUniqueSlug(data.slug)
-  return maskAiKey(await prisma.project.create({ data: { ...data, slug } }))
+  return toClientProject(await prisma.project.create({ data: { ...data, slug } }))
 }
 
 export async function updateProject(id: string, data: UpdateProjectInput) {
@@ -83,16 +89,7 @@ export async function updateProject(id: string, data: UpdateProjectInput) {
     })
     if (existing) throw Object.assign(new Error('Slug already taken'), { statusCode: 409 })
   }
-  // Encrypt AI API key before persisting; skip if unchanged (masked placeholder).
-  // Whatever the client sends is encrypted, including something shaped like
-  // ciphertext: storing it as-is would let a client plant a value.
-  const payload: typeof data = { ...data }
-  if (payload.aiApiKey === '***' || payload.aiApiKey === '') {
-    delete payload.aiApiKey // don't overwrite the stored key
-  } else if (payload.aiApiKey) {
-    payload.aiApiKey = encrypt(payload.aiApiKey)
-  }
-  return maskAiKey(await prisma.project.update({ where: { id }, data: payload }))
+  return toClientProject(await prisma.project.update({ where: { id }, data }))
 }
 
 export async function deleteProject(id: string) {

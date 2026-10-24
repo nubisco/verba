@@ -17,7 +17,14 @@ vi.mock('../prisma.js', () => ({
 }))
 
 import { prisma } from '../prisma.js'
-import { listProjects, getProject, createProject, updateProject, deleteProject } from '../services/project.service.js'
+import {
+  listProjects,
+  getProject,
+  createProject,
+  updateProject,
+  deleteProject,
+  toClientProject,
+} from '../services/project.service.js'
 
 const mockProject = {
   id: 'cuid1',
@@ -28,6 +35,7 @@ const mockProject = {
   aiApiKey: null,
   aiModel: null,
   aiEnabled: false,
+  aiUpdatedAt: null,
   organizationId: null,
   createdAt: new Date(),
   updatedAt: new Date(),
@@ -35,6 +43,15 @@ const mockProject = {
 
 beforeEach(() => {
   vi.clearAllMocks()
+})
+
+describe('toClientProject', () => {
+  it('never sends the stored AI key, only whether there is one', () => {
+    const client = toClientProject({ ...mockProject, aiApiKey: 'v1:aaaa:bbbb' })
+    expect(client).not.toHaveProperty('aiApiKey')
+    expect(client.aiHasKey).toBe(true)
+    expect(toClientProject(mockProject).aiHasKey).toBe(false)
+  })
 })
 
 describe('listProjects', () => {
@@ -45,7 +62,7 @@ describe('listProjects', () => {
     vi.mocked(prisma.membership.findMany).mockResolvedValue([{ projectId: mockProject.id }] as never)
     vi.mocked(prisma.project.findMany).mockResolvedValue([mockProject])
     const result = await listProjects('u1')
-    expect(result).toEqual([mockProject])
+    expect(result).toEqual([toClientProject(mockProject)])
   })
 
   it('lists only member projects for an instance operator too', async () => {
@@ -60,7 +77,7 @@ describe('getProject', () => {
   it('returns project when found', async () => {
     vi.mocked(prisma.project.findUnique).mockResolvedValue(mockProject)
     const result = await getProject('cuid1')
-    expect(result).toEqual(mockProject)
+    expect(result).toEqual(toClientProject(mockProject))
   })
 
   it('throws 404 when not found', async () => {
@@ -80,7 +97,7 @@ describe('createProject', () => {
       name: 'Test Project',
       slug: 'test-project',
     })
-    expect(result).toEqual(mockProject)
+    expect(result).toEqual(toClientProject(mockProject))
   })
 
   it('auto-suffixes slug when taken', async () => {

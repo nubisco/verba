@@ -65,9 +65,10 @@ model Project {
   updatedAt      DateTime @updatedAt
   organizationId String?
   aiProvider     String?  // "openai" | "anthropic" | "gemini"
-  aiApiKey       String?  // store as-is; in production should be env-encrypted
-  aiModel        String?  // e.g. "gpt-4o-mini", "claude-3-haiku"
+  aiApiKey       String?  // the project's own provider key, sealed by encryption.service.ts, never sent to a client
+  aiModel        String?  // null means the fleet default for the provider (ai.service.ts DEFAULT_MODELS)
   aiEnabled      Boolean  @default(false)
+  aiUpdatedAt    DateTime?
 
   organization  Organization? @relation(fields: [organizationId], references: [id])
   locales       Locale[]
@@ -78,6 +79,7 @@ model Project {
   importRuns     ImportRun[]
   notifications  Notification[]
   xliffSkeletons XliffSkeleton[]
+  aiUsage        AiUsage[]
 }
 
 model Locale {
@@ -345,4 +347,33 @@ model XliffSkeleton {
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, targetLanguage])
+}
+
+/// One request that reached the project's AI provider, with the provider's own
+/// token counts, for the usage and cost estimate in project settings.
+model AiUsage {
+  id           String   @id @default(cuid())
+  projectId    String
+  /// What asked: "suggest" (one key), "fill" (a locale filled from an import) or "preview" (settings).
+  source       String
+  provider     String
+  model        String
+  inputTokens  Int
+  outputTokens Int
+  createdAt    DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt])
+}
+
+/// The last good copy of LiteLLM's public price list, for the cost estimate.
+/// Prices are fetched, never hard-coded (ai-prices.service.ts). A single row,
+/// replaced on every successful fetch, so a restart reads it back instead of
+/// fetching again and a failed fetch keeps the last copy that worked.
+model AiPriceList {
+  id        Int      @id
+  /// JSON keyed "provider/model", USD per token.
+  prices    String
+  fetchedAt DateTime
 }
