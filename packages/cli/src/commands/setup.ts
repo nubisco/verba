@@ -200,6 +200,8 @@ export async function runSetupWizard(): Promise<void> {
       `DATABASE_URL="${databaseUrl}"`,
       `JWT_SECRET="${jwtSecret}"`,
       `VERBA_OPERATORS="${String(operatorEmail).trim().toLowerCase()}"`,
+      // Encrypts each project's AI provider key, and nothing else.
+      `AI_ENCRYPTION_KEY="${crypto.randomBytes(32).toString('hex')}"`,
       `PORT=4000`,
       smtpVars,
     ]

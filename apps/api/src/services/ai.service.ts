@@ -13,12 +13,29 @@ interface ProjectAiFields {
   aiModel: string | null
 }
 
+function reenter(): never {
+  throw Object.assign(new Error('The AI key for this project must be entered again in project settings'), {
+    statusCode: 422,
+  })
+}
+
 /** Validate a project's AI configuration and return a usable, decrypted config. */
 export function getProjectAiConfig(project: ProjectAiFields): AiConfig {
   if (!project.aiEnabled || !project.aiApiKey || !project.aiProvider) {
     throw Object.assign(new Error('AI is not configured for this project'), { statusCode: 422 })
   }
-  const apiKey = isEncrypted(project.aiApiKey) ? decrypt(project.aiApiKey) : project.aiApiKey
+  // Only ever an encrypted key. A plain-text one is from before keys were
+  // encrypted and is refused rather than used, as is one this server can no
+  // longer decrypt (a different secret): both mean the key must be entered
+  // again, which stores it encrypted.
+  if (!isEncrypted(project.aiApiKey)) reenter()
+  let apiKey: string
+  try {
+    apiKey = decrypt(project.aiApiKey)
+  } catch (err) {
+    if ((err as { statusCode?: number }).statusCode) throw err
+    reenter()
+  }
   return { provider: project.aiProvider, model: project.aiModel, apiKey }
 }
 

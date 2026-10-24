@@ -160,13 +160,15 @@ The API allows `GET, POST, PUT, PATCH, DELETE, OPTIONS`. In dev, any `localhost`
 
 ## Environment Variables
 
-| Variable       | Default         | Required in prod  |
-| -------------- | --------------- | ----------------- |
-| `DATABASE_URL` | `file:./dev.db` | ✅ (Postgres URL) |
-| `JWT_SECRET`   | `dev-secret`    | ✅                |
-| `PORT`         | `4000`          |                   |
-| `CORS_ORIGIN`  |                 | ✅                |
-| `PLUGINS_DIR`  |                 |                   |
+| Variable            | Default         | Required in prod      |
+| ------------------- | --------------- | --------------------- |
+| `DATABASE_URL`      | `file:./dev.db` | ✅ (Postgres URL)     |
+| `JWT_SECRET`        | `dev-secret`    | ✅                    |
+| `PORT`              | `4000`          |                       |
+| `CORS_ORIGIN`       |                 | ✅                    |
+| `PLUGINS_DIR`       |                 |                       |
+| `VERBA_OPERATORS`   |                 | ✅ (operator emails)  |
+| `AI_ENCRYPTION_KEY` |                 | ✅ (to store AI keys) |
 
 The API refuses to start with the default `JWT_SECRET` in production.
 

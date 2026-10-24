@@ -118,37 +118,38 @@ database has drifted from the release it was last pushed by. Restore nothing
 
 Configure the API via environment variables in `apps/api/.env`:
 
-| Variable                | Default                    | Description                                                        |
-| ----------------------- | -------------------------- | ------------------------------------------------------------------ |
-| `PORT`                  | `4000`                     | API listen port                                                    |
-| `CORS_ORIGIN`           | `http://localhost:5173`    | Exact origin of your web frontend (no trailing slash)              |
-| `DATABASE_URL`          | `file:./prisma/dev.db`     | Prisma connection string. SQLite for dev, Postgres for prod        |
-| `JWT_SECRET`            | _(required in production)_ | Random 48-byte hex string. Rotate periodically                     |
-| `ENABLE_LOCAL_PASSWORD` | `false`                    | Enable password login/register endpoints; CE defaults to OTP-only  |
-| `DISABLE_LOCAL_OTP`     | `false`                    | Disable local OTP login                                            |
-| `PLATFORM_ISSUER`       | _(unset)_                  | Nubisco Platform issuer URL. Required with `PLATFORM_APP_ID`       |
-| `PLATFORM_APP_ID`       | _(unset)_                  | The app slug this deployment is registered under on Platform       |
-| `OIDC_ISSUER`           | _(unset)_                  | OpenID Connect issuer URL. Required with `OIDC_CLIENT_ID`          |
-| `OIDC_CLIENT_ID`        | _(unset)_                  | The client id your identity provider issued for Verba              |
-| `OIDC_CLIENT_SECRET`    | _(unset)_                  | The client secret, for a confidential client                       |
-| `OIDC_SCOPES`           | `openid email profile`     | Scopes requested at the provider                                   |
-| `OIDC_LABEL`            | `single sign-on`           | What the sign-in button calls your provider                        |
-| `OIDC_AUTO_PROVISION`   | `true`                     | Create a Verba user on first sign-in                               |
-| `PUBLIC_API_URL`        | _(derived)_                | Public address of this API, if it is not `<web origin>/api`        |
-| `PLATFORM_SERVER_FLOW`  | `false`                    | Run Platform sign-in server-side (register the new callback first) |
-| `LICENSE_KEY`           | _(unset)_                  | Enterprise Edition licence; required for federated sign-in         |
-| `SMTP_HOST`             | _(unset = log to stdout)_  | SMTP host for email / OTP delivery                                 |
-| `SMTP_PORT`             | `587`                      | SMTP port                                                          |
-| `MAIL_FROM`             | `SMTP_FROM`                | From address for outgoing email, on Resend and SMTP alike          |
-| `SMTP_FROM`             | `noreply@verba.app`        | From address, when `MAIL_FROM` is not set                          |
-| `SMTP_USER`             | _(optional)_               | SMTP username                                                      |
-| `SMTP_PASS`             | _(optional)_               | SMTP password                                                      |
-| `SMTP_SECURE`           | `false`                    | Set `true` for port-465 TLS                                        |
-| `VERBA_OPERATORS`       | _(unset)_                  | Emails of the instance operators, comma separated. See below       |
-| `SESSION_TTL_HOURS`     | `168` (7 days)             | How long a session lasts unused. Active sessions renew daily       |
-| `COOKIE_SECURE`         | `true` in production       | Set `false` only to serve production over plain HTTP               |
-| `TRUST_PROXY`           | private ranges             | Proxies whose `X-Forwarded-For` is believed, see below             |
-| `BLOCKED_EMAIL_DOMAINS` | _(unset)_                  | Extra throwaway domains refused for new accounts, comma separated  |
+| Variable                | Default                     | Description                                                        |
+| ----------------------- | --------------------------- | ------------------------------------------------------------------ |
+| `PORT`                  | `4000`                      | API listen port                                                    |
+| `CORS_ORIGIN`           | `http://localhost:5173`     | Exact origin of your web frontend (no trailing slash)              |
+| `DATABASE_URL`          | `file:./prisma/dev.db`      | Prisma connection string. SQLite for dev, Postgres for prod        |
+| `JWT_SECRET`            | _(required in production)_  | Random 48-byte hex string. Rotate periodically                     |
+| `ENABLE_LOCAL_PASSWORD` | `false`                     | Enable password login/register endpoints; CE defaults to OTP-only  |
+| `DISABLE_LOCAL_OTP`     | `false`                     | Disable local OTP login                                            |
+| `PLATFORM_ISSUER`       | _(unset)_                   | Nubisco Platform issuer URL. Required with `PLATFORM_APP_ID`       |
+| `PLATFORM_APP_ID`       | _(unset)_                   | The app slug this deployment is registered under on Platform       |
+| `OIDC_ISSUER`           | _(unset)_                   | OpenID Connect issuer URL. Required with `OIDC_CLIENT_ID`          |
+| `OIDC_CLIENT_ID`        | _(unset)_                   | The client id your identity provider issued for Verba              |
+| `OIDC_CLIENT_SECRET`    | _(unset)_                   | The client secret, for a confidential client                       |
+| `OIDC_SCOPES`           | `openid email profile`      | Scopes requested at the provider                                   |
+| `OIDC_LABEL`            | `single sign-on`            | What the sign-in button calls your provider                        |
+| `OIDC_AUTO_PROVISION`   | `true`                      | Create a Verba user on first sign-in                               |
+| `PUBLIC_API_URL`        | _(derived)_                 | Public address of this API, if it is not `<web origin>/api`        |
+| `PLATFORM_SERVER_FLOW`  | `false`                     | Run Platform sign-in server-side (register the new callback first) |
+| `LICENSE_KEY`           | _(unset)_                   | Enterprise Edition licence; required for federated sign-in         |
+| `SMTP_HOST`             | _(unset = log to stdout)_   | SMTP host for email / OTP delivery                                 |
+| `SMTP_PORT`             | `587`                       | SMTP port                                                          |
+| `MAIL_FROM`             | `SMTP_FROM`                 | From address for outgoing email, on Resend and SMTP alike          |
+| `SMTP_FROM`             | `noreply@verba.app`         | From address, when `MAIL_FROM` is not set                          |
+| `SMTP_USER`             | _(optional)_                | SMTP username                                                      |
+| `SMTP_PASS`             | _(optional)_                | SMTP password                                                      |
+| `SMTP_SECURE`           | `false`                     | Set `true` for port-465 TLS                                        |
+| `AI_ENCRYPTION_KEY`     | _(unset = AI keys refused)_ | Secret that encrypts customers' AI keys. Nothing else uses it      |
+| `VERBA_OPERATORS`       | _(unset)_                   | Emails of the instance operators, comma separated. See below       |
+| `SESSION_TTL_HOURS`     | `168` (7 days)              | How long a session lasts unused. Active sessions renew daily       |
+| `COOKIE_SECURE`         | `true` in production        | Set `false` only to serve production over plain HTTP               |
+| `TRUST_PROXY`           | private ranges              | Proxies whose `X-Forwarded-For` is believed, see below             |
+| `BLOCKED_EMAIL_DOMAINS` | _(unset)_                   | Extra throwaway domains refused for new accounts, comma separated  |
 
 > **Development mode:** When `SMTP_HOST` is not set, OTP codes are printed to the API server's stdout log.
 
@@ -177,6 +178,19 @@ the proxy's address and the per-address limits apply to all of them together.
 - **Enterprise direction:** set `PLATFORM_ISSUER` to enable Nubisco Platform token verification alongside local auth
 
 For CE, the operator account can be bootstrapped without creating a permanent password.
+
+### AI provider keys
+
+Each project can use its own OpenAI, Anthropic or Gemini key. Keys are encrypted
+at rest (AES-256-GCM) with `AI_ENCRYPTION_KEY`, a secret used for nothing else:
+generate one with `openssl rand -hex 32`. Without it, saving a key is refused.
+There is no fallback to `JWT_SECRET` or to a built-in value. For local
+development only, `AI_DEV_SECRET=true` opts in to a built-in secret.
+
+A key stored by an earlier release in plain text, or encrypted with a different
+secret (earlier releases used `ENCRYPTION_KEY`, or `JWT_SECRET` when that was
+unset), is refused with a request to enter it again. `ENCRYPTION_KEY` is still
+read, so an instance that set it keeps its keys.
 
 ### Instance operators
 

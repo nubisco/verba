@@ -1,12 +1,45 @@
 import crypto from 'node:crypto'
 
+// Customer AI provider keys are encrypted at rest with AES-256-GCM, keyed from
+// a secret that exists for nothing else.
+//
+// AI_ENCRYPTION_KEY (ENCRYPTION_KEY, the earlier name, is still read). With no
+// secret configured, saving a key is refused. The fallback to JWT_SECRET and
+// then to the constant 'dev-secret' is gone: the first tied two secrets
+// together, the second protected every self-hosted instance's keys with a
+// published string. A development secret is an explicit opt-in,
+// AI_DEV_SECRET=true, and never inferred from NODE_ENV.
+
 const ALGORITHM = 'aes-256-gcm'
 const IV_LENGTH = 12 // GCM standard
+const DEV_SECRET = 'verba-development-only-ai-key-secret'
+
+function notConfigured(): never {
+  throw Object.assign(
+    new Error(
+      'AI keys cannot be stored: the server has no AI_ENCRYPTION_KEY. Ask the person who runs Verba to set one.',
+    ),
+    { statusCode: 422 },
+  )
+}
+
+function secret(): string | null {
+  const configured = process.env.AI_ENCRYPTION_KEY || process.env.ENCRYPTION_KEY
+  if (configured) return configured
+  if (process.env.AI_DEV_SECRET === 'true') return DEV_SECRET
+  return null
+}
+
+/** Whether this server can store and read AI keys at all. */
+export function aiEncryptionConfigured(): boolean {
+  return secret() !== null
+}
 
 function getKey(): Buffer {
-  const secret = process.env.ENCRYPTION_KEY || process.env.JWT_SECRET || 'dev-secret'
+  const value = secret()
+  if (!value) notConfigured()
   // Derive a 32-byte key via SHA-256
-  return crypto.createHash('sha256').update(secret).digest()
+  return crypto.createHash('sha256').update(value).digest()
 }
 
 export function encrypt(plaintext: string): string {
