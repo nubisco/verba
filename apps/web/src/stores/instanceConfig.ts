@@ -2,8 +2,9 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { apiFetch } from '../api'
 
+// Instance feature flags from /config. Empty today: accounts, the last one,
+// are always on. Kept so a future flag has somewhere to go.
 interface InstanceFeatures {
-  organizations: boolean
   [key: string]: boolean
 }
 
@@ -33,7 +34,7 @@ interface InstanceConfig {
 }
 
 export const useInstanceConfigStore = defineStore('instanceConfig', () => {
-  const features = ref<InstanceFeatures>({ organizations: false })
+  const features = ref<InstanceFeatures>({})
   const auth = ref<InstanceAuthConfig>({
     mode: 'local_otp',
     localOtpEnabled: true,

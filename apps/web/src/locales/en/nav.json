@@ -13,9 +13,9 @@
   "yourSettings": "Your settings",
   "admin": "Admin",
   "projects": "Projects",
-  "organizations": "Organizations",
   "liveIndicator": "LIVE",
   "offlineIndicator": "OFFLINE",
   "projectFallback": "Select a project",
-  "allProjects": "All Projects"
+  "allProjects": "All Projects",
+  "accountSettings": "Settings"
 }

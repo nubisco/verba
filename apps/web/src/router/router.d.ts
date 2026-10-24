@@ -47,7 +47,6 @@ export interface NavMeta {
   /**
    * Instance feature flag key. When set, the item is only shown if this flag
    * is enabled on the deployment. Checked against /config (public endpoint).
-   * Example: 'organizations' is toggled via ENABLE_ORGANIZATIONS env var.
    */
   featureFlag?: string
 }

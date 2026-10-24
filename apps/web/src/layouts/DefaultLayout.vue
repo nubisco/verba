@@ -57,9 +57,8 @@
 
     <!-- ═══ Bottom actions ═══ -->
     <!-- The order every rail keeps (fleet standard, "Every rail has the same
-         anatomy"): Documentation, Notifications, the person. There is no
-         tenant Settings (gear) entry: Verba has no account level above its
-         projects yet, so there are no account settings to put there. -->
+         anatomy"): Documentation, Notifications, the account's Settings, the
+         person. -->
     <template #sidebar-bottom>
       <!-- A new tab, so leaving to read the docs does not lose the page. -->
       <NbSidebarMenu density="compact">
@@ -67,6 +66,18 @@
       </NbSidebarMenu>
 
       <NotificationBell />
+
+      <!-- The account's Settings (members, roles, and the plan for operators),
+           for the people allowed to change them. A project's own
+           configuration is the last item of its group above. -->
+      <NbSidebarMenu v-if="showAccountSettings" density="compact">
+        <NbSidebarMenuItem
+          icon="gear"
+          :label="t('nav.accountSettings')"
+          to="/settings"
+          :active="route.name === 'account-settings'"
+        />
+      </NbSidebarMenu>
 
       <!-- `identity` follows the rail: a labelled row with the picture, name
            and email expanded, the round avatar collapsed. Personal settings
@@ -125,11 +136,12 @@
 
 <script setup lang="ts">
 import { computed, watch, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useSidebarVariant } from '@nubisco/ui'
 import { useAuthStore } from '../stores/auth'
 import { useNavigationStore } from '../stores/navigation'
 import { useProjectStore } from '../stores/project'
+import { useAccountsStore } from '../stores/accounts'
 import { useInstanceConfigStore } from '../stores/instanceConfig'
 import { usePlatformAccounts } from '../composables/usePlatformAccounts'
 import { useI18n } from 'vue-i18n'
@@ -139,9 +151,11 @@ import NotificationBell from '../components/NotificationBell.vue'
 import AppBreadcrumbs from '../components/AppBreadcrumbs.vue'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 const navStore = useNavigationStore()
 const projectStore = useProjectStore()
+const accountsStore = useAccountsStore()
 const instanceConfig = useInstanceConfigStore()
 const { inspectorVisible } = useLayoutSlots()
 
@@ -198,8 +212,13 @@ watch(
   { immediate: true },
 )
 
+// Owners and admins of the current account, and instance operators (who see
+// its plan there).
+const showAccountSettings = computed(() => accountsStore.canManage || Boolean(auth.user?.isGlobalAdmin))
+
 onMounted(async () => {
   if (!auth.user) await auth.fetchMe()
+  void accountsStore.ensureLoaded()
   if (platformEnabled.value) void loadAccounts()
 })
 

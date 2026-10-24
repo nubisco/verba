@@ -15,10 +15,10 @@ import * as at from '@nubisco/ui/icons/at'
 import * as bell from '@nubisco/ui/icons/bell'
 import * as bellRinging from '@nubisco/ui/icons/bell-ringing'
 import * as book from '@nubisco/ui/icons/book'
-import * as building from '@nubisco/ui/icons/building'
+import * as buildings from '@nubisco/ui/icons/buildings'
 import * as chatCircle from '@nubisco/ui/icons/chat-circle'
 import * as checkCircle from '@nubisco/ui/icons/check-circle'
-import * as house from '@nubisco/ui/icons/house'
+import * as gear from '@nubisco/ui/icons/gear'
 import * as kanban from '@nubisco/ui/icons/kanban'
 import * as key from '@nubisco/ui/icons/key'
 import * as slidersHorizontal from '@nubisco/ui/icons/sliders-horizontal'
@@ -75,10 +75,10 @@ registerIcons({
   bell,
   'bell-ringing': bellRinging,
   book,
-  building,
+  buildings,
   'chat-circle': chatCircle,
   'check-circle': checkCircle,
-  house,
+  gear,
   kanban,
   key,
   'sliders-horizontal': slidersHorizontal,

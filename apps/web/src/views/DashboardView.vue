@@ -1,31 +1,69 @@
 <template>
-  <!-- Topbar -->
+  <!-- Home: the project chooser (fleet standard, "Every rail has the same
+       anatomy"), like the CMS's "Choose an application to work on". With more
+       than one account the projects are grouped by account, so choosing a
+       project is also choosing the account to work in. -->
   <Teleport defer to="#verba-topbar">
-    <NbButton variant="primary" size="sm" @click="showForm = !showForm">
-      {{ showForm ? t('common.cancel') : t('projects.create.newProject') }}
-    </NbButton>
+    <div class="topbar-actions">
+      <NbButton v-if="accountsStore.canCreate && !phone" size="sm" variant="secondary" @click="toggleAccountForm">
+        {{ showAccountForm ? t('common.cancel') : t('dashboard.newAccount') }}
+      </NbButton>
+      <NbButton v-if="accountsStore.accounts.length" variant="primary" size="sm" @click="toggleProjectForm">
+        {{ showForm ? t('common.cancel') : t('projects.create.newProject') }}
+      </NbButton>
+    </div>
   </Teleport>
 
   <div class="home-view">
     <div class="welcome">
-      <h2>
+      <h2 v-if="loading || accountsStore.accounts.length">
         {{
-          t('dashboard.welcome', {
+          t('dashboard.choose', {
             name: auth.user?.name?.trim() || auth.user?.email,
           })
         }}
       </h2>
+      <!-- A phone's top bar holds one action. The rarer one, a new account,
+           comes down into the page there. -->
+      <NbButton
+        v-if="phone && accountsStore.canCreate"
+        class="welcome__action"
+        size="sm"
+        variant="secondary"
+        @click="toggleAccountForm"
+      >
+        {{ showAccountForm ? t('common.cancel') : t('dashboard.newAccount') }}
+      </NbButton>
     </div>
 
     <div v-if="loading" class="loading">{{ t('common.loading') }}</div>
 
     <template v-else>
-      <!-- My Projects -->
-      <section class="section">
-        <div class="section-header">
-          <h3 class="section-title">{{ t('dashboard.myProjects') }}</h3>
+      <div v-if="showAccountForm" class="inline-form">
+        <div class="field">
+          <label>{{ t('dashboard.accountName') }}</label>
+          <NbTextInput v-model="newAccountName" :placeholder="t('dashboard.accountNamePlaceholder')" />
         </div>
+        <p v-if="accountError" class="error">{{ accountError }}</p>
+        <NbButton variant="primary" :disabled="!newAccountName.trim()" @click="createAccount">
+          {{ t('common.create') }}
+        </NbButton>
+      </div>
+
+      <!-- Someone signing in for the first time joins no account until an
+           owner adds them (workspace AGENTS.md, "Only Jose creates accounts"). -->
+      <NbEmptyState
+        v-if="accountsStore.accounts.length === 0 && !showAccountForm"
+        :title="t('dashboard.noAccountTitle')"
+        :description="t('dashboard.noAccountBody')"
+        bordered
+      />
+
+      <template v-else>
         <div v-if="showForm" class="inline-form">
+          <div v-if="accountsStore.accounts.length > 1" class="field">
+            <NbSelect v-model="newAccountId" :label="t('dashboard.account')" :options="accountOptions" />
+          </div>
           <div class="field">
             <label>{{ t('common.name') }}</label>
             <NbTextInput v-model="newName" :placeholder="t('projects.create.namePlaceholder')" @input="autoSlug" />
@@ -40,26 +78,34 @@
           </NbButton>
         </div>
 
-        <div v-if="projects.length === 0 && !showForm" class="empty-state">
-          <p>{{ t('dashboard.noProjects') }}</p>
-        </div>
-        <div v-else class="projects-grid">
-          <RouterLink
-            v-for="project in projects"
-            :key="project.id"
-            :to="`/projects/${project.id}`"
-            class="project-card"
-          >
-            <div class="project-card__avatar">
-              {{ project.name.slice(0, 2).toUpperCase() }}
-            </div>
-            <div class="project-card__info">
-              <h4>{{ project.name }}</h4>
-              <span class="slug">{{ project.slug }}</span>
-            </div>
-          </RouterLink>
-        </div>
-      </section>
+        <section v-for="group in groups" :key="group.account.id" class="section">
+          <div class="section-header">
+            <h3 class="section-title">
+              {{ grouped ? group.account.name : t('dashboard.myProjects') }}
+            </h3>
+          </div>
+          <div v-if="group.projects.length === 0" class="empty-state">
+            <p>{{ t('dashboard.noProjects') }}</p>
+          </div>
+          <div v-else class="projects-grid">
+            <RouterLink
+              v-for="project in group.projects"
+              :key="project.id"
+              :to="`/projects/${project.id}`"
+              class="project-card"
+              @click="accountsStore.select(group.account.id)"
+            >
+              <div class="project-card__avatar">
+                {{ project.name.slice(0, 2).toUpperCase() }}
+              </div>
+              <div class="project-card__info">
+                <h4>{{ project.name }}</h4>
+                <span class="slug">{{ project.slug }}</span>
+              </div>
+            </RouterLink>
+          </div>
+        </section>
+      </template>
 
       <!-- My Active Tasks -->
       <section v-if="tasksByProject.length > 0" class="section">
@@ -95,16 +141,21 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '../stores/auth'
+import { useAccountsStore, type AccountSummary } from '../stores/accounts'
 import { apiFetch } from '../api'
 import { useI18n } from 'vue-i18n'
+import { usePhoneLayout } from '@nubisco/ui'
 import LocaleBadge from '../components/LocaleBadge.vue'
 
 const auth = useAuthStore()
+const accountsStore = useAccountsStore()
 const { t } = useI18n()
+const { phone } = usePhoneLayout()
 interface Project {
   id: string
   name: string
   slug: string
+  accountId?: string
 }
 
 interface Task {
@@ -119,12 +170,60 @@ interface Task {
 }
 
 const tasks = ref<Task[]>([])
-const projects = ref<Project[]>([])
+const projectsByAccount = ref<Record<string, Project[]>>({})
 const loading = ref(true)
 const showForm = ref(false)
 const newName = ref('')
 const newSlug = ref('')
+const newAccountId = ref<string>('')
 const formError = ref('')
+const showAccountForm = ref(false)
+const newAccountName = ref('')
+const accountError = ref('')
+
+// One section per account. The current account first, so someone in several
+// lands on where they were.
+const groups = computed(() => {
+  const list = [...accountsStore.accounts]
+  const current = accountsStore.current?.id
+  list.sort((a, b) => (a.id === current ? -1 : b.id === current ? 1 : 0))
+  return list.map((account: AccountSummary) => ({ account, projects: projectsByAccount.value[account.id] ?? [] }))
+})
+const grouped = computed(() => accountsStore.accounts.length > 1)
+const accountOptions = computed(() => accountsStore.accounts.map((a) => ({ label: a.name, value: a.id })))
+
+async function loadProjects() {
+  const entries = await Promise.all(
+    accountsStore.accounts.map(
+      async (a) =>
+        [a.id, await apiFetch<Project[]>(`/projects?account=${encodeURIComponent(a.id)}`).catch(() => [])] as const,
+    ),
+  )
+  projectsByAccount.value = Object.fromEntries(entries)
+}
+
+function toggleProjectForm() {
+  showForm.value = !showForm.value
+  showAccountForm.value = false
+  newAccountId.value = accountsStore.current?.id ?? accountsStore.accounts[0]?.id ?? ''
+}
+
+function toggleAccountForm() {
+  showAccountForm.value = !showAccountForm.value
+  showForm.value = false
+}
+
+async function createAccount() {
+  accountError.value = ''
+  try {
+    const account = await accountsStore.create(newAccountName.value.trim())
+    projectsByAccount.value = { ...projectsByAccount.value, [account.id]: [] }
+    showAccountForm.value = false
+    newAccountName.value = ''
+  } catch (e: unknown) {
+    accountError.value = e instanceof Error ? e.message : 'Failed to create the account'
+  }
+}
 
 const STATUS_LABELS = computed(() => ({
   IN_PROGRESS: t('common.status.IN_PROGRESS'),
@@ -147,9 +246,9 @@ const tasksByProject = computed(() => {
 
 onMounted(async () => {
   try {
-    const [t, p] = await Promise.all([apiFetch<Task[]>('/auth/me/tasks'), apiFetch<Project[]>('/projects')])
+    await accountsStore.load()
+    const [t] = await Promise.all([apiFetch<Task[]>('/auth/me/tasks'), loadProjects()])
     tasks.value = t
-    projects.value = p
   } finally {
     loading.value = false
   }
@@ -166,11 +265,15 @@ function autoSlug() {
 async function createProject() {
   formError.value = ''
   try {
-    const project = await apiFetch<Project>('/projects', {
+    const accountId = newAccountId.value || accountsStore.current?.id || ''
+    const project = await apiFetch<Project>(`/projects?account=${encodeURIComponent(accountId)}`, {
       method: 'POST',
       body: JSON.stringify({ name: newName.value, slug: newSlug.value }),
     })
-    projects.value.push(project)
+    projectsByAccount.value = {
+      ...projectsByAccount.value,
+      [accountId]: [project, ...(projectsByAccount.value[accountId] ?? [])],
+    }
     showForm.value = false
     newName.value = ''
     newSlug.value = ''
@@ -185,8 +288,18 @@ async function createProject() {
   max-width: 960px;
 }
 
+.topbar-actions {
+  display: flex;
+  gap: var(--nb-spacing-8);
+}
+
 .welcome {
   margin-bottom: 2rem;
+
+  &__action {
+    margin-top: var(--nb-spacing-12);
+  }
+
   h2 {
     margin: 0;
     font-size: 1.5rem;

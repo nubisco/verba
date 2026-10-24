@@ -2,11 +2,14 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { apiFetch } from '../api'
 import { useAuthStore } from './auth'
+import { useAccountsStore } from './accounts'
 
 export interface ProjectData {
   id: string
   name: string
   slug: string
+  /** The account the project belongs to. Opening the project makes it the current account. */
+  accountId?: string
   avatar?: string | null
   aiEnabled?: boolean
   /** Whether the project has its own AI key stored. The key itself never reaches the browser. */
@@ -57,6 +60,7 @@ interface Translation {
 
 export const useProjectStore = defineStore('project', () => {
   const auth = useAuthStore()
+  const accountsStore = useAccountsStore()
 
   const projectId = ref<string | null>(null)
   const project = ref<ProjectData | null>(null)
@@ -94,6 +98,7 @@ export const useProjectStore = defineStore('project', () => {
         apiFetch<Task[]>('/auth/me/tasks').catch(() => []),
       ])
       project.value = proj
+      accountsStore.select(proj.accountId)
       locales.value = locs
       namespaces.value = nsList
       members.value = memberList
@@ -129,6 +134,7 @@ export const useProjectStore = defineStore('project', () => {
     if (projectId.value === id && project.value) return
     projectId.value = id
     project.value = await apiFetch<ProjectData>(`/projects/${id}`)
+    accountsStore.select(project.value.accountId)
   }
 
   return {

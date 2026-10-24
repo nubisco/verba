@@ -1,9 +1,8 @@
 import type { RouteRecordRaw } from 'vue-router'
-import AdminEntitlementsView from '../../../views/AdminEntitlementsView.vue'
 
+// Plan & Entitlements moved under the account's Settings (operators only).
 export const route: RouteRecordRaw = {
   path: 'admin/entitlements',
   name: 'admin-entitlements',
-  component: AdminEntitlementsView,
-  meta: { requiresAuth: true, requiresAdmin: true },
+  redirect: { name: 'account-settings', query: { section: 'plan' } },
 }

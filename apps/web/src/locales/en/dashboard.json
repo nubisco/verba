@@ -3,6 +3,13 @@
   "myTasks": "My Active Tasks",
   "myProjects": "My Projects",
   "noTasks": "🎉 No active tasks: you're all caught up!",
-  "noProjects": "No projects yet.",
-  "loading": "Loading…"
+  "noProjects": "No projects in this account yet.",
+  "loading": "Loading…",
+  "choose": "Choose a project to work on, {name}.",
+  "newAccount": "New account",
+  "account": "Account",
+  "accountName": "Account name",
+  "accountNamePlaceholder": "e.g. Acme",
+  "noAccountTitle": "You are not in any account yet",
+  "noAccountBody": "An account owner adds you to their account. Once they have, its projects appear here."
 }

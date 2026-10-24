@@ -17,6 +17,8 @@ interface User {
   // the Nubisco Platform. Used by the account switcher to mark the current
   // identity (per the multi-account guide, never platform_active).
   platformSub?: string | null
+  // A Platform admin of this app or an instance operator: may create accounts.
+  canCreateAccounts?: boolean
 }
 
 export const useAuthStore = defineStore('auth', () => {
