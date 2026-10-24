@@ -123,6 +123,21 @@ describe('JwksVerifier', () => {
     await expect(verifier.verify('a.b')).rejects.toThrow(/Malformed JWT/)
   })
 
+  it('refuses a token minted for another app when it is told which app it serves', async () => {
+    const verifier = new JwksVerifier(ISSUER, {
+      fetchImpl: stubFetch({ [ISSUER]: () => json(jwks()) }),
+      expectedApp: 'nubisco-verba',
+    })
+    await expect(verifier.verify(signJwt(validClaims({ app: 'nubisco-acta', app_plan: 'pro' })))).rejects.toThrow(
+      /not minted for this app/,
+    )
+    await expect(verifier.verify(signJwt(validClaims()))).rejects.toThrow(/not minted for this app/)
+    await expect(verifier.verify(signJwt(validClaims({ app: 'nubisco-verba' })))).resolves.toMatchObject({
+      app: 'nubisco-verba',
+    })
+    await expect(verifier.verify(signJwt(validClaims({ aud: ['other', 'nubisco-verba'] })))).resolves.toBeTruthy()
+  })
+
   it('refetches the JWKS once when the key id is unknown, so rotation does not lock everyone out', async () => {
     let served = 0
     const fetchImpl = stubFetch({
@@ -308,5 +323,18 @@ describe('configuration from the environment', () => {
 
     process.env.PLATFORM_SERVER_FLOW = 'true'
     expect(ssoRuntimeFromEnv(process.env)?.mode).toBe('handover')
+  })
+
+  it('wires the handover verifier to refuse tokens minted for another Nubisco app', async () => {
+    process.env.LICENSE_KEY = 'licensed'
+    process.env.PLATFORM_ISSUER = ISSUER
+    process.env.PLATFORM_APP_ID = 'nubisco-verba'
+    process.env.PLATFORM_SERVER_FLOW = 'true'
+    const runtime = ssoRuntimeFromEnv(process.env, { fetchImpl: stubFetch({ [ISSUER]: () => json(jwks()) }) })
+    if (runtime?.mode !== 'handover') throw new Error('expected the handover runtime')
+    await expect(runtime.verifier.verify(signJwt(validClaims({ app: 'nubisco-acta' })))).rejects.toThrow(
+      /not minted for this app/,
+    )
+    await expect(runtime.verifier.verify(signJwt(validClaims({ app: 'nubisco-verba' })))).resolves.toBeTruthy()
   })
 })
