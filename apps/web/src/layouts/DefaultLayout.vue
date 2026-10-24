@@ -56,11 +56,21 @@
     </template>
 
     <!-- ═══ Bottom actions ═══ -->
+    <!-- The order every rail keeps (fleet standard, "Every rail has the same
+         anatomy"): Documentation, Notifications, the person. There is no
+         tenant Settings (gear) entry: Verba has no account level above its
+         projects yet, so there are no account settings to put there. -->
     <template #sidebar-bottom>
+      <!-- A new tab, so leaving to read the docs does not lose the page. -->
+      <NbSidebarMenu density="compact">
+        <NbSidebarMenuItem icon="book" label="Documentation" :href="DOCS_URL" @click.prevent="openDocs" />
+      </NbSidebarMenu>
+
       <NotificationBell />
 
-      <!-- `identity` follows the rail: a labelled row with name and email
-           expanded, the round avatar collapsed. -->
+      <!-- `identity` follows the rail: a labelled row with the picture, name
+           and email expanded, the round avatar collapsed. Personal settings
+           (language) live in this menu. -->
       <NbUserMenu
         v-if="auth.user"
         :user="menuUser"
@@ -75,15 +85,19 @@
         @remove="remove"
         @profile="router.push('/profile')"
         @sign-out="auth.logout()"
-      />
-
-      <NbSidebarMenu v-if="availableLocales.length > 1" density="compact">
-        <NbSidebarMenuItem
-          :label="`Language: ${locale}`"
-          icon="globe"
-          @click="changeLocale(locale === 'en' ? 'pt' : 'en')"
-        />
-      </NbSidebarMenu>
+      >
+        <template v-if="availableLocales.length > 1" #default>
+          <div class="user-language">
+            <p class="user-language__title">Language</p>
+            <NbRadio
+              name="user-menu-language"
+              :options="localeOptions"
+              :model-value="locale"
+              @update:model-value="changeLocale(String($event))"
+            />
+          </div>
+        </template>
+      </NbUserMenu>
     </template>
 
     <!-- ═══ Topbar ═══ -->
@@ -145,10 +159,18 @@ const {
   remove,
 } = usePlatformAccounts()
 
+// The picture is Platform's OIDC `picture` claim, stored at sign-in. Without
+// one NbUserMenu draws initials.
 const menuUser = computed(() => ({
   email: auth.user?.email ?? '',
   name: auth.user?.name ?? undefined,
+  picture: auth.user?.avatarUrl ?? undefined,
 }))
+
+const DOCS_URL = 'https://docs.nubisco.io/verba/'
+function openDocs(): void {
+  window.open(DOCS_URL, '_blank', 'noopener')
+}
 
 watch(
   () => navStore.projectId,
@@ -166,6 +188,7 @@ onMounted(async () => {
 const { t, locale } = useI18n()
 
 const availableLocales = [{ code: 'en', name: 'English' }]
+const localeOptions = availableLocales.map((l) => ({ label: l.name, value: l.code }))
 
 async function changeLocale(code: string) {
   await setLocale(code)
@@ -218,6 +241,18 @@ watch(
   width: 100%;
   color: inherit;
   text-decoration: none;
+}
+
+// The language choice in the account menu, laid out as Acta and the CMS lay
+// out their Appearance choice there.
+.user-language {
+  padding: var(--nb-spacing-8) var(--nb-spacing-12);
+
+  &__title {
+    margin: 0 0 var(--nb-spacing-8);
+    color: var(--nb-c-text-subtle);
+    font-size: var(--nb-type-body-sm-size);
+  }
 }
 
 // Inspector slot content area

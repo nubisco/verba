@@ -10,6 +10,9 @@ interface User {
   name?: string | null
   isGlobalAdmin?: boolean
   notificationOpenMode?: string
+  // The Platform avatar (the OIDC `picture` claim at the last sign-in), or
+  // null, which draws initials.
+  avatarUrl?: string | null
   // Platform subject (sub) this session was issued for, when signed in via
   // the Nubisco Platform. Used by the account switcher to mark the current
   // identity (per the multi-account guide, never platform_active).

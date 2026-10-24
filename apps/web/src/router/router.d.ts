@@ -35,6 +35,11 @@ export interface NavMeta {
    */
   activeFor?: string[]
   /**
+   * Nested route names that must not mark this item active, because they have
+   * a rail item of their own (project-settings under the project dashboard).
+   */
+  inactiveFor?: string[]
+  /**
    * EE entitlement key. When set, the item is only shown if the user's current
    * plan includes this feature. Checked against /admin/entitlements.
    */

@@ -18,15 +18,10 @@ export const route: RouteRecordRaw = {
       label: 'nav.dashboard',
       order: 0,
       routeName: 'project',
-      // Active for all child management tabs
-      activeFor: [
-        'project-overview',
-        'project-settings',
-        'project-history',
-        'project-import',
-        'project-export',
-        'import-run',
-      ],
+      // Active for the child management tabs, except Settings, which has its
+      // own rail item.
+      activeFor: ['project-overview', 'project-history', 'project-import', 'project-export', 'import-run'],
+      inactiveFor: ['project-settings'],
     },
   },
   children: [overviewRoute, settingsRoute, historyRoute, importRoute, exportRoute, importRunRoute],

@@ -1,52 +1,60 @@
 <template>
-  <div id="notif-bell-root" class="notif-bell">
-    <!-- The bell is the rail's own menu item: a labelled row with the count
-         when the rail is expanded, the icon with the count and a flyout label
-         when it is collapsed. -->
-    <NbSidebarMenu density="compact">
-      <NbSidebarMenuItem
-        label="Notifications"
-        :icon="unreadCount > 0 ? 'bell-ringing' : 'bell'"
-        :active="open"
-        :badge="unreadCount > 0 ? (unreadCount > 99 ? '99+' : unreadCount) : undefined"
-        badge-variant="danger"
-        @click="toggleDropdown"
-      />
-    </NbSidebarMenu>
+  <!-- The bell is @nubisco/ui's notification centre with the rail's own menu
+       item as its trigger, as in Acta (web/src/components/NotificationBell.vue):
+       a labelled row with the count when the rail is expanded, the icon with
+       the count on its corner when it is collapsed. The panel, its rows, the
+       empty, loading and error states and the phone sheet all belong to
+       NbNotificationCenter and are not restyled here. -->
+  <NbNotificationCenter
+    v-model:open="open"
+    label="Notifications"
+    :unread-count="unreadCount"
+    :item-count="notifications.length"
+    :loading="loading"
+    :error="failed"
+    error-title="Could not load your notifications"
+    error-description="The list below may be out of date."
+    empty-title="No notifications yet"
+    empty-description="You hear about comments that mention you, and comments on keys you are assigned to."
+    :width="360"
+    side="right"
+    align="end"
+    close-on-select
+    close-on-navigate
+    @mark-all-read="markAllRead"
+    @retry="load"
+  >
+    <template #trigger="{ triggerProps, setTriggerRef, toggle }">
+      <NbSidebarMenu density="compact">
+        <NbSidebarMenuItem
+          :ref="setTriggerRef"
+          v-bind="triggerProps"
+          label="Notifications"
+          :icon="unreadCount > 0 ? 'bell-ringing' : 'bell'"
+          :active="open"
+          :badge="unreadCount > 0 ? unreadCount : undefined"
+          badge-variant="danger"
+          @click="toggle"
+        />
+      </NbSidebarMenu>
+    </template>
 
-    <div v-if="open" class="notif-dropdown" @click.stop>
-      <div class="notif-header">
-        <span class="notif-title">Notifications</span>
-        <NbButton v-if="unreadCount > 0" variant="ghost" @click="markAllRead">Mark all read</NbButton>
-      </div>
-
-      <div class="notif-list">
-        <div v-if="notifications.length === 0" class="notif-empty">No notifications yet</div>
-        <div
-          v-for="n in notifications"
-          :key="n.id"
-          class="notif-item"
-          :class="{ unread: !n.isRead }"
-          @click="onClickNotification(n)"
-        >
-          <div class="notif-text">
-            <strong>{{ actorLabel(n) }}</strong> {{ typeLabel(n) }}
-            <span v-if="n.key">
-              on <em>{{ n.key.name }}</em></span
-            >
-          </div>
-          <div v-if="n.comment" class="notif-excerpt">
-            {{ commentExcerpt(n) }}
-          </div>
-          <div class="notif-time">{{ timeAgo(n.createdAt) }}</div>
-        </div>
-      </div>
-    </div>
-  </div>
+    <NbNotificationCenterItem
+      v-for="n in notifications"
+      :key="n.id"
+      :title="titleFor(n)"
+      :body="commentExcerpt(n) || undefined"
+      :time="n.createdAt"
+      :read="n.isRead"
+      :icon="n.type === 'MENTION' ? 'at' : 'chat-circle'"
+      variant="info"
+      @select="onClickNotification(n)"
+    />
+  </NbNotificationCenter>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiFetch } from '../api'
 import { useAuthStore } from '../stores/auth'
@@ -83,38 +91,43 @@ const unreadCount = ref(0)
 const notifications = ref<Notification[]>([])
 const open = ref(false)
 const loaded = ref(false)
+const loading = ref(false)
+const failed = ref(false)
 
 async function fetchCount() {
   try {
     const data = await apiFetch<{ count: number }>('/notifications/count')
     unreadCount.value = data.count
   } catch {
-    // non-critical
+    // non-critical: the count is refreshed when the panel opens
   }
 }
 
-async function loadNotifications() {
-  if (loaded.value) return
+/**
+ * A failure is its own state and not a flavour of empty: a panel that says
+ * "no notifications yet" because the request failed is the one wrong answer.
+ */
+async function load() {
+  loading.value = notifications.value.length === 0
+  failed.value = false
   try {
     notifications.value = await apiFetch<Notification[]>('/notifications')
     loaded.value = true
   } catch {
-    // non-critical
+    failed.value = true
+  } finally {
+    loading.value = false
   }
 }
 
-async function toggleDropdown() {
-  open.value = !open.value
-  if (open.value) await loadNotifications()
-}
+watch(open, (now) => {
+  if (now && !loaded.value) void load()
+})
 
 async function markAllRead() {
   try {
     await apiFetch('/notifications/read-all', { method: 'PATCH' })
-    notifications.value = notifications.value.map((n) => ({
-      ...n,
-      isRead: true,
-    }))
+    notifications.value = notifications.value.map((n) => ({ ...n, isRead: true }))
     unreadCount.value = 0
   } catch {
     // non-critical
@@ -131,7 +144,6 @@ async function onClickNotification(notif: Notification) {
       // non-critical
     }
   }
-  open.value = false
   const mode = (auth.user as { notificationOpenMode?: string } | null)?.notificationOpenMode ?? 'inspector'
   if (mode === 'modal') {
     // Modal mode: go to the board without a keyId path param; the board will
@@ -147,8 +159,10 @@ function actorLabel(notif: Notification): string {
   return notif.actor.name?.trim() || notif.actor.email
 }
 
-function typeLabel(notif: Notification): string {
-  return notif.type === 'MENTION' ? 'mentioned you' : 'commented on a key you are assigned to'
+function titleFor(notif: Notification): string {
+  const what = notif.type === 'MENTION' ? 'mentioned you' : 'commented on a key you are assigned to'
+  const where = notif.key ? ` on ${notif.key.name}` : ''
+  return `${actorLabel(notif)} ${what}${where}`
 }
 
 function commentExcerpt(notif: Notification): string {
@@ -157,143 +171,21 @@ function commentExcerpt(notif: Notification): string {
   return t.length > 80 ? t.slice(0, 80) + '…' : t
 }
 
-function timeAgo(ts: string): string {
-  const diff = Date.now() - new Date(ts).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  return `${Math.floor(hrs / 24)}d ago`
-}
-
-// Handle WS notification.new messages on the project WS connections.
-// We subscribe globally using a shared event that can be emitted from any active useProjectWs instance.
-function handleWsMessage(msg: Record<string, unknown>) {
-  if (msg.type === 'notification.new') {
-    const notif = msg.notification as Notification
-    unreadCount.value += 1
-    if (loaded.value) {
-      notifications.value.unshift(notif)
-    }
-  }
-}
-
-// Register global WS message handler via custom event
+// Live delivery: DefaultLayout re-dispatches every frame of the project's
+// WebSocket as a window event, so a new notification reaches the bell here.
 function onGlobalWsMessage(e: Event) {
-  handleWsMessage((e as CustomEvent).detail)
+  const msg = (e as CustomEvent).detail as Record<string, unknown>
+  if (msg.type !== 'notification.new') return
+  unreadCount.value += 1
+  if (loaded.value) notifications.value.unshift(msg.notification as Notification)
 }
 
 onMounted(async () => {
-  await fetchCount()
   window.addEventListener('verba:ws-message', onGlobalWsMessage)
+  await fetchCount()
 })
 
 onUnmounted(() => {
   window.removeEventListener('verba:ws-message', onGlobalWsMessage)
 })
-
-// Close dropdown on outside click
-function onDocClick(e: MouseEvent) {
-  const el = document.getElementById('notif-bell-root')
-  if (el && !el.contains(e.target as Node)) {
-    open.value = false
-  }
-}
-onMounted(() => document.addEventListener('click', onDocClick))
-onUnmounted(() => document.removeEventListener('click', onDocClick))
 </script>
-
-<style lang="scss" scoped>
-.notif-bell {
-  position: relative;
-}
-
-// Opens beside the rail, level with the bell's bottom edge.
-.notif-dropdown {
-  position: absolute;
-  bottom: 0;
-  left: calc(100% + 10px);
-  width: 340px;
-  max-height: 400px;
-  background: #fff;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-  z-index: 200;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.notif-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.65rem 0.85rem;
-  border-bottom: 1px solid #f0f0f0;
-  flex-shrink: 0;
-}
-
-.notif-title {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: #1a1a2e;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.notif-list {
-  overflow-y: auto;
-  flex: 1;
-}
-
-.notif-empty {
-  padding: 1.5rem;
-  text-align: center;
-  color: #999;
-  font-size: 0.85rem;
-}
-
-.notif-item {
-  padding: 0.65rem 0.85rem;
-  border-bottom: 1px solid #f5f5f5;
-  cursor: pointer;
-  transition: background 0.12s;
-
-  &:last-child {
-    border-bottom: none;
-  }
-  &:hover {
-    background: #f7f7fb;
-  }
-
-  &.unread {
-    background: #f0f0ff;
-    &:hover {
-      background: #e8e8fb;
-    }
-  }
-}
-
-.notif-text {
-  font-size: 0.8rem;
-  color: #333;
-  line-height: 1.4;
-}
-
-.notif-excerpt {
-  font-size: 0.75rem;
-  color: #777;
-  margin-top: 0.2rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.notif-time {
-  font-size: 0.7rem;
-  color: #aaa;
-  margin-top: 0.2rem;
-}
-</style>

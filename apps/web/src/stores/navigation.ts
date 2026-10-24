@@ -24,10 +24,11 @@ function resolveHref(routeName: string, params?: Record<string, string>): string
   }
 }
 
-function checkActive(routeName: string, activeFor?: string[]): boolean {
+function checkActive(routeName: string, activeFor?: string[], inactiveFor?: string[]): boolean {
   const current = router.currentRoute.value
   const currentName = current.name as string | undefined
   if (currentName === routeName) return true
+  if (inactiveFor?.includes(currentName ?? '')) return false
   if (activeFor?.includes(currentName ?? '')) return true
   // Check if routeName matches any ancestor in the matched chain (nested routes)
   if (current.matched.some((r) => r.name === routeName)) return true
@@ -41,7 +42,7 @@ function buildItem(nav: NavMeta, params?: Record<string, string>): NavItem {
     order: nav.order ?? 99,
     routeName: nav.routeName,
     href: resolveHref(nav.routeName, params),
-    isActive: checkActive(nav.routeName, nav.activeFor),
+    isActive: checkActive(nav.routeName, nav.activeFor, nav.inactiveFor),
     entitlement: nav.entitlement,
     featureFlag: nav.featureFlag,
   }
