@@ -245,6 +245,35 @@ function exportLocale(localeCode: string) {
   &:last-child {
     border-bottom: none;
   }
+
+  // Five fixed columns need about 330px, more than a phone's card has. On a
+  // phone the bar takes a second line, so the export button stays on screen.
+  @include variables.phone {
+    grid-template-columns: auto minmax(0, 1fr) auto 28px;
+    grid-template-areas:
+      'badge name label export'
+      'bar bar bar bar';
+    row-gap: 0.4rem;
+
+    > :nth-child(1) {
+      grid-area: badge;
+    }
+    > :nth-child(2) {
+      grid-area: name;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    > :nth-child(3) {
+      grid-area: bar;
+    }
+    > :nth-child(4) {
+      grid-area: label;
+    }
+    > :nth-child(5) {
+      grid-area: export;
+    }
+  }
 }
 .locale-name {
   font-size: 0.85rem;
