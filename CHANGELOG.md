@@ -1,3 +1,11 @@
+# [1.15.0](https://github.com/nubisco/verba/compare/v1.14.0...v1.15.0) (2026-10-24)
+
+
+### Features
+
+* **auth:** keep the Platform avatar, and return it from /auth/me ([eca77ec](https://github.com/nubisco/verba/commit/eca77ec9582b387843e84280788ca11911cea97b))
+* **web:** the rail's fleet anatomy, with the bell on NbNotificationCenter ([c9226af](https://github.com/nubisco/verba/commit/c9226af7dde2a9b25d7078ed39fd750f1a43ff78))
+
 # [1.14.0](https://github.com/nubisco/verba/compare/v1.13.1...v1.14.0) (2026-10-24)
 
 
