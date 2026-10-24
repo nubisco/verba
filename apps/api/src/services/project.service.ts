@@ -1,36 +1,35 @@
 import { prisma } from '../prisma.js'
 import type { CreateProjectInput, UpdateProjectInput } from '../schemas/project.schema.js'
-import { encrypt, isEncrypted } from './encryption.service.js'
+import { encrypt } from './encryption.service.js'
+import { isOperator } from './operator.service.js'
 
 function notFound(): never {
   throw Object.assign(new Error('Project not found'), { statusCode: 404 })
 }
 
+/** The projects this person is a member of. Operators included: see acl.service. */
 export async function listProjects(userId: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { isGlobalAdmin: true },
-  })
-  // Global admins see all projects; regular users only see projects they're a member of
-  if (user?.isGlobalAdmin) {
-    return prisma.project.findMany({ orderBy: { createdAt: 'desc' } })
-  }
   const memberships = await prisma.membership.findMany({
     where: { userId },
     select: { projectId: true },
   })
   const projectIds = memberships.map((m) => m.projectId)
-  return prisma.project.findMany({
+  const projects = await prisma.project.findMany({
     where: { id: { in: projectIds } },
     orderBy: { createdAt: 'desc' },
   })
+  return projects.map(maskAiKey)
+}
+
+/** Never send the stored key, encrypted or not, to a client: only whether there is one. */
+function maskAiKey<T extends { aiApiKey: string | null }>(project: T): T {
+  return { ...project, aiApiKey: project.aiApiKey ? '***' : null }
 }
 
 export async function getProject(id: string) {
   const project = await prisma.project.findUnique({ where: { id } })
   if (!project) notFound()
-  // Never expose the raw (encrypted) key to clients: just signal presence
-  return { ...project, aiApiKey: project.aiApiKey ? '***' : null }
+  return maskAiKey(project)
 }
 
 // Project cap per platform plan. Platform owns the plan name; Verba owns the
@@ -58,11 +57,7 @@ async function resolveUniqueSlug(base: string): Promise<string> {
 }
 
 export async function createProject(userId: string, plan: string | undefined, data: CreateProjectInput) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { isGlobalAdmin: true },
-  })
-  if (!user?.isGlobalAdmin) {
+  if (!(await isOperator(userId))) {
     const cap = getProjectCapForPlan(plan)
     if (Number.isFinite(cap)) {
       const ownedAdminCount = await prisma.membership.count({
@@ -77,7 +72,7 @@ export async function createProject(userId: string, plan: string | undefined, da
     }
   }
   const slug = await resolveUniqueSlug(data.slug)
-  return prisma.project.create({ data: { ...data, slug } })
+  return maskAiKey(await prisma.project.create({ data: { ...data, slug } }))
 }
 
 export async function updateProject(id: string, data: UpdateProjectInput) {
@@ -88,14 +83,16 @@ export async function updateProject(id: string, data: UpdateProjectInput) {
     })
     if (existing) throw Object.assign(new Error('Slug already taken'), { statusCode: 409 })
   }
-  // Encrypt AI API key before persisting; skip if unchanged (masked placeholder)
+  // Encrypt AI API key before persisting; skip if unchanged (masked placeholder).
+  // Whatever the client sends is encrypted, including something shaped like
+  // ciphertext: storing it as-is would let a client plant a value.
   const payload: typeof data = { ...data }
   if (payload.aiApiKey === '***' || payload.aiApiKey === '') {
     delete payload.aiApiKey // don't overwrite the stored key
-  } else if (payload.aiApiKey && !isEncrypted(payload.aiApiKey)) {
+  } else if (payload.aiApiKey) {
     payload.aiApiKey = encrypt(payload.aiApiKey)
   }
-  return prisma.project.update({ where: { id }, data: payload })
+  return maskAiKey(await prisma.project.update({ where: { id }, data: payload }))
 }
 
 export async function deleteProject(id: string) {

@@ -20,8 +20,8 @@ COPY apps/api ./apps/api
 
 # Switch Prisma provider to PostgreSQL for production and generate the client
 # into apps/api/src/generated (no database needed, so DATABASE_URL is unset).
+# The migrations in apps/api/prisma/migrations are already PostgreSQL.
 RUN sed -i 's/provider = "sqlite"/provider = "postgresql"/' apps/api/prisma/schema.prisma \
-    && sed -i 's/provider = "sqlite"/provider = "postgresql"/' apps/api/prisma/migrations/migration_lock.toml \
     && pnpm --filter @nubisco/verba-api exec prisma generate \
     && mkdir -p packages/ee/src \
     && printf 'export function isLicenseValid() { return false }\nexport function resolveEntitlements() { return {} }\nexport function hasFeature() { return false }\n' > packages/ee/src/index.ts \
@@ -42,7 +42,7 @@ WORKDIR /app
 
 # Copy the self-contained bundle
 COPY --from=bundle --chown=node:node /bundle .
-# Prisma schema (postgresql), migrations and CLI config for the boot-time db push
+# Prisma schema (postgresql), migrations and CLI config for the boot-time migrate deploy
 COPY --from=build --chown=node:node /app/apps/api/prisma ./prisma
 COPY --from=build --chown=node:node /app/apps/api/prisma.config.ts ./prisma.config.ts
 
@@ -54,4 +54,9 @@ ENV VERBA_GIT_SHA=$BUILD_HASH
 ENV NODE_ENV=production
 EXPOSE 4000
 USER node
-CMD ["sh", "-c", "node_modules/.bin/prisma db push --accept-data-loss 2>/dev/null || node_modules/.bin/prisma db push && node dist/index.js"]
+# Apply pending migrations, then start. `migrate deploy` only ever runs the
+# reviewed SQL in prisma/migrations, in order, and stops on the first failure,
+# so a schema change can no longer drop a column on its own. A database created
+# by the old `db push` start-up has no migration history: it must be baselined
+# once by hand before this image runs against it (docs/self-hosting.md).
+CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && node dist/index.js"]

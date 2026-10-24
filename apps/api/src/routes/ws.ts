@@ -1,6 +1,8 @@
 import type { FastifyInstance } from 'fastify'
 import type { WebSocket } from '@fastify/websocket'
 import { wsManager } from '../ws/index.js'
+import { requireProjectRole } from '../services/acl.service.js'
+import { Role } from '../types.js'
 
 export async function wsRoutes(app: FastifyInstance) {
   app.get<{ Params: { projectId: string } }>(
@@ -34,6 +36,19 @@ export async function wsRoutes(app: FastifyInstance) {
         socket.close(1008, 'Unauthorized')
         return
       }
+
+      // A room carries every live edit, comment and presence event of its
+      // project, so joining one is reading the project: the same READER check
+      // as the REST routes. Without it any signed-in user could listen to any
+      // project by its id.
+      try {
+        await requireProjectRole(userId, projectId, Role.READER)
+      } catch {
+        socket.close(1008, 'Forbidden')
+        return
+      }
+      // The browser may have gone while the check ran.
+      if (socket.readyState !== socket.OPEN) return
 
       wsManager.join(projectId, socket)
       wsManager.addUserConnection(userId, socket)

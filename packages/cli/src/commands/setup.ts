@@ -137,6 +137,17 @@ export async function runSetupWizard(): Promise<void> {
     jwtSecret = manualSecret as string
   }
 
+  // Instance operator: manages accounts. Named in config, never "whoever
+  // signed up first".
+  const { operatorEmail } = await inquirer.prompt([
+    {
+      type: 'input',
+      name: 'operatorEmail',
+      message: 'Your email address (the instance operator, who manages accounts):',
+      validate: (v: string) => /^[^@\s]+@[^@\s]+$/.test(v.trim()) || 'Enter an email address',
+    },
+  ])
+
   // SMTP (optional)
   const { configureSMTP } = await inquirer.prompt([
     {
@@ -185,8 +196,17 @@ export async function runSetupWizard(): Promise<void> {
 
   // Write .env
   const envContent =
-    [`DATABASE_URL="${databaseUrl}"`, `JWT_SECRET="${jwtSecret}"`, `PORT=4000`, smtpVars].filter(Boolean).join('\n') +
-    '\n'
+    [
+      `DATABASE_URL="${databaseUrl}"`,
+      `JWT_SECRET="${jwtSecret}"`,
+      `VERBA_OPERATORS="${String(operatorEmail).trim().toLowerCase()}"`,
+      // Encrypts each project's AI provider key, and nothing else.
+      `AI_ENCRYPTION_KEY="${crypto.randomBytes(32).toString('hex')}"`,
+      `PORT=4000`,
+      smtpVars,
+    ]
+      .filter(Boolean)
+      .join('\n') + '\n'
 
   writeFileSync(envPath, envContent, 'utf8')
   console.log(chalk.green(`\n✔  Written ${envPath}`))
@@ -196,7 +216,7 @@ export async function runSetupWizard(): Promise<void> {
     {
       type: 'confirm',
       name: 'runMigrateNow',
-      message: 'Create the database schema now (prisma db push)?',
+      message: 'Create the database schema now?',
       default: true,
     },
   ])
@@ -210,10 +230,11 @@ export async function runSetupWizard(): Promise<void> {
           exec: (command, cwd) => execSync(command, { cwd, stdio: 'inherit' }),
           log: (message) => console.log(message),
         },
+        databaseUrl,
       )
       console.log(chalk.green('Database schema applied.'))
     } catch (err) {
-      console.error(chalk.red('prisma db push failed. Check your database connection.'))
+      console.error(chalk.red('Creating the schema failed. Check your database connection.'))
       console.error(chalk.red((err as Error).message))
     }
   }
@@ -223,5 +244,5 @@ export async function runSetupWizard(): Promise<void> {
   console.log(chalk.cyan('  cd apps/api && pnpm dev\n'))
   console.log('Start the web app:')
   console.log(chalk.cyan('  cd apps/web && pnpm dev\n'))
-  console.log('The first user who registers will become the global admin.\n')
+  console.log(`Sign in as ${String(operatorEmail).trim()} to manage accounts (VERBA_OPERATORS in apps/api/.env).\n`)
 }

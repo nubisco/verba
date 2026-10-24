@@ -70,7 +70,7 @@ export function ssoRuntimeFromEnv(
     return {
       mode: 'handover',
       config: handover,
-      verifier: new JwksVerifier(handover.issuer, { fetchImpl: opts.fetchImpl }),
+      verifier: new JwksVerifier(handover.issuer, { fetchImpl: opts.fetchImpl, expectedApp: handover.appId }),
     }
   }
 

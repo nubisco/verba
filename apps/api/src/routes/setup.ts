@@ -4,6 +4,8 @@ import { FastifyInstance } from 'fastify'
 import { prisma } from '../prisma.js'
 import { createOtpOnlyUser, register } from '../services/auth.service.js'
 import { getAuthConfig } from '../services/instance-config.service.js'
+import { startSession } from '../session.js'
+import { isOperatorEmail } from '../services/operator.service.js'
 import { z } from 'zod'
 
 const setupSchema = z.object({
@@ -32,6 +34,14 @@ export async function setupRoutes(app: FastifyInstance) {
     }
 
     const { adminEmail, adminPassword } = body.data
+    // The first account is no longer the operator by arriving first. Setup
+    // creates the operator's account, so the address must already be named
+    // in the configuration, which only whoever runs the server can change.
+    if (!isOperatorEmail(adminEmail)) {
+      return reply.status(403).send({
+        error: 'Add this address to VERBA_OPERATORS in the server configuration, restart, then run setup again',
+      })
+    }
     const authConfig = getAuthConfig()
     if (authConfig.localPasswordEnabled && !adminPassword) {
       return reply.status(400).send({ error: 'adminPassword is required when password auth is enabled' })
@@ -40,14 +50,8 @@ export async function setupRoutes(app: FastifyInstance) {
       ? await register(adminEmail, adminPassword ?? '')
       : await createOtpOnlyUser(adminEmail)
 
-    // Sign JWT and set cookie so the user is immediately logged in
-    const token = app.jwt.sign({ userId: user.id, email: user.email })
-    reply.setCookie('token', token, {
-      httpOnly: true,
-      sameSite: 'lax',
-      path: '/',
-      secure: process.env.NODE_ENV === 'production',
-    })
+    // Sign the user in straight away
+    await startSession(app, reply, { userId: user.id, email: user.email })
 
     return reply.status(201).send({ id: user.id, email: user.email })
   })

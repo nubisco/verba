@@ -81,7 +81,23 @@ export async function getKey(projectId: string, id: string) {
   return serializeKeyRecord(key)
 }
 
+/** A namespace id from the client, only if it is this project's. */
+async function assertNamespaceInProject(projectId: string, namespaceId: string) {
+  const ns = await prisma.namespace.findFirst({ where: { id: namespaceId, projectId }, select: { id: true } })
+  if (!ns) throw Object.assign(new Error('Namespace not found'), { statusCode: 404 })
+}
+
+/**
+ * That a key belongs to the project, soft-deleted or not (its history is
+ * still readable). A key from another project is answered as missing.
+ */
+export async function assertKeyInProject(projectId: string, keyId: string) {
+  const key = await prisma.key.findFirst({ where: { id: keyId, projectId }, select: { id: true } })
+  if (!key) notFound()
+}
+
 export async function createKey(projectId: string, data: CreateKeyInput, userId?: string) {
+  await assertNamespaceInProject(projectId, data.namespaceId)
   const existing = await prisma.key.findUnique({
     where: {
       namespaceId_name: { namespaceId: data.namespaceId, name: data.name },
@@ -133,6 +149,7 @@ export async function createKey(projectId: string, data: CreateKeyInput, userId?
 
 export async function updateKey(projectId: string, id: string, data: UpdateKeyInput) {
   await getKey(projectId, id)
+  if (data.namespaceId) await assertNamespaceInProject(projectId, data.namespaceId)
   const updated = await prisma.key.update({
     where: { id },
     data,

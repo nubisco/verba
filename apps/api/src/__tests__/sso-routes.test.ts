@@ -15,6 +15,11 @@ const { ssoRuntimeFromEnv, handoverAuthorizeUrl } = vi.hoisted(() => ({
   ),
 }))
 
+vi.mock('../services/operator.service.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../services/operator.service.js')>()),
+  syncOperatorFlag: vi.fn(),
+}))
+
 vi.mock('@nubisco/verba-ee', () => ({
   ssoRuntimeFromEnv,
   handoverAuthorizeUrl,

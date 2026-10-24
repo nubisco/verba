@@ -38,21 +38,23 @@ The wizard:
 3. Optionally configures SMTP for email / OTP delivery
 4. Creates the initial admin user
 5. Writes `apps/api/.env`
-6. Creates the database schema with `prisma db push`
+6. Creates the database schema (`prisma migrate deploy` on PostgreSQL, `prisma db push` on SQLite)
 
 ### Keeping the database schema up to date
 
-Verba brings the database in line with `apps/api/prisma/schema.prisma` using
-`prisma db push`. This is the one supported path, for SQLite and PostgreSQL
-alike. The files in `apps/api/prisma/migrations` are SQLite history from early
-development: they cannot be applied to PostgreSQL, so do not run
-`prisma migrate deploy`.
+**PostgreSQL** (every production install, and the Docker image) applies the
+migration history in `apps/api/prisma/migrations` with
+`prisma migrate deploy`. Each migration is SQL that was reviewed before it was
+released, applied once, in order, and recorded in the `_prisma_migrations`
+table. Nothing is ever dropped unless a migration says so in writing.
 
-**Docker:** nothing to run. The API image runs
-`prisma db push --accept-data-loss` every time it starts, so a new image brings
-the schema up to date on its own. `--accept-data-loss` means a release that
-removes a column or a table drops it, with its data, without asking. Back up the
-database before you pull a new image (see [Data Backup](#data-backup)).
+**SQLite** (development and single-server trials) has no migration history and
+is brought in line with `prisma db push`.
+
+**Docker:** nothing to run. The API container runs `prisma migrate deploy`
+every time it starts, before it serves anything, and refuses to start if a
+migration fails. Back up the database before you pull a new image anyway (see
+[Data Backup](#data-backup)).
 
 **From source:** after updating the code, run
 
@@ -60,14 +62,55 @@ database before you pull a new image (see [Data Backup](#data-backup)).
 node packages/cli/dist/index.js migrate
 ```
 
-It runs `prisma db push` from `apps/api`, against the `DATABASE_URL` in
-`apps/api/.env`. A change that would lose data stops with Prisma's warning and
-changes nothing. Back up the database, then run it again with
-`--accept-data-loss` to apply it:
+It reads `DATABASE_URL` from `apps/api/.env`. On PostgreSQL it runs
+`prisma migrate deploy`. On SQLite it runs `prisma db push`, where a change that
+would lose data stops with Prisma's warning and changes nothing. Back up the
+database, then run it again with `--accept-data-loss` to apply it:
 
 ```bash
 node packages/cli/dist/index.js migrate --accept-data-loss
 ```
+
+### Moving an existing database onto migrations
+
+Releases before the migration history created and updated the PostgreSQL
+schema with `prisma db push` at start-up, so an existing database has the right
+tables but no `_prisma_migrations` table. `migrate deploy` would then try to
+create every table again and stop. Such a database is **baselined once**: you
+tell Prisma that the first migration, `20261024000000_baseline`, is already in
+place, and every later migration then applies normally.
+
+Do this once, by hand, with the new image, **before** the API container starts
+on it. The baseline only describes a database that the last `db push` release
+brought fully up to date, so run the last `db push` release once first if you
+skipped versions.
+
+```bash
+# 1. Stop the API so nothing writes during the change, and back up.
+docker compose stop api
+docker compose exec postgres pg_dump -U verba verba > backup_before_baseline_$(date +%Y%m%d).sql
+
+# 2. Pull the new image without starting it.
+docker compose pull api
+
+# 3. Check the database is what the baseline expects. This is read only. It
+#    prints the SQL that would bring the database to the new schema, which must
+#    be exactly the migrations after the baseline (compare it with their
+#    migration.sql files in apps/api/prisma/migrations), and nothing else.
+docker compose run --rm --no-deps api \
+  node_modules/.bin/prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script
+
+# 4. Record the baseline as applied. This only writes to _prisma_migrations.
+docker compose run --rm --no-deps api \
+  node_modules/.bin/prisma migrate resolve --applied 20261024000000_baseline
+
+# 5. Start the API. It applies the migrations after the baseline, then serves.
+docker compose up -d api
+```
+
+If step 3 prints anything other than the post-baseline migrations, stop: the
+database has drifted from the release it was last pushed by. Restore nothing
+(nothing has changed yet) and ask for help on the issue tracker with the output.
 
 ---
 
@@ -75,33 +118,58 @@ node packages/cli/dist/index.js migrate --accept-data-loss
 
 Configure the API via environment variables in `apps/api/.env`:
 
-| Variable                | Default                    | Description                                                        |
-| ----------------------- | -------------------------- | ------------------------------------------------------------------ |
-| `PORT`                  | `4000`                     | API listen port                                                    |
-| `CORS_ORIGIN`           | `http://localhost:5173`    | Exact origin of your web frontend (no trailing slash)              |
-| `DATABASE_URL`          | `file:./prisma/dev.db`     | Prisma connection string. SQLite for dev, Postgres for prod        |
-| `JWT_SECRET`            | _(required in production)_ | Random 48-byte hex string. Rotate periodically                     |
-| `ENABLE_LOCAL_PASSWORD` | `false`                    | Enable password login/register endpoints; CE defaults to OTP-only  |
-| `DISABLE_LOCAL_OTP`     | `false`                    | Disable local OTP login                                            |
-| `PLATFORM_ISSUER`       | _(unset)_                  | Nubisco Platform issuer URL. Required with `PLATFORM_APP_ID`       |
-| `PLATFORM_APP_ID`       | _(unset)_                  | The app slug this deployment is registered under on Platform       |
-| `OIDC_ISSUER`           | _(unset)_                  | OpenID Connect issuer URL. Required with `OIDC_CLIENT_ID`          |
-| `OIDC_CLIENT_ID`        | _(unset)_                  | The client id your identity provider issued for Verba              |
-| `OIDC_CLIENT_SECRET`    | _(unset)_                  | The client secret, for a confidential client                       |
-| `OIDC_SCOPES`           | `openid email profile`     | Scopes requested at the provider                                   |
-| `OIDC_LABEL`            | `single sign-on`           | What the sign-in button calls your provider                        |
-| `OIDC_AUTO_PROVISION`   | `true`                     | Create a Verba user on first sign-in                               |
-| `PUBLIC_API_URL`        | _(derived)_                | Public address of this API, if it is not `<web origin>/api`        |
-| `PLATFORM_SERVER_FLOW`  | `false`                    | Run Platform sign-in server-side (register the new callback first) |
-| `LICENSE_KEY`           | _(unset)_                  | Enterprise Edition licence; required for federated sign-in         |
-| `SMTP_HOST`             | _(unset = log to stdout)_  | SMTP host for email / OTP delivery                                 |
-| `SMTP_PORT`             | `587`                      | SMTP port                                                          |
-| `SMTP_FROM`             | `noreply@verba.app`        | From address for outgoing email                                    |
-| `SMTP_USER`             | _(optional)_               | SMTP username                                                      |
-| `SMTP_PASS`             | _(optional)_               | SMTP password                                                      |
-| `SMTP_SECURE`           | `false`                    | Set `true` for port-465 TLS                                        |
+| Variable                | Default                     | Description                                                        |
+| ----------------------- | --------------------------- | ------------------------------------------------------------------ |
+| `PORT`                  | `4000`                      | API listen port                                                    |
+| `CORS_ORIGIN`           | `http://localhost:5173`     | Exact origin of your web frontend (no trailing slash)              |
+| `DATABASE_URL`          | `file:./prisma/dev.db`      | Prisma connection string. SQLite for dev, Postgres for prod        |
+| `JWT_SECRET`            | _(required in production)_  | Random 48-byte hex string. Rotate periodically                     |
+| `ENABLE_LOCAL_PASSWORD` | `false`                     | Enable password login/register endpoints; CE defaults to OTP-only  |
+| `DISABLE_LOCAL_OTP`     | `false`                     | Disable local OTP login                                            |
+| `PLATFORM_ISSUER`       | _(unset)_                   | Nubisco Platform issuer URL. Required with `PLATFORM_APP_ID`       |
+| `PLATFORM_APP_ID`       | _(unset)_                   | The app slug this deployment is registered under on Platform       |
+| `OIDC_ISSUER`           | _(unset)_                   | OpenID Connect issuer URL. Required with `OIDC_CLIENT_ID`          |
+| `OIDC_CLIENT_ID`        | _(unset)_                   | The client id your identity provider issued for Verba              |
+| `OIDC_CLIENT_SECRET`    | _(unset)_                   | The client secret, for a confidential client                       |
+| `OIDC_SCOPES`           | `openid email profile`      | Scopes requested at the provider                                   |
+| `OIDC_LABEL`            | `single sign-on`            | What the sign-in button calls your provider                        |
+| `OIDC_AUTO_PROVISION`   | `true`                      | Create a Verba user on first sign-in                               |
+| `PUBLIC_API_URL`        | _(derived)_                 | Public address of this API, if it is not `<web origin>/api`        |
+| `PLATFORM_SERVER_FLOW`  | `false`                     | Run Platform sign-in server-side (register the new callback first) |
+| `LICENSE_KEY`           | _(unset)_                   | Enterprise Edition licence; required for federated sign-in         |
+| `SMTP_HOST`             | _(unset = log to stdout)_   | SMTP host for email / OTP delivery                                 |
+| `SMTP_PORT`             | `587`                       | SMTP port                                                          |
+| `MAIL_FROM`             | `SMTP_FROM`                 | From address for outgoing email, on Resend and SMTP alike          |
+| `SMTP_FROM`             | `noreply@verba.app`         | From address, when `MAIL_FROM` is not set                          |
+| `SMTP_USER`             | _(optional)_                | SMTP username                                                      |
+| `SMTP_PASS`             | _(optional)_                | SMTP password                                                      |
+| `SMTP_SECURE`           | `false`                     | Set `true` for port-465 TLS                                        |
+| `AI_ENCRYPTION_KEY`     | _(unset = AI keys refused)_ | Secret that encrypts customers' AI keys. Nothing else uses it      |
+| `VERBA_OPERATORS`       | _(unset)_                   | Emails of the instance operators, comma separated. See below       |
+| `SESSION_TTL_HOURS`     | `168` (7 days)              | How long a session lasts unused. Active sessions renew daily       |
+| `COOKIE_SECURE`         | `true` in production        | Set `false` only to serve production over plain HTTP               |
+| `TRUST_PROXY`           | private ranges              | Proxies whose `X-Forwarded-For` is believed, see below             |
+| `BLOCKED_EMAIL_DOMAINS` | _(unset)_                   | Extra throwaway domains refused for new accounts, comma separated  |
 
 > **Development mode:** When `SMTP_HOST` is not set, OTP codes are printed to the API server's stdout log.
+
+### Sign-in limits
+
+The doors a stranger can reach without an account are rate limited, per client
+address and per email address, over 15 minutes: requesting a code (20 per
+address, 5 per email), entering one (30 and 15), password login (20 and 10), and
+the federated sign-in callbacks (30 per address). Each code also survives only
+five wrong guesses, after which a new one must be requested. New accounts cannot
+be created from well-known throwaway inbox domains (extend the list with
+`BLOCKED_EMAIL_DOMAINS`).
+
+The client address comes from `X-Forwarded-For` only when the request arrives
+from a trusted proxy. By default that is any loopback, link-local or private
+address, which covers the bundled nginx and a reverse proxy on the same host or
+network, and means a client cannot pick its own address by sending the header.
+If your proxy reaches the API from a public address, list it in `TRUST_PROXY`
+(addresses or CIDR ranges, comma separated). Without that, every visitor shares
+the proxy's address and the per-address limits apply to all of them together.
 
 ## Authentication Model
 
@@ -109,7 +177,35 @@ Configure the API via environment variables in `apps/api/.env`:
 - **Optional transitional mode:** set `ENABLE_LOCAL_PASSWORD=true` if you need password login/register
 - **Enterprise direction:** set `PLATFORM_ISSUER` to enable Nubisco Platform token verification alongside local auth
 
-For CE, the first user can be bootstrapped without creating a permanent password.
+For CE, the operator account can be bootstrapped without creating a permanent password.
+
+### AI provider keys
+
+Each project can use its own OpenAI, Anthropic or Gemini key. Keys are encrypted
+at rest (AES-256-GCM) with `AI_ENCRYPTION_KEY`, a secret used for nothing else:
+generate one with `openssl rand -hex 32`. Without it, saving a key is refused.
+There is no fallback to `JWT_SECRET` or to a built-in value. For local
+development only, `AI_DEV_SECRET=true` opts in to a built-in secret.
+
+A key stored by an earlier release in plain text, or encrypted with a different
+secret (earlier releases used `ENCRYPTION_KEY`, or `JWT_SECRET` when that was
+unset), is refused with a request to enter it again. `ENCRYPTION_KEY` is still
+read, so an instance that set it keeps its keys.
+
+### Instance operators
+
+The people who run an instance are named in `VERBA_OPERATORS`, a comma-separated
+list of email addresses. Nobody becomes an operator by signing up first. An
+operator can manage accounts under **Admin → Users** (deactivate, reactivate,
+delete) and read the instance's plan. An operator has no access to projects they
+are not a member of, the same as anyone else.
+
+The first-run setup wizard only creates an account for an address already in
+`VERBA_OPERATORS`. Adding or removing an address takes effect on the next request
+for every decision, and the change is recorded (`operator.granted`,
+`operator.revoked`) in the instance audit record at that person's next sign-in.
+Operator actions on accounts are recorded there too, readable at
+`GET /api/admin/audit`.
 
 ### Platform SSO for EE
 
@@ -204,8 +300,8 @@ The `docker-compose.yml` already defines a `db` Postgres service. To use it:
 docker compose up -d
 ```
 
-The API container waits for Postgres to report healthy, then creates or updates
-the schema with `prisma db push --accept-data-loss` before it starts serving.
+The API container waits for Postgres to report healthy, then applies any pending
+migrations with `prisma migrate deploy` before it starts serving.
 
 ---
 
@@ -258,7 +354,7 @@ Set `CORS_ORIGIN=https://verba.example.com` in your `.env` when behind a proxy.
 - [ ] HTTPS is enabled on the reverse proxy
 - [ ] SMTP is configured (or users will need console access to retrieve OTP codes)
 - [ ] Database is backed up regularly (see below)
-- [ ] The database is backed up before each upgrade (the API image applies schema changes, including ones that drop data, when it starts)
+- [ ] The database is backed up before each upgrade (the API image applies pending migrations when it starts)
 
 ---
 
@@ -268,10 +364,11 @@ Set `CORS_ORIGIN=https://verba.example.com` in your `.env` when behind a proxy.
 # Pull the latest code
 git pull
 
-# Back up the database first: the new API image applies schema changes on start,
-# including ones that drop columns or tables (prisma db push --accept-data-loss)
+# Back up the database first: the new API image applies pending migrations on start
+# (prisma migrate deploy). Upgrading from a release that used prisma db push?
+# Baseline the database once first, see "Moving an existing database onto migrations".
 
-# Pull the new images and restart. The API brings the schema up to date as it starts.
+# Pull the new images and restart. The API applies pending migrations as it starts.
 docker compose pull
 docker compose up -d
 ```
@@ -304,7 +401,7 @@ cp apps/api/prisma/dev.db backup_$(date +%Y%m%d).db
 
 ### User Management
 
-Global admins can access **Admin → Users** to:
+Instance operators (`VERBA_OPERATORS`) can access **Admin → Users** to:
 
 - **Deactivate** a user: prevents login without deleting their work.
 - **Delete** a user: permanently removes their account.

@@ -15,10 +15,11 @@ program
 program
   .command('migrate')
   .description(
-    'Bring the database in line with the schema (prisma db push, as the Docker image does on start). ' +
-      'Changes that would lose data stop unless --accept-data-loss is given.',
+    'Bring the database in line with the schema. PostgreSQL applies the migration history (prisma migrate deploy, ' +
+      'as the Docker image does on start). SQLite uses prisma db push, where changes that would lose data stop ' +
+      'unless --accept-data-loss is given.',
   )
-  .option('--accept-data-loss', 'apply changes that drop columns, tables or their data (back up first)')
+  .option('--accept-data-loss', 'SQLite only: apply changes that drop columns, tables or their data (back up first)')
   .action((options: { acceptDataLoss?: boolean }) => runMigrate({ acceptDataLoss: options.acceptDataLoss === true }))
 
 program.parse()

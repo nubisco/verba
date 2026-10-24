@@ -26,18 +26,40 @@ async function fetchJwks(issuer: string): Promise<{ keys: Array<JsonWebKey & { k
   }
 }
 
-async function verifyPlatformJwt(
-  token: string,
-  issuer: string,
-): Promise<{
+/**
+ * Whether a Platform token was minted for this app.
+ *
+ * One issuer signs tokens for every Nubisco app, so the signature only proves
+ * the person signed in somewhere. Handover tokens name the app by slug in
+ * `app`, OAuth access tokens name it in `aud`. Either must equal the slug this
+ * deployment is registered as (PLATFORM_APP_ID). Without the check, a token
+ * for any other app was a Verba session, and its `app_plan` became the plan
+ * Verba enforced.
+ */
+export function tokenNamesApp(claims: { app?: unknown; aud?: unknown }, appId: string | undefined): boolean {
+  if (!appId) return false
+  if (claims.app === appId) return true
+  const aud = claims.aud
+  return aud === appId || (Array.isArray(aud) && aud.includes(appId))
+}
+
+type PlatformClaims = {
   email: string
   role: string
   sub: string
   exp: number
   iss: string
+  app?: string
+  aud?: string | string[]
   app_plan?: string
   app_entitlements?: Record<string, unknown>
-} | null> {
+}
+
+export async function verifyPlatformJwt(
+  token: string,
+  issuer: string,
+  appId: string | undefined,
+): Promise<PlatformClaims | null> {
   const parts = token.split('.')
   if (parts.length !== 3) return null
   const [h, p, s] = parts as [string, string, string]
@@ -63,16 +85,10 @@ async function verifyPlatformJwt(
     new TextEncoder().encode(`${h}.${p}`),
   )
   if (!valid) return null
-  const claims = JSON.parse(new TextDecoder().decode(new Uint8Array(b64urlDecode(p)))) as {
-    email: string
-    role: string
-    sub: string
-    exp: number
-    iss: string
-    app_plan?: string
-    app_entitlements?: Record<string, unknown>
-  }
+  const claims = JSON.parse(new TextDecoder().decode(new Uint8Array(b64urlDecode(p)))) as PlatformClaims
   if (claims.exp < Math.floor(Date.now() / 1000) || claims.iss !== issuer) return null
+  if (!tokenNamesApp(claims, appId)) return null
+  if (!claims.email) return null
   return claims
 }
 
@@ -122,16 +138,13 @@ export async function upsertUserFromClaims(
 
   if (opts.autoProvision === false) return null
 
-  // First user through the door administers the instance. Only ever promotes
-  // into a vacuum: the moment one user exists this is inert, so it cannot be
-  // used to escalate on an established deployment.
-  const isFirstUser = (await prisma.user.count()) === 0
+  // Nobody becomes an operator by arriving first: see operator.service.ts.
   const user = await prisma.user.create({
     data: {
       email,
       passwordHash: '',
       name: claims.name ?? email.split('@')[0],
-      isGlobalAdmin: isFirstUser,
+      isGlobalAdmin: false,
     },
     select: { id: true, email: true, name: true },
   })
@@ -161,15 +174,18 @@ export async function verifyPlatformToken(token: string): Promise<{
   created: boolean
 } | null> {
   const issuer = process.env.PLATFORM_ISSUER
-  if (!issuer) return null
+  const appId = process.env.PLATFORM_APP_ID
+  // Both, never one: without the app id there is nothing to check the
+  // audience against, and an unchecked token is any Nubisco app's token.
+  if (!issuer || !appId) return null
 
-  const claims = await verifyPlatformJwt(token, issuer)
+  const claims = await verifyPlatformJwt(token, issuer, appId)
   if (!claims) return null
 
   return upsertUserFromClaims(claims)
 }
 
-/** Returns true when platform auth is configured. */
+/** Returns true when platform auth is configured (issuer and app id, together). */
 export function isPlatformAuthEnabled(): boolean {
-  return Boolean(process.env.PLATFORM_ISSUER)
+  return Boolean(process.env.PLATFORM_ISSUER && process.env.PLATFORM_APP_ID)
 }

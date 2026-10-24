@@ -48,17 +48,14 @@ describe('register', () => {
     expect(bcrypt.hash).toHaveBeenCalledWith('password', 10)
   })
 
-  it('sets isGlobalAdmin for first registered user', async () => {
+  it('never makes the first registered user an operator', async () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValue(null)
     vi.mocked(prisma.user.count).mockResolvedValue(0)
-    vi.mocked(prisma.user.create).mockResolvedValue({
-      ...mockUser,
-      isGlobalAdmin: true,
-    })
-    await register('admin@example.com', 'password')
+    vi.mocked(prisma.user.create).mockResolvedValue(mockUser)
+    await register('first@example.com', 'password')
     expect(prisma.user.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ isGlobalAdmin: true }),
+        data: expect.objectContaining({ isGlobalAdmin: false }),
       }),
     )
   })

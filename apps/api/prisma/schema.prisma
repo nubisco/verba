@@ -16,7 +16,7 @@ model User {
   email                String    @unique
   name                 String?
   passwordHash         String
-  isGlobalAdmin        Boolean   @default(false)
+  isGlobalAdmin        Boolean   @default(false) // cache of VERBA_OPERATORS, synced at sign-in
   createdAt            DateTime  @default(now())
   deactivatedAt        DateTime?
   preferredLocales     String    @default("[]") // JSON array of locale codes e.g. ["en","fr"]
@@ -204,12 +204,27 @@ model ImportRun {
   user    User?   @relation(fields: [userId], references: [id])
 }
 
+// Instance-level record of operator grants and operator actions on accounts.
+// Separate from AuditLog, which belongs to a project. No foreign keys, so the
+// record outlives whatever it names.
+model InstanceAuditLog {
+  id           String   @id @default(cuid())
+  actorId      String? // the operator who acted, or null when config made the change
+  action       String // operator.granted | operator.revoked | user.deactivated | user.reactivated | user.deleted
+  targetUserId String?
+  detail       String? // JSON
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+}
+
 model OtpToken {
   id        String   @id @default(cuid())
   email     String
-  code      String
+  code      String // SHA-256 of the code, never the code itself
   expiresAt DateTime
   used      Boolean  @default(false)
+  attempts  Int      @default(0) // wrong guesses so far; the code is burnt at OTP_MAX_ATTEMPTS
   createdAt DateTime @default(now())
 
   @@index([email])

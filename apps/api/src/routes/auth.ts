@@ -9,6 +9,8 @@ import * as ssoService from '../services/sso.service.js'
 import { prisma } from '../prisma.js'
 import { getAuthConfig } from '../services/instance-config.service.js'
 import { randomBytes } from 'node:crypto'
+import { authRateLimits } from '../rate-limits.js'
+import { clearSession, credentialCookieOptions, startSession } from '../session.js'
 
 function readBundleKey(req: FastifyRequest): string | undefined {
   const raw = req.cookies?.[bundleService.BUNDLE_COOKIE]
@@ -32,7 +34,7 @@ function ssoCookieOptions() {
     // navigation from its own origin, and Strict would withhold the cookie on
     // exactly that request, failing every sign-in with a state mismatch.
     sameSite: 'lax' as const,
-    secure: process.env.NODE_ENV === 'production',
+    secure: credentialCookieOptions().secure,
     maxAge: SSO_COOKIE_TTL_SECONDS,
   }
 }
@@ -45,14 +47,14 @@ function clearSsoCookies(reply: FastifyReply): void {
 
 function setBundleKeyCookie(reply: FastifyReply, key: string): void {
   reply.setCookie(bundleService.BUNDLE_COOKIE, key, {
-    httpOnly: true,
-    path: '/',
-    sameSite: 'lax',
+    ...credentialCookieOptions(),
     maxAge: bundleService.BUNDLE_TTL_DAYS * 24 * 60 * 60,
   })
 }
 
 export async function authRoutes(app: FastifyInstance) {
+  const limits = authRateLimits(app)
+
   app.post('/auth/register', async (req, reply) => {
     const authConfig = getAuthConfig()
     if (!authConfig.localPasswordEnabled) {
@@ -60,25 +62,23 @@ export async function authRoutes(app: FastifyInstance) {
     }
     const body = RegisterSchema.parse(req.body)
     const user = await authService.register(body.email, body.password)
-    const token = app.jwt.sign({ userId: user.id, email: user.email })
-    reply.setCookie('token', token, { httpOnly: true, path: '/' })
+    await startSession(app, reply, { userId: user.id, email: user.email })
     return reply.status(201).send({ id: user.id, email: user.email })
   })
 
-  app.post('/auth/login', async (req, reply) => {
+  app.post('/auth/login', { preHandler: limits.passwordLogin }, async (req, reply) => {
     const authConfig = getAuthConfig()
     if (!authConfig.localPasswordEnabled) {
       return reply.status(404).send({ error: 'Password login is disabled for this instance' })
     }
     const body = LoginSchema.parse(req.body)
     const payload = await authService.login(body.email, body.password)
-    const token = app.jwt.sign({ userId: payload.userId, email: payload.email })
-    reply.setCookie('token', token, { httpOnly: true, path: '/' })
+    await startSession(app, reply, { userId: payload.userId, email: payload.email })
     return reply.send({ id: payload.userId, email: payload.email })
   })
 
   app.post('/auth/logout', async (_req, reply) => {
-    reply.clearCookie('token', { path: '/' })
+    clearSession(reply)
     return reply.send({ ok: true })
   })
 
@@ -95,6 +95,8 @@ export async function authRoutes(app: FastifyInstance) {
       where: {
         updatedById: userId,
         status: { in: ['IN_PROGRESS', 'SUBMITTED'] },
+        // Only projects the person is still on: leaving one ends its tasks.
+        key: { project: { memberships: { some: { userId } } } },
       },
       include: {
         key: { include: { project: { select: { id: true, name: true } } } },
@@ -118,12 +120,12 @@ export async function authRoutes(app: FastifyInstance) {
 
   app.post('/auth/me/deactivate', { preHandler: [app.authenticate] }, async (req, reply) => {
     await authService.deactivateUser(req.user.userId, req.user.userId)
-    reply.clearCookie('token', { path: '/' })
+    clearSession(reply)
     return reply.send({ ok: true })
   })
 
   // OTP routes
-  app.post<{ Body: { email: string } }>('/auth/otp/request', async (req, reply) => {
+  app.post<{ Body: { email: string } }>('/auth/otp/request', { preHandler: limits.otpRequest }, async (req, reply) => {
     const authConfig = getAuthConfig()
     if (!authConfig.localOtpEnabled) {
       return reply.status(404).send({ error: 'OTP login is disabled for this instance' })
@@ -133,20 +135,20 @@ export async function authRoutes(app: FastifyInstance) {
     return reply.send({ ok: true })
   })
 
-  app.post<{ Body: { email: string; code: string } }>('/auth/otp/verify', async (req, reply) => {
-    const authConfig = getAuthConfig()
-    if (!authConfig.localOtpEnabled) {
-      return reply.status(404).send({ error: 'OTP login is disabled for this instance' })
-    }
-    const { email, code } = OtpVerifySchema.parse(req.body)
-    const payload = await otpService.verifyOtp(email.toLowerCase().trim(), code.trim())
-    const token = app.jwt.sign({
-      userId: payload.userId,
-      email: payload.email,
-    })
-    reply.setCookie('token', token, { httpOnly: true, path: '/' })
-    return reply.send({ id: payload.userId, email: payload.email })
-  })
+  app.post<{ Body: { email: string; code: string } }>(
+    '/auth/otp/verify',
+    { preHandler: limits.otpVerify },
+    async (req, reply) => {
+      const authConfig = getAuthConfig()
+      if (!authConfig.localOtpEnabled) {
+        return reply.status(404).send({ error: 'OTP login is disabled for this instance' })
+      }
+      const { email, code } = OtpVerifySchema.parse(req.body)
+      const payload = await otpService.verifyOtp(email.toLowerCase().trim(), code.trim())
+      await startSession(app, reply, { userId: payload.userId, email: payload.email })
+      return reply.send({ id: payload.userId, email: payload.email })
+    },
+  )
 
   // ── Federated sign-in ──────────────────────────────────────────────────────
   //
@@ -193,7 +195,7 @@ export async function authRoutes(app: FastifyInstance) {
     )
   })
 
-  app.get('/auth/sso/callback', async (req, reply) => {
+  app.get('/auth/sso/callback', { preHandler: limits.federatedCallback }, async (req, reply) => {
     const runtime = await ssoService.getSsoRuntime()
     if (!runtime) return reply.status(404).send({ error: 'Single sign-on is not configured on this instance' })
 
@@ -271,13 +273,12 @@ export async function authRoutes(app: FastifyInstance) {
       name: identity.name,
     })
 
-    const localToken = app.jwt.sign({
+    await startSession(app, reply, {
       userId: identity.userId,
       email: identity.email,
       plan: identity.plan,
       platformSub: identity.platformSub,
     })
-    reply.setCookie('token', localToken, { httpOnly: true, path: '/' })
 
     if (identity.created) {
       analytics.track('app_first_opened', { userId: identity.userId, props: { plan: identity.plan } })
@@ -292,60 +293,63 @@ export async function authRoutes(app: FastifyInstance) {
 
   // Platform auth callback: validates a Nubisco Platform JWT and issues a local verba session.
   // Only active when PLATFORM_ISSUER env var is set.
-  app.post<{ Body: { token: string } }>('/auth/platform/callback', async (req, reply) => {
-    if (!platformAuthService.isPlatformAuthEnabled()) {
-      return reply.status(404).send({ error: 'Platform auth is not configured' })
-    }
-    const { token } = req.body ?? {}
-    if (!token || typeof token !== 'string') {
-      return reply.status(400).send({ error: 'token is required' })
-    }
-    const payload = await platformAuthService.verifyPlatformToken(token)
-    if (!payload) {
-      return reply.status(401).send({ error: 'Invalid or expired platform token' })
-    }
+  app.post<{ Body: { token: string } }>(
+    '/auth/platform/callback',
+    { preHandler: limits.federatedCallback },
+    async (req, reply) => {
+      if (!platformAuthService.isPlatformAuthEnabled()) {
+        return reply.status(404).send({ error: 'Platform auth is not configured' })
+      }
+      const { token } = req.body ?? {}
+      if (!token || typeof token !== 'string') {
+        return reply.status(400).send({ error: 'token is required' })
+      }
+      const payload = await platformAuthService.verifyPlatformToken(token)
+      if (!payload) {
+        return reply.status(401).send({ error: 'Invalid or expired platform token' })
+      }
 
-    // Append this identity to the browser's bundle (or create a new one) so
-    // the user can later switch back without re-OTPing on platform. The bundle
-    // cookie is independent of the local session token cookie: it survives
-    // sign-out of an individual identity.
-    let bundleKey = readBundleKey(req)
-    if (!bundleKey) {
-      bundleKey = bundleService.newBundleKey()
-      setBundleKeyCookie(reply, bundleKey)
-    }
-    await bundleService.upsertActiveIdentity(bundleKey, {
-      platformSub: payload.platformSub,
-      email: payload.email,
-      name: payload.name,
-    })
-
-    const localToken = app.jwt.sign({
-      userId: payload.userId,
-      email: payload.email,
-      plan: payload.plan,
-      platformSub: payload.platformSub,
-    })
-    reply.setCookie('token', localToken, { httpOnly: true, path: '/' })
-
-    if (payload.created) {
-      analytics.track('app_first_opened', {
-        userId: payload.userId,
-        props: { plan: payload.plan },
+      // Append this identity to the browser's bundle (or create a new one) so
+      // the user can later switch back without re-OTPing on platform. The bundle
+      // cookie is independent of the local session token cookie: it survives
+      // sign-out of an individual identity.
+      let bundleKey = readBundleKey(req)
+      if (!bundleKey) {
+        bundleKey = bundleService.newBundleKey()
+        setBundleKeyCookie(reply, bundleKey)
+      }
+      await bundleService.upsertActiveIdentity(bundleKey, {
+        platformSub: payload.platformSub,
+        email: payload.email,
+        name: payload.name,
       })
-    }
-    analytics.track('app_session_started', {
-      userId: payload.userId,
-      props: { plan: payload.plan, source: 'platform_oidc' },
-    })
 
-    return reply.send({
-      id: payload.userId,
-      email: payload.email,
-      plan: payload.plan,
-      platformSub: payload.platformSub,
-    })
-  })
+      await startSession(app, reply, {
+        userId: payload.userId,
+        email: payload.email,
+        plan: payload.plan,
+        platformSub: payload.platformSub,
+      })
+
+      if (payload.created) {
+        analytics.track('app_first_opened', {
+          userId: payload.userId,
+          props: { plan: payload.plan },
+        })
+      }
+      analytics.track('app_session_started', {
+        userId: payload.userId,
+        props: { plan: payload.plan, source: 'platform_oidc' },
+      })
+
+      return reply.send({
+        id: payload.userId,
+        email: payload.email,
+        plan: payload.plan,
+        platformSub: payload.platformSub,
+      })
+    },
+  )
 
   // List identities active in this browser's bundle. The frontend uses this
   // to render the account-switcher dropdown. No auth required: the bundle
@@ -405,7 +409,7 @@ export async function authRoutes(app: FastifyInstance) {
     }
     const identity = await bundleService.findIdentity(bundleKey, platformSub)
     if (identity?.isActive) {
-      reply.clearCookie('token', { path: '/' })
+      clearSession(reply)
     }
     const { remaining } = await bundleService.removeIdentity(bundleKey, platformSub)
     return {
@@ -424,15 +428,11 @@ export async function authRoutes(app: FastifyInstance) {
     issuer: process.env.PLATFORM_ISSUER ?? null,
   }))
 
-  // User lookup by email: used by the member management UI
+  // People the caller already shares a project with, by email fragment.
+  // Never the whole instance: see authService.searchCoMembers.
   app.get<{ Querystring: { email?: string } }>('/users', { preHandler: [app.authenticate] }, async (req) => {
     const { email } = req.query
     if (!email) return []
-    const users = await prisma.user.findMany({
-      where: { email: { contains: email } },
-      select: { id: true, email: true },
-      take: 10,
-    })
-    return users
+    return authService.searchCoMembers(req.user.userId, email)
   })
 }

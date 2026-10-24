@@ -119,7 +119,7 @@ Verba uses role-based access control (RBAC) enforced on the server. Roles are as
 | `MAINTAINER` | Approve/reject translations, manage keys and namespaces; TRANSLATOR permissions |
 | `ADMIN`      | Full project management (members, locales, settings); MAINTAINER permissions    |
 
-**Global admin:** A user with `isGlobalAdmin: true` bypasses all project-level membership checks and has full access to every project.
+**Instance operator:** A user whose email is in `VERBA_OPERATORS`. Operators manage accounts on the instance. They have no special access to projects: like everyone else, they reach a project only as one of its members.
 
 ---
 
@@ -245,6 +245,6 @@ Verba ships with a command-line tool in `packages/cli/`:
 | Command         | Description                                                                |
 | --------------- | -------------------------------------------------------------------------- |
 | `verba setup`   | Interactive wizard: configure database, create admin user, generate `.env` |
-| `verba migrate` | Apply the schema with `prisma db push` (`--accept-data-loss` to drop data) |
+| `verba migrate` | Apply pending migrations (PostgreSQL) or the schema (SQLite, `db push`)    |
 
 The CLI is used during initial setup and when upgrading Verba to a new version.

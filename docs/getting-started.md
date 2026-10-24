@@ -30,7 +30,7 @@ The `verba setup` wizard will:
 2. Generate a secure random `JWT_SECRET`
 3. Optionally configure **SMTP** for email / OTP login
 4. Write `apps/api/.env` with all your settings
-5. Create the database schema (`prisma db push`)
+5. Create the database schema (`prisma db push` on SQLite, `prisma migrate deploy` on PostgreSQL)
 
 > **Tip:** If you prefer to configure manually, copy `apps/api/.env.example` to `apps/api/.env` and edit the values. See [Self-Hosting](./self-hosting) for the full variable reference.
 
@@ -87,7 +87,7 @@ pnpm --filter @nubisco/verba-api exec prisma db push
 pnpm --filter @nubisco/verba-api prisma:generate
 ```
 
-This creates `apps/api/prisma/dev.db` with the full schema and generates the Prisma client into `apps/api/src/generated/prisma`. `prisma db push` is how every Verba database is kept in line with the schema, in development and in production. Run both commands again whenever the schema changes.
+This creates `apps/api/prisma/dev.db` with the full schema and generates the Prisma client into `apps/api/src/generated/prisma`. Run both commands again whenever the schema changes. Development on SQLite uses `prisma db push`. PostgreSQL in production applies the migration history in `apps/api/prisma/migrations` with `prisma migrate deploy` instead (see [Self-Hosting](./self-hosting.md)).
 
 ### 4. Start the dev servers
 

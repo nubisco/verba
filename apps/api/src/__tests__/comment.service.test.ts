@@ -6,10 +6,12 @@ vi.mock('../prisma.js', () => ({
       create: vi.fn(),
       findMany: vi.fn(),
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       update: vi.fn(),
     },
     translation: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       findMany: vi.fn(),
     },
     membership: {
@@ -36,7 +38,7 @@ import { addComment, listComments, deleteComment } from '../services/comment.ser
 beforeEach(() => {
   vi.clearAllMocks()
   // Default: translation exists, no mentions, no assignees
-  vi.mocked(prisma.translation.findUnique).mockResolvedValue({
+  vi.mocked(prisma.translation.findFirst).mockResolvedValue({
     keyId: 'k1',
   } as never)
   vi.mocked(prisma.membership.findMany).mockResolvedValue([])
@@ -109,7 +111,7 @@ describe('listComments', () => {
     ]
     vi.mocked(prisma.comment.findMany).mockResolvedValue(mockComments as never)
 
-    const result = await listComments('t1')
+    const result = await listComments('p1', 't1')
 
     expect(prisma.comment.findMany).toHaveBeenCalledWith({
       where: { translationId: 't1', deletedAt: null },
@@ -130,12 +132,12 @@ describe('deleteComment', () => {
   }
 
   it('allows comment author to delete their own comment', async () => {
-    vi.mocked(prisma.comment.findUnique).mockResolvedValue(mockComment as never)
+    vi.mocked(prisma.comment.findFirst).mockResolvedValue(mockComment as never)
     vi.mocked(prisma.comment.update).mockResolvedValue({
       ...mockComment,
       deletedAt: new Date(),
     } as never)
-    await expect(deleteComment('c1', 'u1', 'TRANSLATOR')).resolves.toBeUndefined()
+    await expect(deleteComment('p1', 't1', 'c1', 'u1', 'TRANSLATOR')).resolves.toBeUndefined()
     expect(prisma.comment.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'c1' },
@@ -145,25 +147,57 @@ describe('deleteComment', () => {
   })
 
   it('allows MAINTAINER to delete any comment', async () => {
-    vi.mocked(prisma.comment.findUnique).mockResolvedValue(mockComment as never)
+    vi.mocked(prisma.comment.findFirst).mockResolvedValue(mockComment as never)
     vi.mocked(prisma.comment.update).mockResolvedValue({
       ...mockComment,
       deletedAt: new Date(),
     } as never)
-    await expect(deleteComment('c1', 'u2', 'MAINTAINER')).resolves.toBeUndefined()
+    await expect(deleteComment('p1', 't1', 'c1', 'u2', 'MAINTAINER')).resolves.toBeUndefined()
   })
 
   it('throws 403 when non-author TRANSLATOR tries to delete', async () => {
-    vi.mocked(prisma.comment.findUnique).mockResolvedValue(mockComment as never)
-    await expect(deleteComment('c1', 'u2', 'TRANSLATOR')).rejects.toMatchObject({
+    vi.mocked(prisma.comment.findFirst).mockResolvedValue(mockComment as never)
+    await expect(deleteComment('p1', 't1', 'c1', 'u2', 'TRANSLATOR')).rejects.toMatchObject({
       statusCode: 403,
     })
   })
 
   it('throws 404 when comment not found', async () => {
-    vi.mocked(prisma.comment.findUnique).mockResolvedValue(null)
-    await expect(deleteComment('missing', 'u1', 'ADMIN')).rejects.toMatchObject({
+    vi.mocked(prisma.comment.findFirst).mockResolvedValue(null)
+    await expect(deleteComment('p1', 't1', 'missing', 'u1', 'ADMIN')).rejects.toMatchObject({
       statusCode: 404,
     })
+  })
+})
+
+describe('cross-project isolation', () => {
+  it('will not list the thread of a translation from another project', async () => {
+    vi.mocked(prisma.translation.findFirst).mockResolvedValue(null)
+    await expect(listComments('p1', 't-of-p2')).rejects.toMatchObject({ statusCode: 404 })
+    expect(prisma.translation.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 't-of-p2', key: { projectId: 'p1' } } }),
+    )
+    expect(prisma.comment.findMany).not.toHaveBeenCalled()
+  })
+
+  it('will not comment on a translation from another project', async () => {
+    vi.mocked(prisma.translation.findFirst).mockResolvedValue(null)
+    await expect(addComment('t-of-p2', 'u1', 'hi', 'p1')).rejects.toMatchObject({ statusCode: 404 })
+    expect(prisma.comment.create).not.toHaveBeenCalled()
+  })
+
+  it('will not reply under a comment from another thread', async () => {
+    vi.mocked(prisma.comment.findFirst).mockResolvedValue(null)
+    await expect(addComment('t1', 'u1', 'hi', 'p1', 'c-elsewhere')).rejects.toMatchObject({ statusCode: 404 })
+    expect(prisma.comment.create).not.toHaveBeenCalled()
+  })
+
+  it('finds a comment to delete only through the project and translation in the URL', async () => {
+    vi.mocked(prisma.comment.findFirst).mockResolvedValue(null)
+    await expect(deleteComment('p1', 't1', 'c-of-p2', 'u1', 'ADMIN')).rejects.toMatchObject({ statusCode: 404 })
+    expect(prisma.comment.findFirst).toHaveBeenCalledWith({
+      where: { id: 'c-of-p2', translationId: 't1', translation: { key: { projectId: 'p1' } } },
+    })
+    expect(prisma.comment.update).not.toHaveBeenCalled()
   })
 })

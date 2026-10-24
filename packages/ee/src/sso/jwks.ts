@@ -23,6 +23,8 @@ export interface SsoClaims {
   nonce?: string
   /** Nubisco Platform handover tokens carry the caller's plan. */
   app_plan?: string
+  /** Nubisco Platform tokens: the slug of the app the token was minted for. */
+  app?: string
   [key: string]: unknown
 }
 
@@ -46,11 +48,20 @@ function base64urlToUtf8(input: string): string {
   return new TextDecoder().decode(new Uint8Array(base64urlDecode(input)))
 }
 
+/** Whether a Platform token was minted for `app`, by its `app` slug or its audience. */
+export function namesApp(claims: { app?: unknown; aud?: unknown }, app: string): boolean {
+  if (!app) return false
+  if (claims.app === app) return true
+  const aud = claims.aud
+  return aud === app || (Array.isArray(aud) && aud.includes(app))
+}
+
 export class JwksVerifier {
   private readonly issuer: string
   private readonly jwksUri: string
   private readonly cacheTtlMs: number
   private readonly fetchImpl: typeof fetch
+  private readonly expectedApp: string | undefined
   private jwksCache: { keys: JwkKey[]; fetchedAt: number } | null = null
   private importedKeys = new Map<string, CryptoKey>()
 
@@ -66,12 +77,21 @@ export class JwksVerifier {
        * there: Entra and Auth0 both serve keys from a different path.
        */
       jwksUri?: string
+      /**
+       * The app this deployment is registered as (Platform handover). One
+       * issuer signs tokens for every Nubisco app, so a valid signature only
+       * proves the person signed in somewhere. Without this check a token
+       * minted for another app, carrying that app's plan, was a Verba session.
+       * The token must name this app in `app` or in `aud`.
+       */
+      expectedApp?: string
     } = {},
   ) {
     this.issuer = issuer.replace(/\/$/, '')
     this.jwksUri = opts.jwksUri ?? `${this.issuer}/.well-known/jwks.json`
     this.cacheTtlMs = opts.cacheTtlMs ?? 300_000
     this.fetchImpl = (opts.fetchImpl ?? globalThis.fetch).bind(globalThis)
+    this.expectedApp = opts.expectedApp
   }
 
   private async fetchJwks(): Promise<JwkKey[]> {
@@ -144,6 +164,9 @@ export class JwksVerifier {
     }
     if (claims.exp < Math.floor(Date.now() / 1000)) throw new Error('JWT expired')
     if (claims.iss !== this.issuer) throw new Error(`JWT issuer mismatch: expected ${this.issuer}`)
+    if (this.expectedApp !== undefined && !namesApp(claims, this.expectedApp)) {
+      throw new Error(`JWT was not minted for this app: expected ${this.expectedApp}`)
+    }
     // The email is how a token becomes a Verba user, so a token without one
     // authenticates somebody we then cannot place.
     if (!claims.email) throw new Error('JWT missing email claim')

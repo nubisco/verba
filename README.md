@@ -143,10 +143,10 @@ npx @nubisco/verba-cli --help
 
 **Commands:**
 
-| Command         | Description                                                                              |
-| --------------- | ---------------------------------------------------------------------------------------- |
-| `verba setup`   | Interactive first-run wizard                                                             |
-| `verba migrate` | Apply the schema (`prisma db push`); add `--accept-data-loss` for changes that drop data |
+| Command         | Description                                                                                                  |
+| --------------- | ------------------------------------------------------------------------------------------------------------ |
+| `verba setup`   | Interactive first-run wizard                                                                                 |
+| `verba migrate` | Apply pending migrations on PostgreSQL (`prisma migrate deploy`), or the schema on SQLite (`prisma db push`) |
 
 ---
 

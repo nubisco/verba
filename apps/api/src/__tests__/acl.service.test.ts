@@ -116,13 +116,11 @@ describe('requireProjectRole', () => {
     expect(m.role).toBe(Role.TRANSLATOR)
   })
 
-  it('global admin bypasses membership check and gets ADMIN role', async () => {
-    vi.mocked(prisma.user.findUnique).mockResolvedValue({
-      isGlobalAdmin: true,
-    } as never)
-    const m = await requireProjectRole('admin1', 'any-project', Role.MAINTAINER)
-    expect(m.role).toBe(Role.ADMIN)
-    expect(prisma.membership.findUnique).not.toHaveBeenCalled()
+  it('gives an instance operator no way into a project they are not a member of', async () => {
+    vi.mocked(prisma.membership.findUnique).mockResolvedValue(null)
+    await expect(requireProjectRole('operator', 'customer-project', Role.READER)).rejects.toMatchObject({
+      statusCode: 403,
+    })
   })
 })
 

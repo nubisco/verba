@@ -48,14 +48,11 @@ describe('listProjects', () => {
     expect(result).toEqual([mockProject])
   })
 
-  it('global admin sees all projects', async () => {
-    vi.mocked(prisma.user.findUnique).mockResolvedValue({
-      isGlobalAdmin: true,
-    } as never)
-    vi.mocked(prisma.project.findMany).mockResolvedValue([mockProject])
-    const result = await listProjects('admin1')
-    expect(result).toEqual([mockProject])
-    expect(prisma.membership.findMany).not.toHaveBeenCalled()
+  it('lists only member projects for an instance operator too', async () => {
+    vi.mocked(prisma.membership.findMany).mockResolvedValue([])
+    vi.mocked(prisma.project.findMany).mockResolvedValue([])
+    await listProjects('operator')
+    expect(prisma.project.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { id: { in: [] } } }))
   })
 })
 

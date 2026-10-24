@@ -66,7 +66,7 @@ verba/
 ADMIN (4) > MAINTAINER (3) > TRANSLATOR (2) > READER (1)
 ```
 
-Global admin (`isGlobalAdmin: true` on User) bypasses project-level membership checks.
+Nobody bypasses project-level membership checks. Instance operators (`VERBA_OPERATORS`) manage accounts only.
 
 ## Workflow State Machine
 
@@ -131,7 +131,7 @@ docs/production-deployment
 
 ## New Feature Checklist
 
-- [ ] Prisma schema updated (if new model/field) and applied with `prisma db push`
+- [ ] Prisma schema updated (if new model/field), applied locally with `prisma db push`, and a PostgreSQL migration written with `pnpm --filter @nubisco/verba-api db:migration:new <name>`
 - [ ] Zod schema in `src/schemas/`
 - [ ] Service function with `requireProjectRole` guard
 - [ ] Route registered in `src/routes/`

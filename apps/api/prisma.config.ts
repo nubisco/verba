@@ -28,5 +28,8 @@ export default defineConfig({
   },
   datasource: {
     url: databaseUrl(),
+    // Only `scripts/migrations.mjs` needs one: diffing the migration history
+    // against the schema replays the history into a scratch PostgreSQL.
+    ...(process.env.SHADOW_DATABASE_URL ? { shadowDatabaseUrl: process.env.SHADOW_DATABASE_URL } : {}),
   },
 })

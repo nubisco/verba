@@ -2,6 +2,7 @@ import * as XLSX from 'xlsx'
 import { prisma } from '../prisma.js'
 import type { ImportMapping } from '../schemas/import.schema.js'
 import { upsertTranslation } from './translation.service.js'
+import { Role } from '../types.js'
 import { updateImportRun } from './import-run.service.js'
 import { emit } from '../events.js'
 
@@ -275,7 +276,8 @@ export async function applyImport(
           })
           continue
         }
-        await upsertTranslation(key.id, locale.id, { text }, userId)
+        // Imports run behind the MAINTAINER role (routes/import.ts).
+        await upsertTranslation(key.id, locale.id, { text }, userId, Role.MAINTAINER)
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)

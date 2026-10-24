@@ -13,6 +13,7 @@ vi.mock('../prisma.js', () => ({
       count: vi.fn(),
     },
     locale: { findMany: vi.fn() },
+    namespace: { findFirst: vi.fn() },
     translation: { createMany: vi.fn(), updateMany: vi.fn() },
     auditLog: { create: vi.fn() },
   },
@@ -35,7 +36,10 @@ const mockKey = {
   deletedAt: null,
 }
 
-beforeEach(() => vi.clearAllMocks())
+beforeEach(() => {
+  vi.clearAllMocks()
+  vi.mocked(prisma.namespace.findFirst).mockResolvedValue({ id: 'ns1' } as never)
+})
 
 describe('listKeys', () => {
   it('returns paginated keys for project', async () => {
@@ -139,6 +143,17 @@ describe('getKey', () => {
 })
 
 describe('createKey', () => {
+  it('refuses a namespace from another project', async () => {
+    vi.mocked(prisma.namespace.findFirst).mockResolvedValue(null)
+    await expect(createKey('p1', { name: 'greeting', namespaceId: 'ns-of-p2' })).rejects.toMatchObject({
+      statusCode: 404,
+    })
+    expect(prisma.namespace.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'ns-of-p2', projectId: 'p1' } }),
+    )
+    expect(prisma.key.create).not.toHaveBeenCalled()
+  })
+
   it('creates key and emits event', async () => {
     vi.mocked(prisma.key.findUnique).mockResolvedValue(null)
     vi.mocked(prisma.key.create).mockResolvedValue({
