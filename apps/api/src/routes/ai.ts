@@ -93,7 +93,7 @@ export async function aiRoutes(app: FastifyInstance) {
     '/projects/:projectId/ai/fill-locale',
     { preHandler: [app.authenticate] },
     async (req) => {
-      await requireProjectRole(req.user.userId, req.params.projectId, Role.TRANSLATOR)
+      const membership = await requireProjectRole(req.user.userId, req.params.projectId, Role.TRANSLATOR)
       const { projectId } = req.params
       const { localeCode, namespaceId, onlyEmpty, limit } = FillLocaleBodySchema.parse(req.body)
 
@@ -177,7 +177,7 @@ export async function aiRoutes(app: FastifyInstance) {
           continue
         }
 
-        await upsertTranslation(key.id, targetLocale.id, { text: suggestion }, req.user.userId)
+        await upsertTranslation(key.id, targetLocale.id, { text: suggestion }, req.user.userId, membership.role)
         filled++
       }
 

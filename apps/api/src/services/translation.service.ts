@@ -11,6 +11,29 @@ function notFound(): never {
   throw Object.assign(new Error('Translation not found'), { statusCode: 404 })
 }
 
+/**
+ * The status a translation has after a save. Saving never approves anything.
+ *
+ * - A server-side caller (an import) may set the status it read from a file.
+ * - Starting on a TODO moves it to IN_PROGRESS.
+ * - Changing the text of a SUBMITTED or APPROVED translation sends it back to
+ *   IN_PROGRESS unless a MAINTAINER or ADMIN made the change, so a translator
+ *   cannot edit approved text and keep the approval.
+ */
+export function nextStatusOnSave(
+  current: string,
+  textChanged: boolean,
+  requested: string | undefined,
+  actorRole: string | undefined,
+): string {
+  if (requested) return requested
+  if (!textChanged) return current
+  if (current === Status.TODO) return Status.IN_PROGRESS
+  const reviewer = actorRole === Role.MAINTAINER || actorRole === Role.ADMIN
+  if ((current === Status.SUBMITTED || current === Status.APPROVED) && !reviewer) return Status.IN_PROGRESS
+  return current
+}
+
 export async function upsertTranslation(
   keyId: string,
   localeId: string,
@@ -33,16 +56,13 @@ export async function upsertTranslation(
       })
     }
     const textChanged = data.text !== undefined && data.text !== existing.text
-    const autoStatus =
-      data.text !== undefined && existing.status === 'TODO' && !data.status
-        ? 'IN_PROGRESS'
-        : (data.status ?? existing.status)
+    const status = nextStatusOnSave(existing.status, textChanged, data.status, actorRole)
     const result = await prisma.translation.update({
       where: { id: existing.id },
       data: {
         text: data.text,
-        status: autoStatus,
-        updatedById: data.updatedById,
+        status,
+        updatedById: userId,
         version: textChanged ? existing.version + 1 : existing.version,
       },
     })
@@ -78,7 +98,7 @@ export async function upsertTranslation(
     return result
   }
   const created = await prisma.translation.create({
-    data: { keyId, localeId, ...data },
+    data: { keyId, localeId, text: data.text, status: data.status ?? Status.TODO, updatedById: userId },
   })
   const createdKey = await prisma.key.findUnique({ where: { id: keyId } })
   if (createdKey) {

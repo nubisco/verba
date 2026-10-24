@@ -19,7 +19,14 @@ vi.mock('../prisma.js', () => ({
 }))
 
 import { prisma } from '../prisma.js'
-import { assignTranslation, getTranslation, updateStatus, upsertTranslation } from '../services/translation.service.js'
+import {
+  assignTranslation,
+  getTranslation,
+  nextStatusOnSave,
+  updateStatus,
+  upsertTranslation,
+} from '../services/translation.service.js'
+import { UpsertTranslationSchema } from '../schemas/translation.schema.js'
 import { Role } from '../types.js'
 
 const makeTranslation = (status: string) => ({
@@ -199,5 +206,42 @@ describe('cross-project isolation', () => {
       statusCode: 422,
     })
     expect(prisma.translation.update).not.toHaveBeenCalled()
+  })
+})
+
+describe('the workflow cannot be skipped by saving', () => {
+  it('rejects a client that sends a status or an author with its text', () => {
+    expect(UpsertTranslationSchema.safeParse({ text: 'Hi', status: 'APPROVED' }).success).toBe(false)
+    expect(UpsertTranslationSchema.safeParse({ text: 'Hi', updatedById: 'someone-else' }).success).toBe(false)
+    expect(UpsertTranslationSchema.parse({ text: 'Hi', source: 'ai' })).toEqual({ text: 'Hi', source: 'ai' })
+  })
+
+  it('records the signed-in user as the author, whatever the input says', async () => {
+    vi.mocked(prisma.translation.findUnique).mockResolvedValue(makeTranslation('TODO'))
+    vi.mocked(prisma.translation.update).mockResolvedValue(makeTranslation('IN_PROGRESS'))
+    vi.mocked(prisma.key.findUnique).mockResolvedValue(null)
+    await upsertTranslation('k1', 'l1', { text: 'New' }, 'u-me', Role.TRANSLATOR)
+    expect(vi.mocked(prisma.translation.update).mock.calls[0][0].data).toMatchObject({
+      updatedById: 'u-me',
+      status: 'IN_PROGRESS',
+    })
+  })
+
+  it('sends approved text a translator edits back to IN_PROGRESS', async () => {
+    vi.mocked(prisma.translation.findUnique).mockResolvedValue(makeTranslation('APPROVED'))
+    vi.mocked(prisma.translation.update).mockResolvedValue(makeTranslation('IN_PROGRESS'))
+    vi.mocked(prisma.key.findUnique).mockResolvedValue(null)
+    await upsertTranslation('k1', 'l1', { text: 'Changed' }, 'u-me', Role.TRANSLATOR)
+    expect(vi.mocked(prisma.translation.update).mock.calls[0][0].data).toMatchObject({ status: 'IN_PROGRESS' })
+  })
+
+  it('decides the status after a save', () => {
+    expect(nextStatusOnSave('TODO', true, undefined, Role.TRANSLATOR)).toBe('IN_PROGRESS')
+    expect(nextStatusOnSave('APPROVED', true, undefined, Role.TRANSLATOR)).toBe('IN_PROGRESS')
+    expect(nextStatusOnSave('SUBMITTED', true, undefined, Role.TRANSLATOR)).toBe('IN_PROGRESS')
+    expect(nextStatusOnSave('APPROVED', true, undefined, Role.MAINTAINER)).toBe('APPROVED')
+    expect(nextStatusOnSave('APPROVED', false, undefined, Role.TRANSLATOR)).toBe('APPROVED')
+    // An import passes the status it read from the file.
+    expect(nextStatusOnSave('TODO', true, 'APPROVED', Role.MAINTAINER)).toBe('APPROVED')
   })
 })

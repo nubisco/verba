@@ -106,4 +106,32 @@ describe('routes nested under a project only reach that project', () => {
     expect(res.statusCode).toBe(404)
     expect(prisma.comment.findMany).not.toHaveBeenCalled()
   })
+
+  it('PUT translation: a client cannot set the status, so a translator cannot approve', async () => {
+    vi.mocked(prisma.membership.findUnique).mockResolvedValue({
+      id: 'm',
+      userId: 'u-admin-p1',
+      projectId: 'p1',
+      role: 'TRANSLATOR',
+      namespaces: '[]',
+      assignedLocales: '[]',
+    } as never)
+    vi.mocked(prisma.key.findFirst).mockResolvedValue({
+      id: 'k1',
+      projectId: 'p1',
+      namespaceId: 'ns1',
+      name: 'hello',
+      namespace: { id: 'ns1', slug: 'app' },
+    } as never)
+    vi.mocked(prisma.locale.findFirst).mockResolvedValue({ id: 'l1', projectId: 'p1' } as never)
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/projects/p1/keys/k1/translations/l1',
+      cookies,
+      payload: { text: 'Hola', status: 'APPROVED' },
+    })
+    expect(res.statusCode).toBe(400)
+    expect(prisma.translation.create).not.toHaveBeenCalled()
+    expect(prisma.translation.update).not.toHaveBeenCalled()
+  })
 })

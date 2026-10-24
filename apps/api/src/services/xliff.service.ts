@@ -10,6 +10,7 @@ import {
 } from '@nubisco/verba-shared'
 import { prisma } from '../prisma.js'
 import { upsertTranslation } from './translation.service.js'
+import { Role } from '../types.js'
 import { updateImportRun } from './import-run.service.js'
 import { emit } from '../events.js'
 
@@ -191,7 +192,13 @@ export async function importXliff(
         else stats.created++
 
         // Source text is authoritative and read-only in Verba.
-        await upsertTranslation(key.id, sourceLocale.id, { text: unit.source, status: 'APPROVED' }, userId)
+        await upsertTranslation(
+          key.id,
+          sourceLocale.id,
+          { text: unit.source, status: 'APPROVED' },
+          userId,
+          Role.MAINTAINER,
+        )
 
         if (unit.target !== undefined) {
           await upsertTranslation(
@@ -199,6 +206,7 @@ export async function importXliff(
             targetLocale.id,
             { text: unit.target, status: stateToStatus(unit.state) },
             userId,
+            Role.MAINTAINER,
           )
         }
       } catch (err) {
