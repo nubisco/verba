@@ -1,7 +1,7 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import * as Sentry from '@sentry/vue'
-import NubiscoUI, { configureNamedTheme, registerIcons } from '@nubisco/ui'
+import NubiscoUI, { configureNamedTheme, configureTheme, registerIcons } from '@nubisco/ui'
 import 'unfonts.css'
 import App from './App.vue'
 import router from './router'
@@ -55,6 +55,14 @@ app.use(NubiscoUI)
 // Verba ships one named theme, its own. This selects it. The accent behind it
 // comes from the engineers category in @nubisco/ui, not from anything here.
 configureNamedTheme({ themes: ['verba'], defaultTheme: 'verba' })
+
+// Verba has no working dark mode yet: most views still paint hardcoded light
+// colours (white cards, near-black headings), so a dark document makes them
+// unreadable. NbUserMenu reads useTheme() from @nubisco/ui 5.29.0, and the
+// library default of 'system' would put every visitor whose OS is dark onto
+// that broken ramp. Pin light until the views move to the ui tokens, then drop
+// defaultTheme and turn on show-theme in DefaultLayout.
+configureTheme({ storageKey: 'verba.theme', defaultTheme: 'light' })
 
 // Sidebar glyphs are named in route meta and reach NbIcon as `:name="item.icon"`,
 // so the @nubisco/ui 4.0.0 compile-time resolver cannot see them. The set is
