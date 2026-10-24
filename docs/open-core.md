@@ -8,6 +8,7 @@ Everything outside `packages/ee/` is licensed under the [GNU Affero General Publ
 
 CE includes the full translation collaboration platform:
 
+- Accounts, their members and account roles (Owner, Admin, Member)
 - Projects, namespaces, keys, and locales
 - Four-stage translation workflow (TODO, IN_PROGRESS, SUBMITTED, APPROVED)
 - Role-based access control (Admin, Maintainer, Translator, Reader)
@@ -18,6 +19,8 @@ CE includes the full translation collaboration platform:
 - Plugin system for server-side extensions
 - Docker-first deployment (SQLite dev, Postgres production)
 
+Accounts, members and roles are in the free edition, not EE. Every access check depends on them, so CE has the whole account model.
+
 CE is fully functional on its own. You do not need EE for any core translation workflow.
 
 ## Enterprise Edition (EE)
@@ -27,7 +30,7 @@ The `packages/ee/` directory contains proprietary code owned by Nubisco Lda, lic
 EE adds features for larger organizations and managed deployments:
 
 - SSO / SAML authentication
-- Multi-tenancy and organization management
+- Per-account plans, limits, billing and self-serve account creation
 - Stripe billing integration
 - Signed license key validation for self-hosted deployments
 - Advanced audit log export

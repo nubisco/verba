@@ -13,6 +13,7 @@ Open-core means the foundational product is released as genuine open-source soft
 
 The CE includes:
 
+- Accounts, their members and account roles (Owner, Admin, Member)
 - Full translation workflow (TODO → IN_PROGRESS → SUBMITTED → APPROVED)
 - Role-based access control (Admin, Maintainer, Translator, Reader)
 - Namespace-scoped permissions
@@ -26,6 +27,8 @@ The CE includes:
 - Docker Compose deployment
 - Plugin system
 
+Accounts, members and roles are in the free edition, not the EE. Every access check in Verba depends on them, so a CE instance has the whole account model. The EE adds plans, limits and billing on top of it.
+
 The CE is free to self-host, modify, and redistribute under the AGPL. If you run a modified version as a networked service, you must make your modifications available under the AGPL.
 
 ## Enterprise Edition (EE)
@@ -37,7 +40,7 @@ The EE adds features for larger teams and organisations:
 
 - SSO / SAML authentication
 - Advanced audit log export
-- Multi-tenancy / organisation management
+- Per-account plans, limits, billing and self-serve account creation
 - Plan-based resource limits
 - Signed license key validation
 - Billing integration

@@ -197,12 +197,13 @@ If Verba saves your team time, consider sponsoring development. Building and mai
 ### Community Edition (CE)
 
 The Verba Community Edition is licensed under the **[GNU AGPL v3.0](LICENSE)**.  
-You are free to run, modify, and self-host it under the terms of the AGPL-3.0. If you distribute it or offer it to others over a network, the AGPL's copyleft terms apply.
+You are free to run, modify, and self-host it under the terms of the AGPL-3.0. If you distribute it or offer it to others over a network, the AGPL's copyleft terms apply.  
+Accounts, members and roles are part of the Community Edition.
 
 ### Enterprise Edition (EE)
 
 Files under `packages/ee/` are **proprietary**. Copyright © Nubisco, All Rights Reserved.  
-EE features (SSO/SAML, advanced audit logs, multi-tenancy) require a commercial license key.  
+EE features (SSO/SAML, advanced audit logs, per-account plans, limits, billing and self-serve account creation) require a commercial license key.  
 The source code is publicly visible for auditability, but may not be used in production  
 without a valid key.
 

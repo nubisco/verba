@@ -22,16 +22,16 @@ This document describes the internal product model that powers Verba's feature g
 
 ## Entitlement features
 
-| Feature                 | Description                   | Available from                         |
-| ----------------------- | ----------------------------- | -------------------------------------- |
-| `sso`                   | SAML/SSO authentication       | `enterprise`, `self_hosted_enterprise` |
-| `advanced_audit_export` | Export audit logs as CSV/JSON | `business`+                            |
-| `multi_tenancy`         | Organisation management       | `enterprise`, `self_hosted_enterprise` |
-| `ai_suggestions`        | AI translation suggestions    | `pro`+                                 |
-| `webhooks`              | Outbound webhooks             | `pro`+                                 |
-| `api_tokens`            | Personal API token generation | `pro`+                                 |
-| `custom_roles`          | Custom member roles           | `business`+                            |
-| `priority_support`      | SLA-backed support            | `enterprise`, `self_hosted_enterprise` |
+| Feature                 | Description                                                                                             | Available from                         |
+| ----------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| `sso`                   | SAML/SSO authentication                                                                                 | `enterprise`, `self_hosted_enterprise` |
+| `advanced_audit_export` | Export audit logs as CSV/JSON                                                                           | `business`+                            |
+| `multi_tenancy`         | Per-account plans, limits, billing and self-serve account creation (accounts, members and roles are CE) | `enterprise`, `self_hosted_enterprise` |
+| `ai_suggestions`        | AI translation suggestions                                                                              | `pro`+                                 |
+| `webhooks`              | Outbound webhooks                                                                                       | `pro`+                                 |
+| `api_tokens`            | Personal API token generation                                                                           | `pro`+                                 |
+| `custom_roles`          | Custom member roles                                                                                     | `business`+                            |
+| `priority_support`      | SLA-backed support                                                                                      | `enterprise`, `self_hosted_enterprise` |
 
 ## Resource limits by plan
 
