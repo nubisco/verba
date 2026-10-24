@@ -22,7 +22,9 @@
       <!-- Step: Account -->
       <template v-else-if="step === 'account'">
         <h1>Create your admin account</h1>
-        <p class="setup-subtitle">This will be the first user and full administrator.</p>
+        <p class="setup-subtitle">
+          Use the address named in VERBA_OPERATORS in the server configuration. It manages accounts on this instance.
+        </p>
         <form class="setup-form" @submit.prevent="submit">
           <div class="field">
             <label for="email">Email</label>

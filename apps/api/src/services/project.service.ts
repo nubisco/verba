@@ -1,20 +1,14 @@
 import { prisma } from '../prisma.js'
 import type { CreateProjectInput, UpdateProjectInput } from '../schemas/project.schema.js'
 import { encrypt, isEncrypted } from './encryption.service.js'
+import { isOperator } from './operator.service.js'
 
 function notFound(): never {
   throw Object.assign(new Error('Project not found'), { statusCode: 404 })
 }
 
+/** The projects this person is a member of. Operators included: see acl.service. */
 export async function listProjects(userId: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { isGlobalAdmin: true },
-  })
-  // Global admins see all projects; regular users only see projects they're a member of
-  if (user?.isGlobalAdmin) {
-    return prisma.project.findMany({ orderBy: { createdAt: 'desc' } })
-  }
   const memberships = await prisma.membership.findMany({
     where: { userId },
     select: { projectId: true },
@@ -58,11 +52,7 @@ async function resolveUniqueSlug(base: string): Promise<string> {
 }
 
 export async function createProject(userId: string, plan: string | undefined, data: CreateProjectInput) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { isGlobalAdmin: true },
-  })
-  if (!user?.isGlobalAdmin) {
+  if (!(await isOperator(userId))) {
     const cap = getProjectCapForPlan(plan)
     if (Number.isFinite(cap)) {
       const ownedAdminCount = await prisma.membership.count({

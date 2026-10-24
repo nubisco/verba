@@ -31,6 +31,11 @@ vi.mock('../services/analytics.service.js', () => ({
   track: vi.fn(),
 }))
 
+vi.mock('../services/operator.service.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../services/operator.service.js')>()),
+  syncOperatorFlag: vi.fn(),
+}))
+
 vi.mock('../prisma.js', () => ({
   prisma: {
     user: {
@@ -57,11 +62,13 @@ describe('auth and setup routes', () => {
     PLATFORM_ISSUER: process.env.PLATFORM_ISSUER,
     PLATFORM_APP_ID: process.env.PLATFORM_APP_ID,
     JWT_SECRET: process.env.JWT_SECRET,
+    VERBA_OPERATORS: process.env.VERBA_OPERATORS,
   }
 
   beforeEach(() => {
     vi.clearAllMocks()
     process.env.JWT_SECRET = 'test-secret'
+    process.env.VERBA_OPERATORS = 'admin@example.com'
     delete process.env.ENABLE_LOCAL_PASSWORD
     delete process.env.DISABLE_LOCAL_OTP
     delete process.env.PLATFORM_ISSUER
@@ -94,6 +101,7 @@ describe('auth and setup routes', () => {
     process.env.PLATFORM_ISSUER = originalEnv.PLATFORM_ISSUER
     process.env.PLATFORM_APP_ID = originalEnv.PLATFORM_APP_ID
     process.env.JWT_SECRET = originalEnv.JWT_SECRET
+    process.env.VERBA_OPERATORS = originalEnv.VERBA_OPERATORS
   })
 
   it('exposes OTP-first CE config by default', async () => {
@@ -241,6 +249,20 @@ describe('auth and setup routes', () => {
     expect(res.json()).toMatchObject({
       error: 'adminPassword is required when password auth is enabled',
     })
+  })
+
+  it('refuses to set up an operator account for an address not in VERBA_OPERATORS', async () => {
+    const app = buildApp()
+    const res = await app.inject({
+      method: 'POST',
+      url: '/setup',
+      payload: { adminEmail: 'first-stranger@example.com' },
+    })
+    await app.close()
+
+    expect(res.statusCode).toBe(403)
+    expect(res.json().error).toMatch(/VERBA_OPERATORS/)
+    expect(vi.mocked(authService.createOtpOnlyUser)).not.toHaveBeenCalled()
   })
 
   it('bootstraps an OTP-only CE admin without requiring a password', async () => {

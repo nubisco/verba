@@ -66,7 +66,7 @@ verba/
 ADMIN (4) > MAINTAINER (3) > TRANSLATOR (2) > READER (1)
 ```
 
-Global admin (`isGlobalAdmin: true` on User) bypasses project-level membership checks.
+Nobody bypasses project-level membership checks. Instance operators (`VERBA_OPERATORS`) manage accounts only.
 
 ## Workflow State Machine
 

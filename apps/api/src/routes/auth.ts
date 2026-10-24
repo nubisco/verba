@@ -10,7 +10,7 @@ import { prisma } from '../prisma.js'
 import { getAuthConfig } from '../services/instance-config.service.js'
 import { randomBytes } from 'node:crypto'
 import { authRateLimits } from '../rate-limits.js'
-import { clearSession, credentialCookieOptions, issueSession } from '../session.js'
+import { clearSession, credentialCookieOptions, startSession } from '../session.js'
 
 function readBundleKey(req: FastifyRequest): string | undefined {
   const raw = req.cookies?.[bundleService.BUNDLE_COOKIE]
@@ -62,7 +62,7 @@ export async function authRoutes(app: FastifyInstance) {
     }
     const body = RegisterSchema.parse(req.body)
     const user = await authService.register(body.email, body.password)
-    issueSession(app, reply, { userId: user.id, email: user.email })
+    await startSession(app, reply, { userId: user.id, email: user.email })
     return reply.status(201).send({ id: user.id, email: user.email })
   })
 
@@ -73,7 +73,7 @@ export async function authRoutes(app: FastifyInstance) {
     }
     const body = LoginSchema.parse(req.body)
     const payload = await authService.login(body.email, body.password)
-    issueSession(app, reply, { userId: payload.userId, email: payload.email })
+    await startSession(app, reply, { userId: payload.userId, email: payload.email })
     return reply.send({ id: payload.userId, email: payload.email })
   })
 
@@ -145,7 +145,7 @@ export async function authRoutes(app: FastifyInstance) {
       }
       const { email, code } = OtpVerifySchema.parse(req.body)
       const payload = await otpService.verifyOtp(email.toLowerCase().trim(), code.trim())
-      issueSession(app, reply, { userId: payload.userId, email: payload.email })
+      await startSession(app, reply, { userId: payload.userId, email: payload.email })
       return reply.send({ id: payload.userId, email: payload.email })
     },
   )
@@ -273,7 +273,7 @@ export async function authRoutes(app: FastifyInstance) {
       name: identity.name,
     })
 
-    issueSession(app, reply, {
+    await startSession(app, reply, {
       userId: identity.userId,
       email: identity.email,
       plan: identity.plan,
@@ -324,7 +324,7 @@ export async function authRoutes(app: FastifyInstance) {
         name: payload.name,
       })
 
-      issueSession(app, reply, {
+      await startSession(app, reply, {
         userId: payload.userId,
         email: payload.email,
         plan: payload.plan,

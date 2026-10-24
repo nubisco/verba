@@ -3,7 +3,7 @@ import { wsManager } from '../ws/index.js'
 import * as audit from './audit.service.js'
 import * as notifSvc from './notification.service.js'
 
-/** The translation, only when it belongs to `projectId`; otherwise a 404. */
+/** The translation, only when it belongs to `projectId`, and a 404 otherwise. */
 async function translationInProject(projectId: string, translationId: string) {
   const translation = await prisma.translation.findFirst({
     where: { id: translationId, key: { projectId } },

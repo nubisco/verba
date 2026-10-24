@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs'
 import { prisma } from '../prisma.js'
+import { isOperatorEmail, recordInstanceAudit } from './operator.service.js'
 
 function unauthorized(): never {
   throw Object.assign(new Error('Invalid email or password'), {
@@ -24,9 +25,9 @@ export async function createOtpOnlyUser(email: string, name?: string | null) {
 }
 
 async function createLocalUser(email: string, passwordHash: string, name?: string | null) {
-  const isFirstUser = (await prisma.user.count()) === 0
+  // Nobody becomes an operator by arriving first: see operator.service.ts.
   const user = await prisma.user.create({
-    data: { email, passwordHash, name: name ?? undefined, isGlobalAdmin: isFirstUser },
+    data: { email, passwordHash, name: name ?? undefined, isGlobalAdmin: false },
     select: { id: true, email: true, isGlobalAdmin: true, createdAt: true },
   })
   return user
@@ -46,7 +47,7 @@ export async function login(email: string, password: string) {
   return {
     userId: user.id,
     email: user.email,
-    isGlobalAdmin: user.isGlobalAdmin,
+    isGlobalAdmin: isOperatorEmail(user.email),
   }
 }
 
@@ -122,7 +123,8 @@ export async function getMe(userId: string) {
     id: user.id,
     email: user.email,
     name: user.name ?? null,
-    isGlobalAdmin: user.isGlobalAdmin,
+    // Operator, read live from VERBA_OPERATORS. The name is kept for the web app.
+    isGlobalAdmin: isOperatorEmail(user.email),
     createdAt: user.createdAt,
     preferredLocales,
     notificationOpenMode: user.notificationOpenMode,
@@ -132,48 +134,46 @@ export async function getMe(userId: string) {
 export async function deactivateUser(targetUserId: string, actorUserId: string) {
   const actor = await prisma.user.findUnique({ where: { id: actorUserId } })
   if (!actor) notFound()
-  if (!actor.isGlobalAdmin && actorUserId !== targetUserId) {
+  const self = actorUserId === targetUserId
+  if (!isOperatorEmail(actor.email) && !self) {
     throw Object.assign(new Error('Forbidden'), { statusCode: 403 })
   }
-  return prisma.user.update({
+  const updated = await prisma.user.update({
     where: { id: targetUserId },
     data: { deactivatedAt: new Date() },
   })
+  if (!self) await recordInstanceAudit({ actorId: actorUserId, action: 'user.deactivated', targetUserId })
+  return updated
 }
 
 export async function reactivateUser(targetUserId: string, actorUserId: string) {
   const actor = await prisma.user.findUnique({ where: { id: actorUserId } })
-  if (!actor || !actor.isGlobalAdmin) {
+  if (!actor || !isOperatorEmail(actor.email)) {
     throw Object.assign(new Error('Forbidden'), { statusCode: 403 })
   }
-  return prisma.user.update({
+  const updated = await prisma.user.update({
     where: { id: targetUserId },
     data: { deactivatedAt: null },
   })
+  await recordInstanceAudit({ actorId: actorUserId, action: 'user.reactivated', targetUserId })
+  return updated
 }
 
 export async function deleteUser(targetUserId: string, actorUserId: string, reassignToUserId?: string) {
   const actor = await prisma.user.findUnique({ where: { id: actorUserId } })
   if (!actor) notFound()
-  if (!actor.isGlobalAdmin && actorUserId !== targetUserId) {
+  if (!isOperatorEmail(actor.email) && actorUserId !== targetUserId) {
     throw Object.assign(new Error('Forbidden'), { statusCode: 403 })
   }
   const target = await prisma.user.findUnique({ where: { id: targetUserId } })
   if (!target) notFound()
 
-  if (target.isGlobalAdmin) {
-    const otherAdmins = await prisma.user.count({
-      where: {
-        isGlobalAdmin: true,
-        deactivatedAt: null,
-        id: { not: targetUserId },
-      },
+  // An operator is named in VERBA_OPERATORS, so the account goes from there
+  // first. Deleting it here would leave a configured operator with no account.
+  if (isOperatorEmail(target.email)) {
+    throw Object.assign(new Error('Remove this address from VERBA_OPERATORS before deleting the account'), {
+      statusCode: 403,
     })
-    if (otherAdmins === 0) {
-      throw Object.assign(new Error('Last active global admin cannot be deleted'), {
-        statusCode: 403,
-      })
-    }
   }
 
   if (reassignToUserId) {
@@ -187,6 +187,12 @@ export async function deleteUser(targetUserId: string, actorUserId: string, reas
   await prisma.user.update({
     where: { id: targetUserId },
     data: { deactivatedAt: new Date() },
+  })
+  await recordInstanceAudit({
+    actorId: actorUserId,
+    action: 'user.deleted',
+    targetUserId,
+    detail: reassignToUserId ? { reassignedTo: reassignToUserId } : undefined,
   })
 }
 
@@ -221,7 +227,7 @@ export async function findActiveUserByEmail(email: string) {
 }
 
 export async function listAllUsers() {
-  return prisma.user.findMany({
+  const users = await prisma.user.findMany({
     select: {
       id: true,
       email: true,
@@ -232,4 +238,5 @@ export async function listAllUsers() {
     },
     orderBy: { createdAt: 'asc' },
   })
+  return users.map((u) => ({ ...u, isGlobalAdmin: isOperatorEmail(u.email) }))
 }

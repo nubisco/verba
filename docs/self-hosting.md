@@ -144,6 +144,7 @@ Configure the API via environment variables in `apps/api/.env`:
 | `SMTP_USER`             | _(optional)_               | SMTP username                                                      |
 | `SMTP_PASS`             | _(optional)_               | SMTP password                                                      |
 | `SMTP_SECURE`           | `false`                    | Set `true` for port-465 TLS                                        |
+| `VERBA_OPERATORS`       | _(unset)_                  | Emails of the instance operators, comma separated. See below       |
 | `SESSION_TTL_HOURS`     | `168` (7 days)             | How long a session lasts unused. Active sessions renew daily       |
 | `COOKIE_SECURE`         | `true` in production       | Set `false` only to serve production over plain HTTP               |
 | `TRUST_PROXY`           | private ranges             | Proxies whose `X-Forwarded-For` is believed, see below             |
@@ -175,7 +176,22 @@ the proxy's address and the per-address limits apply to all of them together.
 - **Optional transitional mode:** set `ENABLE_LOCAL_PASSWORD=true` if you need password login/register
 - **Enterprise direction:** set `PLATFORM_ISSUER` to enable Nubisco Platform token verification alongside local auth
 
-For CE, the first user can be bootstrapped without creating a permanent password.
+For CE, the operator account can be bootstrapped without creating a permanent password.
+
+### Instance operators
+
+The people who run an instance are named in `VERBA_OPERATORS`, a comma-separated
+list of email addresses. Nobody becomes an operator by signing up first. An
+operator can manage accounts under **Admin → Users** (deactivate, reactivate,
+delete) and read the instance's plan. An operator has no access to projects they
+are not a member of, the same as anyone else.
+
+The first-run setup wizard only creates an account for an address already in
+`VERBA_OPERATORS`. Adding or removing an address takes effect on the next request
+for every decision, and the change is recorded (`operator.granted`,
+`operator.revoked`) in the instance audit record at that person's next sign-in.
+Operator actions on accounts are recorded there too, readable at
+`GET /api/admin/audit`.
 
 ### Platform SSO for EE
 
@@ -371,7 +387,7 @@ cp apps/api/prisma/dev.db backup_$(date +%Y%m%d).db
 
 ### User Management
 
-Global admins can access **Admin → Users** to:
+Instance operators (`VERBA_OPERATORS`) can access **Admin → Users** to:
 
 - **Deactivate** a user: prevents login without deleting their work.
 - **Delete** a user: permanently removes their account.

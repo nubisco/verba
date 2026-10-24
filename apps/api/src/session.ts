@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { prisma } from './prisma.js'
+import { syncOperatorFlag } from './services/operator.service.js'
 
 // The session is a signed JWT in an httpOnly cookie named `token`.
 //
@@ -57,6 +58,15 @@ export function issueSession(app: FastifyInstance, reply: FastifyReply, claims: 
   const token = app.jwt.sign(payload, { expiresIn: ttl })
   reply.setCookie(SESSION_COOKIE, token, { ...credentialCookieOptions(), maxAge: ttl })
   return token
+}
+
+/**
+ * A sign-in: bring the operator flag in line with VERBA_OPERATORS (recording
+ * any change), then issue the session. Every sign-in route uses this.
+ */
+export async function startSession(app: FastifyInstance, reply: FastifyReply, claims: SessionClaims): Promise<void> {
+  await syncOperatorFlag(claims.userId)
+  issueSession(app, reply, claims)
 }
 
 export function clearSession(reply: FastifyReply): void {

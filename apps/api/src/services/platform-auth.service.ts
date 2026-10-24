@@ -138,16 +138,13 @@ export async function upsertUserFromClaims(
 
   if (opts.autoProvision === false) return null
 
-  // First user through the door administers the instance. Only ever promotes
-  // into a vacuum: the moment one user exists this is inert, so it cannot be
-  // used to escalate on an established deployment.
-  const isFirstUser = (await prisma.user.count()) === 0
+  // Nobody becomes an operator by arriving first: see operator.service.ts.
   const user = await prisma.user.create({
     data: {
       email,
       passwordHash: '',
       name: claims.name ?? email.split('@')[0],
-      isGlobalAdmin: isFirstUser,
+      isGlobalAdmin: false,
     },
     select: { id: true, email: true, name: true },
   })

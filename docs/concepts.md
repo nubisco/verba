@@ -119,7 +119,7 @@ Verba uses role-based access control (RBAC) enforced on the server. Roles are as
 | `MAINTAINER` | Approve/reject translations, manage keys and namespaces; TRANSLATOR permissions |
 | `ADMIN`      | Full project management (members, locales, settings); MAINTAINER permissions    |
 
-**Global admin:** A user with `isGlobalAdmin: true` bypasses all project-level membership checks and has full access to every project.
+**Instance operator:** A user whose email is in `VERBA_OPERATORS`. Operators manage accounts on the instance. They have no special access to projects: like everyone else, they reach a project only as one of its members.
 
 ---
 

@@ -1,6 +1,7 @@
 import crypto from 'node:crypto'
 import { prisma } from '../prisma.js'
 import { createOtpOnlyUser } from './auth.service.js'
+import { isOperatorEmail } from './operator.service.js'
 
 const OTP_EXPIRY_MINUTES = 15
 
@@ -267,6 +268,6 @@ export async function verifyOtp(
   return {
     userId: user.id,
     email: user.email,
-    isGlobalAdmin: user.isGlobalAdmin,
+    isGlobalAdmin: isOperatorEmail(user.email),
   }
 }

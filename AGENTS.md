@@ -16,7 +16,7 @@ pnpm test                     # run all tests
 pnpm dev                      # start API (port 4000) + web (port 5173)
 ```
 
-The default dev user (seeded via the registration endpoint) is whatever you register first. That user becomes **ADMIN** automatically (see milestone 7.2).
+Instance operators are named by email in `VERBA_OPERATORS` (comma separated) and manage accounts. Nobody becomes one by registering first, and operators get no access to projects they are not members of (VE-77). Put your own address in `apps/api/.env` to use the admin pages in development.
 
 ## Repository Layout
 

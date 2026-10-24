@@ -1,5 +1,4 @@
 import { Role, Status } from '../types.js'
-import { prisma } from '../prisma.js'
 import { getMembership, ROLE_WEIGHT } from './membership.service.js'
 
 export function canTransitionStatus(role: string, from: string, to: string): boolean {
@@ -19,22 +18,14 @@ export function canTransitionStatus(role: string, from: string, to: string): boo
   return false
 }
 
+/**
+ * The caller's membership of a project, at `minRole` or above, or a 403.
+ *
+ * Membership is the only way in. Instance operators used to bypass this and
+ * act as ADMIN on every project, which on a shared host is every customer's
+ * data: they now need a membership like anyone else.
+ */
 export async function requireProjectRole(userId: string, projectId: string, minRole: string) {
-  // Global admins bypass project membership checks
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { isGlobalAdmin: true },
-  })
-  if (user?.isGlobalAdmin) {
-    return {
-      userId,
-      projectId,
-      role: Role.ADMIN,
-      namespaces: [] as string[],
-      id: '',
-      createdAt: new Date(),
-    }
-  }
   const membership = await getMembership(userId, projectId)
   if (!membership) {
     throw Object.assign(new Error('Forbidden'), { statusCode: 403 })
