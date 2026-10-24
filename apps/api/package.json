@@ -20,6 +20,7 @@
     "@fastify/cors": "^11.2.0",
     "@fastify/jwt": "^10.2.5",
     "@fastify/multipart": "^9.4.0",
+    "@fastify/rate-limit": "^10",
     "@fastify/websocket": "^11.3.4",
     "@nubisco/verba-shared": "workspace:*",
     "@prisma/adapter-pg": "^7.10.1",

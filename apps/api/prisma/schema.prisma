@@ -207,9 +207,10 @@ model ImportRun {
 model OtpToken {
   id        String   @id @default(cuid())
   email     String
-  code      String
+  code      String // SHA-256 of the code, never the code itself
   expiresAt DateTime
   used      Boolean  @default(false)
+  attempts  Int      @default(0) // wrong guesses so far; the code is burnt at OTP_MAX_ATTEMPTS
   createdAt DateTime @default(now())
 
   @@index([email])

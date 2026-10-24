@@ -139,12 +139,34 @@ Configure the API via environment variables in `apps/api/.env`:
 | `LICENSE_KEY`           | _(unset)_                  | Enterprise Edition licence; required for federated sign-in         |
 | `SMTP_HOST`             | _(unset = log to stdout)_  | SMTP host for email / OTP delivery                                 |
 | `SMTP_PORT`             | `587`                      | SMTP port                                                          |
-| `SMTP_FROM`             | `noreply@verba.app`        | From address for outgoing email                                    |
+| `MAIL_FROM`             | `SMTP_FROM`                | From address for outgoing email, on Resend and SMTP alike          |
+| `SMTP_FROM`             | `noreply@verba.app`        | From address, when `MAIL_FROM` is not set                          |
 | `SMTP_USER`             | _(optional)_               | SMTP username                                                      |
 | `SMTP_PASS`             | _(optional)_               | SMTP password                                                      |
 | `SMTP_SECURE`           | `false`                    | Set `true` for port-465 TLS                                        |
 
+| `TRUST_PROXY` | private ranges | Proxies whose `X-Forwarded-For` is believed, see below |
+| `BLOCKED_EMAIL_DOMAINS` | _(unset)_ | Extra throwaway domains refused for new accounts, comma separated |
+
 > **Development mode:** When `SMTP_HOST` is not set, OTP codes are printed to the API server's stdout log.
+
+### Sign-in limits
+
+The doors a stranger can reach without an account are rate limited, per client
+address and per email address, over 15 minutes: requesting a code (20 per
+address, 5 per email), entering one (30 and 15), password login (20 and 10), and
+the federated sign-in callbacks (30 per address). Each code also survives only
+five wrong guesses, after which a new one must be requested. New accounts cannot
+be created from well-known throwaway inbox domains (extend the list with
+`BLOCKED_EMAIL_DOMAINS`).
+
+The client address comes from `X-Forwarded-For` only when the request arrives
+from a trusted proxy. By default that is any loopback, link-local or private
+address, which covers the bundled nginx and a reverse proxy on the same host or
+network, and means a client cannot pick its own address by sending the header.
+If your proxy reaches the API from a public address, list it in `TRUST_PROXY`
+(addresses or CIDR ranges, comma separated). Without that, every visitor shares
+the proxy's address and the per-address limits apply to all of them together.
 
 ## Authentication Model
 

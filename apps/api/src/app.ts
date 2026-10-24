@@ -6,6 +6,7 @@ import cookie from '@fastify/cookie'
 import jwt from '@fastify/jwt'
 import multipart from '@fastify/multipart'
 import websocket from '@fastify/websocket'
+import rateLimit from '@fastify/rate-limit'
 import { ZodError } from 'zod'
 import type { FastifyRequest, FastifyReply } from 'fastify'
 
@@ -32,13 +33,14 @@ import { notificationRoutes } from './routes/notifications.js'
 import { aiRoutes } from './routes/ai.js'
 import { setupRoutes } from './routes/setup.js'
 import { configRoutes } from './routes/config.js'
+import { trustProxySetting } from './rate-limits.js'
 
 export function buildApp() {
   if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
     throw new Error('JWT_SECRET must be set in production')
   }
 
-  const app = Fastify({ logger: true })
+  const app = Fastify({ logger: true, trustProxy: trustProxySetting() })
 
   const isDev = process.env.NODE_ENV !== 'production'
   app.register(cors, {
@@ -52,6 +54,8 @@ export function buildApp() {
   })
 
   app.register(cookie)
+  // Off by default: only the routes that name a limit get one (see rate-limits.ts).
+  app.register(rateLimit, { global: false })
   app.register(multipart)
   app.register(websocket)
   app.register(jwt, {

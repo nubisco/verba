@@ -9,6 +9,7 @@ import * as ssoService from '../services/sso.service.js'
 import { prisma } from '../prisma.js'
 import { getAuthConfig } from '../services/instance-config.service.js'
 import { randomBytes } from 'node:crypto'
+import { authRateLimits } from '../rate-limits.js'
 
 function readBundleKey(req: FastifyRequest): string | undefined {
   const raw = req.cookies?.[bundleService.BUNDLE_COOKIE]
@@ -53,6 +54,8 @@ function setBundleKeyCookie(reply: FastifyReply, key: string): void {
 }
 
 export async function authRoutes(app: FastifyInstance) {
+  const limits = authRateLimits(app)
+
   app.post('/auth/register', async (req, reply) => {
     const authConfig = getAuthConfig()
     if (!authConfig.localPasswordEnabled) {
@@ -65,7 +68,7 @@ export async function authRoutes(app: FastifyInstance) {
     return reply.status(201).send({ id: user.id, email: user.email })
   })
 
-  app.post('/auth/login', async (req, reply) => {
+  app.post('/auth/login', { preHandler: limits.passwordLogin }, async (req, reply) => {
     const authConfig = getAuthConfig()
     if (!authConfig.localPasswordEnabled) {
       return reply.status(404).send({ error: 'Password login is disabled for this instance' })
@@ -123,7 +126,7 @@ export async function authRoutes(app: FastifyInstance) {
   })
 
   // OTP routes
-  app.post<{ Body: { email: string } }>('/auth/otp/request', async (req, reply) => {
+  app.post<{ Body: { email: string } }>('/auth/otp/request', { preHandler: limits.otpRequest }, async (req, reply) => {
     const authConfig = getAuthConfig()
     if (!authConfig.localOtpEnabled) {
       return reply.status(404).send({ error: 'OTP login is disabled for this instance' })
@@ -133,20 +136,24 @@ export async function authRoutes(app: FastifyInstance) {
     return reply.send({ ok: true })
   })
 
-  app.post<{ Body: { email: string; code: string } }>('/auth/otp/verify', async (req, reply) => {
-    const authConfig = getAuthConfig()
-    if (!authConfig.localOtpEnabled) {
-      return reply.status(404).send({ error: 'OTP login is disabled for this instance' })
-    }
-    const { email, code } = OtpVerifySchema.parse(req.body)
-    const payload = await otpService.verifyOtp(email.toLowerCase().trim(), code.trim())
-    const token = app.jwt.sign({
-      userId: payload.userId,
-      email: payload.email,
-    })
-    reply.setCookie('token', token, { httpOnly: true, path: '/' })
-    return reply.send({ id: payload.userId, email: payload.email })
-  })
+  app.post<{ Body: { email: string; code: string } }>(
+    '/auth/otp/verify',
+    { preHandler: limits.otpVerify },
+    async (req, reply) => {
+      const authConfig = getAuthConfig()
+      if (!authConfig.localOtpEnabled) {
+        return reply.status(404).send({ error: 'OTP login is disabled for this instance' })
+      }
+      const { email, code } = OtpVerifySchema.parse(req.body)
+      const payload = await otpService.verifyOtp(email.toLowerCase().trim(), code.trim())
+      const token = app.jwt.sign({
+        userId: payload.userId,
+        email: payload.email,
+      })
+      reply.setCookie('token', token, { httpOnly: true, path: '/' })
+      return reply.send({ id: payload.userId, email: payload.email })
+    },
+  )
 
   // ── Federated sign-in ──────────────────────────────────────────────────────
   //
@@ -193,7 +200,7 @@ export async function authRoutes(app: FastifyInstance) {
     )
   })
 
-  app.get('/auth/sso/callback', async (req, reply) => {
+  app.get('/auth/sso/callback', { preHandler: limits.federatedCallback }, async (req, reply) => {
     const runtime = await ssoService.getSsoRuntime()
     if (!runtime) return reply.status(404).send({ error: 'Single sign-on is not configured on this instance' })
 
@@ -292,60 +299,64 @@ export async function authRoutes(app: FastifyInstance) {
 
   // Platform auth callback: validates a Nubisco Platform JWT and issues a local verba session.
   // Only active when PLATFORM_ISSUER env var is set.
-  app.post<{ Body: { token: string } }>('/auth/platform/callback', async (req, reply) => {
-    if (!platformAuthService.isPlatformAuthEnabled()) {
-      return reply.status(404).send({ error: 'Platform auth is not configured' })
-    }
-    const { token } = req.body ?? {}
-    if (!token || typeof token !== 'string') {
-      return reply.status(400).send({ error: 'token is required' })
-    }
-    const payload = await platformAuthService.verifyPlatformToken(token)
-    if (!payload) {
-      return reply.status(401).send({ error: 'Invalid or expired platform token' })
-    }
+  app.post<{ Body: { token: string } }>(
+    '/auth/platform/callback',
+    { preHandler: limits.federatedCallback },
+    async (req, reply) => {
+      if (!platformAuthService.isPlatformAuthEnabled()) {
+        return reply.status(404).send({ error: 'Platform auth is not configured' })
+      }
+      const { token } = req.body ?? {}
+      if (!token || typeof token !== 'string') {
+        return reply.status(400).send({ error: 'token is required' })
+      }
+      const payload = await platformAuthService.verifyPlatformToken(token)
+      if (!payload) {
+        return reply.status(401).send({ error: 'Invalid or expired platform token' })
+      }
 
-    // Append this identity to the browser's bundle (or create a new one) so
-    // the user can later switch back without re-OTPing on platform. The bundle
-    // cookie is independent of the local session token cookie: it survives
-    // sign-out of an individual identity.
-    let bundleKey = readBundleKey(req)
-    if (!bundleKey) {
-      bundleKey = bundleService.newBundleKey()
-      setBundleKeyCookie(reply, bundleKey)
-    }
-    await bundleService.upsertActiveIdentity(bundleKey, {
-      platformSub: payload.platformSub,
-      email: payload.email,
-      name: payload.name,
-    })
-
-    const localToken = app.jwt.sign({
-      userId: payload.userId,
-      email: payload.email,
-      plan: payload.plan,
-      platformSub: payload.platformSub,
-    })
-    reply.setCookie('token', localToken, { httpOnly: true, path: '/' })
-
-    if (payload.created) {
-      analytics.track('app_first_opened', {
-        userId: payload.userId,
-        props: { plan: payload.plan },
+      // Append this identity to the browser's bundle (or create a new one) so
+      // the user can later switch back without re-OTPing on platform. The bundle
+      // cookie is independent of the local session token cookie: it survives
+      // sign-out of an individual identity.
+      let bundleKey = readBundleKey(req)
+      if (!bundleKey) {
+        bundleKey = bundleService.newBundleKey()
+        setBundleKeyCookie(reply, bundleKey)
+      }
+      await bundleService.upsertActiveIdentity(bundleKey, {
+        platformSub: payload.platformSub,
+        email: payload.email,
+        name: payload.name,
       })
-    }
-    analytics.track('app_session_started', {
-      userId: payload.userId,
-      props: { plan: payload.plan, source: 'platform_oidc' },
-    })
 
-    return reply.send({
-      id: payload.userId,
-      email: payload.email,
-      plan: payload.plan,
-      platformSub: payload.platformSub,
-    })
-  })
+      const localToken = app.jwt.sign({
+        userId: payload.userId,
+        email: payload.email,
+        plan: payload.plan,
+        platformSub: payload.platformSub,
+      })
+      reply.setCookie('token', localToken, { httpOnly: true, path: '/' })
+
+      if (payload.created) {
+        analytics.track('app_first_opened', {
+          userId: payload.userId,
+          props: { plan: payload.plan },
+        })
+      }
+      analytics.track('app_session_started', {
+        userId: payload.userId,
+        props: { plan: payload.plan, source: 'platform_oidc' },
+      })
+
+      return reply.send({
+        id: payload.userId,
+        email: payload.email,
+        plan: payload.plan,
+        platformSub: payload.platformSub,
+      })
+    },
+  )
 
   // List identities active in this browser's bundle. The frontend uses this
   // to render the account-switcher dropdown. No auth required: the bundle

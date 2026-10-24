@@ -48,6 +48,7 @@ import { prisma } from '../prisma.js'
 import * as authService from '../services/auth.service.js'
 import * as otpService from '../services/otp.service.js'
 import * as platformAuthService from '../services/platform-auth.service.js'
+import { AUTH_LIMITS, trustProxySetting } from '../rate-limits.js'
 
 describe('auth and setup routes', () => {
   const originalEnv = {
@@ -292,5 +293,87 @@ describe('auth and setup routes', () => {
 
     expect(me.statusCode).toBe(200)
     expect(me.json()).toMatchObject({ platformSub: 'u-jose' })
+  })
+
+  describe('rate limits on the sign-in doors', () => {
+    it('stops OTP requests for one address after the per-email limit', async () => {
+      const app = buildApp()
+      const send = (ip: string) =>
+        app.inject({
+          method: 'POST',
+          url: '/auth/otp/request',
+          remoteAddress: ip,
+          payload: { email: 'victim@example.com' },
+        })
+      // Different machines, one address: the per-email key still applies.
+      for (let i = 0; i < AUTH_LIMITS.otpRequest.perEmail; i++) {
+        expect((await send(`203.0.113.${i + 1}`)).statusCode).toBe(200)
+      }
+      const blocked = await send('203.0.113.99')
+      await app.close()
+
+      expect(blocked.statusCode).toBe(429)
+      expect(vi.mocked(otpService.requestOtp)).toHaveBeenCalledTimes(AUTH_LIMITS.otpRequest.perEmail)
+    })
+
+    it('stops OTP requests from one machine after the per-IP limit, whatever the address', async () => {
+      const app = buildApp()
+      let last = 0
+      for (let i = 0; i <= AUTH_LIMITS.otpRequest.perIp; i++) {
+        const res = await app.inject({
+          method: 'POST',
+          url: '/auth/otp/request',
+          remoteAddress: '198.51.100.7',
+          payload: { email: `user${i}@example.com` },
+        })
+        last = res.statusCode
+      }
+      await app.close()
+      expect(last).toBe(429)
+    })
+
+    it('stops OTP verification for one address after the per-email limit', async () => {
+      vi.mocked(otpService.verifyOtp).mockRejectedValue(
+        Object.assign(new Error('Invalid or expired code'), { statusCode: 401 }),
+      )
+      const app = buildApp()
+      const codes: number[] = []
+      for (let i = 0; i <= AUTH_LIMITS.otpVerify.perEmail; i++) {
+        const res = await app.inject({
+          method: 'POST',
+          url: '/auth/otp/verify',
+          remoteAddress: `192.0.2.${i + 1}`,
+          payload: { email: 'victim@example.com', code: String(100000 + i) },
+        })
+        codes.push(res.statusCode)
+      }
+      await app.close()
+      expect(codes.slice(0, -1).every((c) => c === 401)).toBe(true)
+      expect(codes.at(-1)).toBe(429)
+    })
+
+    it('does not let a client choose its own address with X-Forwarded-For', async () => {
+      const app = buildApp()
+      let last = 0
+      for (let i = 0; i <= AUTH_LIMITS.otpRequest.perIp; i++) {
+        const res = await app.inject({
+          method: 'POST',
+          url: '/auth/otp/request',
+          remoteAddress: '198.51.100.8',
+          headers: { 'x-forwarded-for': `10.9.8.${i}` },
+          payload: { email: `spoof${i}@example.com` },
+        })
+        last = res.statusCode
+      }
+      await app.close()
+      // The forged header comes from an untrusted public peer, so it is ignored.
+      expect(last).toBe(429)
+    })
+
+    it('trusts only private proxies by default, and TRUST_PROXY can say otherwise', () => {
+      expect(trustProxySetting(undefined)).toEqual(['loopback', 'linklocal', 'uniquelocal'])
+      expect(trustProxySetting('false')).toBe(false)
+      expect(trustProxySetting('10.0.0.1, 10.0.0.0/8')).toEqual(['10.0.0.1', '10.0.0.0/8'])
+    })
   })
 })
