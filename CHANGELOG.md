@@ -1,3 +1,16 @@
+# [1.14.0](https://github.com/nubisco/verba/compare/v1.13.1...v1.14.0) (2026-10-24)
+
+
+### Bug Fixes
+
+* **web:** project settings fit a phone ([9e67f8e](https://github.com/nubisco/verba/commit/9e67f8eb8989a0265c418075a760fd7e8635230a))
+
+
+### Features
+
+* **ai:** the project's own key, sealed under AI_ENCRYPTION_KEY, with usage and fetched prices ([44a6f1d](https://github.com/nubisco/verba/commit/44a6f1da0c591c0fe80d0f04dd948b22dfd749f3))
+* **web:** one AI tab in project settings, built from @nubisco/ui ([7a8a1c0](https://github.com/nubisco/verba/commit/7a8a1c0a964da9f2eda74a6d41e3f7feaa29c89a))
+
 ## [1.13.1](https://github.com/nubisco/verba/compare/v1.13.0...v1.13.1) (2026-10-24)
 
 
