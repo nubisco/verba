@@ -1,3 +1,11 @@
+# [1.17.0](https://github.com/nubisco/verba/compare/v1.16.0...v1.17.0) (2026-10-24)
+
+
+### Features
+
+* **accounts:** accounts above projects, with every route scoped on the server ([c3082e0](https://github.com/nubisco/verba/commit/c3082e0e1a95cfd8f45d9e6ec3fb90641b04dcf0))
+* **web:** Home chooses the project and the account, and the account's Settings sit behind the gear ([aa15d05](https://github.com/nubisco/verba/commit/aa15d05763d4de376df8fc710a10637a159b0fbc))
+
 # [1.16.0](https://github.com/nubisco/verba/compare/v1.15.1...v1.16.0) (2026-10-24)
 
 
