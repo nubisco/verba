@@ -111,6 +111,7 @@ Invalid transitions return HTTP 422. Implemented in `canTransitionStatus()` in `
 
 - **Login/Register**: `POST /auth/login`, `POST /auth/register`
 - Token is stored as an `httpOnly` cookie named `token`. Never in `localStorage`.
+- Sessions expire (`SESSION_TTL_HOURS`, default 7 days) and are renewed once a day while in use, which is also when a deactivated account is signed out. Create one only with `issueSession()` and clear it with `clearSession()` from `src/session.ts`, which set `secure` (production), `sameSite=lax` and the expiry. Never call `app.jwt.sign` or set the cookie by hand.
 - The frontend uses `credentials: 'include'` on every fetch (see `api.ts`).
 - Fastify routes that need auth use `{ preHandler: [app.authenticate] }`.
 - `req.user` contains `{ userId, email }` after authentication.

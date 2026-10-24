@@ -144,9 +144,10 @@ Configure the API via environment variables in `apps/api/.env`:
 | `SMTP_USER`             | _(optional)_               | SMTP username                                                      |
 | `SMTP_PASS`             | _(optional)_               | SMTP password                                                      |
 | `SMTP_SECURE`           | `false`                    | Set `true` for port-465 TLS                                        |
-
-| `TRUST_PROXY` | private ranges | Proxies whose `X-Forwarded-For` is believed, see below |
-| `BLOCKED_EMAIL_DOMAINS` | _(unset)_ | Extra throwaway domains refused for new accounts, comma separated |
+| `SESSION_TTL_HOURS`     | `168` (7 days)             | How long a session lasts unused. Active sessions renew daily       |
+| `COOKIE_SECURE`         | `true` in production       | Set `false` only to serve production over plain HTTP               |
+| `TRUST_PROXY`           | private ranges             | Proxies whose `X-Forwarded-For` is believed, see below             |
+| `BLOCKED_EMAIL_DOMAINS` | _(unset)_                  | Extra throwaway domains refused for new accounts, comma separated  |
 
 > **Development mode:** When `SMTP_HOST` is not set, OTP codes are printed to the API server's stdout log.
 

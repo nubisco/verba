@@ -10,6 +10,7 @@ import { prisma } from '../prisma.js'
 import { getAuthConfig } from '../services/instance-config.service.js'
 import { randomBytes } from 'node:crypto'
 import { authRateLimits } from '../rate-limits.js'
+import { clearSession, credentialCookieOptions, issueSession } from '../session.js'
 
 function readBundleKey(req: FastifyRequest): string | undefined {
   const raw = req.cookies?.[bundleService.BUNDLE_COOKIE]
@@ -33,7 +34,7 @@ function ssoCookieOptions() {
     // navigation from its own origin, and Strict would withhold the cookie on
     // exactly that request, failing every sign-in with a state mismatch.
     sameSite: 'lax' as const,
-    secure: process.env.NODE_ENV === 'production',
+    secure: credentialCookieOptions().secure,
     maxAge: SSO_COOKIE_TTL_SECONDS,
   }
 }
@@ -46,9 +47,7 @@ function clearSsoCookies(reply: FastifyReply): void {
 
 function setBundleKeyCookie(reply: FastifyReply, key: string): void {
   reply.setCookie(bundleService.BUNDLE_COOKIE, key, {
-    httpOnly: true,
-    path: '/',
-    sameSite: 'lax',
+    ...credentialCookieOptions(),
     maxAge: bundleService.BUNDLE_TTL_DAYS * 24 * 60 * 60,
   })
 }
@@ -63,8 +62,7 @@ export async function authRoutes(app: FastifyInstance) {
     }
     const body = RegisterSchema.parse(req.body)
     const user = await authService.register(body.email, body.password)
-    const token = app.jwt.sign({ userId: user.id, email: user.email })
-    reply.setCookie('token', token, { httpOnly: true, path: '/' })
+    issueSession(app, reply, { userId: user.id, email: user.email })
     return reply.status(201).send({ id: user.id, email: user.email })
   })
 
@@ -75,13 +73,12 @@ export async function authRoutes(app: FastifyInstance) {
     }
     const body = LoginSchema.parse(req.body)
     const payload = await authService.login(body.email, body.password)
-    const token = app.jwt.sign({ userId: payload.userId, email: payload.email })
-    reply.setCookie('token', token, { httpOnly: true, path: '/' })
+    issueSession(app, reply, { userId: payload.userId, email: payload.email })
     return reply.send({ id: payload.userId, email: payload.email })
   })
 
   app.post('/auth/logout', async (_req, reply) => {
-    reply.clearCookie('token', { path: '/' })
+    clearSession(reply)
     return reply.send({ ok: true })
   })
 
@@ -123,7 +120,7 @@ export async function authRoutes(app: FastifyInstance) {
 
   app.post('/auth/me/deactivate', { preHandler: [app.authenticate] }, async (req, reply) => {
     await authService.deactivateUser(req.user.userId, req.user.userId)
-    reply.clearCookie('token', { path: '/' })
+    clearSession(reply)
     return reply.send({ ok: true })
   })
 
@@ -148,11 +145,7 @@ export async function authRoutes(app: FastifyInstance) {
       }
       const { email, code } = OtpVerifySchema.parse(req.body)
       const payload = await otpService.verifyOtp(email.toLowerCase().trim(), code.trim())
-      const token = app.jwt.sign({
-        userId: payload.userId,
-        email: payload.email,
-      })
-      reply.setCookie('token', token, { httpOnly: true, path: '/' })
+      issueSession(app, reply, { userId: payload.userId, email: payload.email })
       return reply.send({ id: payload.userId, email: payload.email })
     },
   )
@@ -280,13 +273,12 @@ export async function authRoutes(app: FastifyInstance) {
       name: identity.name,
     })
 
-    const localToken = app.jwt.sign({
+    issueSession(app, reply, {
       userId: identity.userId,
       email: identity.email,
       plan: identity.plan,
       platformSub: identity.platformSub,
     })
-    reply.setCookie('token', localToken, { httpOnly: true, path: '/' })
 
     if (identity.created) {
       analytics.track('app_first_opened', { userId: identity.userId, props: { plan: identity.plan } })
@@ -332,13 +324,12 @@ export async function authRoutes(app: FastifyInstance) {
         name: payload.name,
       })
 
-      const localToken = app.jwt.sign({
+      issueSession(app, reply, {
         userId: payload.userId,
         email: payload.email,
         plan: payload.plan,
         platformSub: payload.platformSub,
       })
-      reply.setCookie('token', localToken, { httpOnly: true, path: '/' })
 
       if (payload.created) {
         analytics.track('app_first_opened', {
@@ -418,7 +409,7 @@ export async function authRoutes(app: FastifyInstance) {
     }
     const identity = await bundleService.findIdentity(bundleKey, platformSub)
     if (identity?.isActive) {
-      reply.clearCookie('token', { path: '/' })
+      clearSession(reply)
     }
     const { remaining } = await bundleService.removeIdentity(bundleKey, platformSub)
     return {

@@ -8,7 +8,6 @@ import multipart from '@fastify/multipart'
 import websocket from '@fastify/websocket'
 import rateLimit from '@fastify/rate-limit'
 import { ZodError } from 'zod'
-import type { FastifyRequest, FastifyReply } from 'fastify'
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8')) as {
   name: string
@@ -34,6 +33,7 @@ import { aiRoutes } from './routes/ai.js'
 import { setupRoutes } from './routes/setup.js'
 import { configRoutes } from './routes/config.js'
 import { trustProxySetting } from './rate-limits.js'
+import { SESSION_COOKIE, makeAuthenticate, sessionTtlSeconds } from './session.js'
 
 export function buildApp() {
   if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
@@ -60,16 +60,13 @@ export function buildApp() {
   app.register(websocket)
   app.register(jwt, {
     secret: process.env.JWT_SECRET || 'dev-secret',
-    cookie: { cookieName: 'token', signed: false },
+    cookie: { cookieName: SESSION_COOKIE, signed: false },
+    // Applies to every verify, the WebSocket's included. maxAge also retires
+    // sessions signed before they carried an expiry.
+    verify: { maxAge: sessionTtlSeconds() },
   })
 
-  app.decorate('authenticate', async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      await request.jwtVerify()
-    } catch (_err) {
-      return reply.status(401).send({ error: 'Unauthorized' })
-    }
-  })
+  app.decorate('authenticate', makeAuthenticate(app))
 
   app.setErrorHandler((err, _req, reply) => {
     if (err instanceof ZodError) {

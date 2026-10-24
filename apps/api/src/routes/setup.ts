@@ -4,6 +4,7 @@ import { FastifyInstance } from 'fastify'
 import { prisma } from '../prisma.js'
 import { createOtpOnlyUser, register } from '../services/auth.service.js'
 import { getAuthConfig } from '../services/instance-config.service.js'
+import { issueSession } from '../session.js'
 import { z } from 'zod'
 
 const setupSchema = z.object({
@@ -40,14 +41,8 @@ export async function setupRoutes(app: FastifyInstance) {
       ? await register(adminEmail, adminPassword ?? '')
       : await createOtpOnlyUser(adminEmail)
 
-    // Sign JWT and set cookie so the user is immediately logged in
-    const token = app.jwt.sign({ userId: user.id, email: user.email })
-    reply.setCookie('token', token, {
-      httpOnly: true,
-      sameSite: 'lax',
-      path: '/',
-      secure: process.env.NODE_ENV === 'production',
-    })
+    // Sign the user in straight away
+    issueSession(app, reply, { userId: user.id, email: user.email })
 
     return reply.status(201).send({ id: user.id, email: user.email })
   })
