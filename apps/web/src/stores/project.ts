@@ -9,9 +9,8 @@ export interface ProjectData {
   slug: string
   avatar?: string | null
   aiEnabled?: boolean
-  aiProvider?: string | null
-  aiApiKey?: string | null
-  aiModel?: string | null
+  /** Whether the project has its own AI key stored. The key itself never reaches the browser. */
+  aiHasKey?: boolean
 }
 
 export interface Locale {

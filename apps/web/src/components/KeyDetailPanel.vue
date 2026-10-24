@@ -129,7 +129,7 @@
               </div>
               <!-- AI suggestion box -->
               <div v-if="aiSuggestion.get(locale.id)" class="ai-suggestion-box">
-                <span class="ai-suggestion-label">✨ Suggestion:</span>
+                <span class="ai-suggestion-label"><NbAiLabel static size="sm" /> Suggestion:</span>
                 <span class="ai-suggestion-text">{{ aiSuggestion.get(locale.id) }}</span>
                 <NbButton variant="primary" @click="useAiSuggestion(locale.id)">Use this</NbButton>
                 <NbButton @click="aiSuggestion.set(locale.id, '')">✕</NbButton>
@@ -436,11 +436,21 @@ async function requestAiSuggestion(localeId: string, localeCode: string) {
   aiSuggestion.value = new Map(aiSuggestion.value.set(localeId, ''))
   aiSuggestError.value = new Map(aiSuggestError.value.set(localeId, ''))
   try {
-    const res = await apiFetch<{ suggestion: string }>(`/projects/${props.projectId}/ai/suggest`, {
-      method: 'POST',
-      body: JSON.stringify({ keyId: props.keyId, localeCode }),
-    })
-    aiSuggestion.value = new Map(aiSuggestion.value.set(localeId, res.suggestion))
+    const res = await apiFetch<{ suggestion: string | null; rejected?: string }>(
+      `/projects/${props.projectId}/ai/suggest`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ keyId: props.keyId, localeCode }),
+      },
+    )
+    if (res.suggestion) {
+      aiSuggestion.value = new Map(aiSuggestion.value.set(localeId, res.suggestion))
+    } else {
+      // The answer failed the check against the source (a placeholder, markup or a link), so it is not shown.
+      aiSuggestError.value = new Map(
+        aiSuggestError.value.set(localeId, `No suggestion: ${res.rejected ?? 'the answer failed the check'}.`),
+      )
+    }
   } catch (e: unknown) {
     aiSuggestError.value = new Map(
       aiSuggestError.value.set(localeId, e instanceof Error ? e.message : 'AI suggestion failed'),
@@ -623,7 +633,7 @@ onMounted(async () => {
       apiFetch<Translation[]>(`/projects/${props.projectId}/translations?keyId=${props.keyId}&limit=100`),
       apiFetch<Member[]>(`/projects/${props.projectId}/members`),
       apiFetch<Namespace[]>(`/projects/${props.projectId}/namespaces`),
-      apiFetch<{ aiEnabled?: boolean }>(`/projects/${props.projectId}`),
+      apiFetch<{ aiEnabled?: boolean; aiHasKey?: boolean }>(`/projects/${props.projectId}`),
     ])
 
     keyData.value = key
@@ -643,8 +653,8 @@ onMounted(async () => {
     editText.value = textMap
     members.value = loadedMembers
 
-    // Use project's aiEnabled (fetched fresh) with prop as fallback
-    if (proj.aiEnabled !== undefined) projectAiEnabled.value = proj.aiEnabled
+    // Suggestions need both the switch and the project's own key (fetched fresh), with the prop as fallback
+    if (proj.aiEnabled !== undefined) projectAiEnabled.value = proj.aiEnabled && proj.aiHasKey !== false
 
     const me = auth.user
     if (me) {

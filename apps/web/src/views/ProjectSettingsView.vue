@@ -30,7 +30,7 @@
         <NbIcon name="users" :size="16" /> Members
       </NbButton>
       <NbButton
-        v-if="store.isMaintainer"
+        v-if="store.isAdmin"
         :variant="section === 'ai' ? 'secondary' : 'ghost'"
         :outlined="section === 'ai'"
         @click="section = 'ai'"
@@ -202,70 +202,12 @@
       </template>
 
       <!-- ── AI ── -->
-      <template v-else-if="section === 'ai' && store.isMaintainer">
-        <div class="section">
-          <h3>AI Translation Settings</h3>
-          <div class="ai-settings">
-            <label class="ai-toggle">
-              <input v-model="aiEnabled" type="checkbox" />
-              Enable AI suggestions
-            </label>
-            <div class="field-row">
-              <label>Provider</label>
-              <NbSelect v-model="aiProvider" :options="aiProviderOptions" />
-            </div>
-            <p v-if="aiProvider === 'openai'" class="ai-provider-note">
-              Get an API key at
-              <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener"
-                >platform.openai.com/api-keys</a
-              >. Requires a paid account with billing enabled. Recommended model: <code>gpt-4o-mini</code> (low cost,
-              fast).
-            </p>
-            <p v-else-if="aiProvider === 'anthropic'" class="ai-provider-note">
-              Get an API key at
-              <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener"
-                >console.anthropic.com/settings/keys</a
-              >. Requires billing. Recommended model: <code>claude-3-haiku-20240307</code>.
-            </p>
-            <p v-else-if="aiProvider === 'gemini'" class="ai-provider-note">
-              Get a <strong>free</strong> API key at
-              <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener"
-                >aistudio.google.com/app/apikey</a
-              >. Free tier: 15 req/min, 1 500 req/day. Recommended model: <code>gemini-2.0-flash-lite</code>.
-            </p>
-            <div class="field-row">
-              <label>Model</label>
-              <NbTextInput v-model="aiModel" placeholder="e.g. gpt-4o-mini, claude-3-haiku-20240307" class="ai-input" />
-            </div>
-            <div class="field-row">
-              <label>API Key</label>
-              <NbTextInput
-                :model-value="aiApiKey"
-                type="password"
-                :placeholder="
-                  store.project?.aiApiKey === '***'
-                    ? '●●●●● (key already set: leave blank to keep)'
-                    : 'Paste key: stored encrypted'
-                "
-                class="ai-input"
-                autocomplete="off"
-                @update:model-value="
-                  (v) => {
-                    aiApiKey = v
-                    aiApiKeyChanged = true
-                  }
-                "
-              />
-            </div>
-            <div class="ai-actions">
-              <NbButton class="btn-add" :disabled="aiSaving" @click="saveAiSettings">
-                {{ aiSaving ? 'Saving…' : 'Save AI Settings' }}
-              </NbButton>
-              <span v-if="aiSaveMsg" class="save-msg">{{ aiSaveMsg }}</span>
-            </div>
-          </div>
-        </div>
-      </template>
+      <ProjectSettingsAi
+        v-else-if="section === 'ai' && store.isAdmin"
+        :project-id="projectId"
+        :locales="store.locales"
+        @changed="onAiChanged"
+      />
 
       <!-- ── Danger Zone ── -->
       <template v-else-if="section === 'danger' && store.isAdmin">
@@ -326,6 +268,7 @@ import LocaleBadge from '../components/LocaleBadge.vue'
 import LocaleSelect from '../components/LocaleSelect.vue'
 import LocaleMultiSelect from '../components/LocaleMultiSelect.vue'
 import ProjectLogoUpload from '../components/ProjectLogoUpload.vue'
+import ProjectSettingsAi from '../components/settings/ProjectSettingsAi.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -334,7 +277,10 @@ const store = useProjectStore()
 const { t } = useI18n()
 
 type SettingsSection = 'general' | 'locales' | 'namespaces' | 'members' | 'ai' | 'danger'
-const section = ref<SettingsSection>('general')
+const SECTIONS: SettingsSection[] = ['general', 'locales', 'namespaces', 'members', 'ai', 'danger']
+// ?section=ai opens a section directly, so a link can land on the AI settings.
+const requested = String(route.query.section ?? '') as SettingsSection
+const section = ref<SettingsSection>(SECTIONS.includes(requested) ? requested : 'general')
 
 // ── General ────────────────────────────────────────────────────────
 const logoSaving = ref(false)
@@ -359,9 +305,6 @@ async function onLogoChange(dataUrl: string) {
 
 onMounted(() => {
   renameEdit.value = store.project?.name ?? ''
-  aiEnabled.value = store.project?.aiEnabled ?? false
-  aiProvider.value = store.project?.aiProvider ?? 'openai'
-  aiModel.value = store.project?.aiModel ?? ''
 })
 
 async function saveRename() {
@@ -619,50 +562,12 @@ async function saveLocaleAssignment(userId: string) {
 }
 
 // ── AI ────────────────────────────────────────────────────────────
-const aiEnabled = ref(false)
-const aiProvider = ref('openai')
-const aiApiKey = ref('')
-const aiApiKeyChanged = ref(false)
-const aiModel = ref('')
-const aiSaving = ref(false)
-const aiSaveMsg = ref('')
-
-const aiProviderOptions: ISelectOption[] = [
-  { label: 'OpenAI', value: 'openai' },
-  { label: 'Anthropic', value: 'anthropic' },
-  { label: 'Gemini', value: 'gemini' },
-]
-
-async function saveAiSettings() {
-  aiSaving.value = true
-  aiSaveMsg.value = ''
-  try {
-    const body: Record<string, unknown> = {
-      aiEnabled: aiEnabled.value,
-      aiProvider: aiProvider.value || null,
-      aiModel: aiModel.value || null,
-    }
-    if (aiApiKeyChanged.value) body.aiApiKey = aiApiKey.value || null
-    const updated = await apiFetch<typeof store.project>(`/projects/${projectId}`, {
-      method: 'PATCH',
-      body: JSON.stringify(body),
-    })
-    if (store.project && updated) {
-      store.project.aiEnabled = updated.aiEnabled
-      store.project.aiProvider = updated.aiProvider
-      store.project.aiApiKey = updated.aiApiKey
-      store.project.aiModel = updated.aiModel
-    }
-    aiApiKeyChanged.value = false
-    aiSaveMsg.value = 'Saved!'
-    setTimeout(() => {
-      aiSaveMsg.value = ''
-    }, 2000)
-  } catch (e) {
-    aiSaveMsg.value = e instanceof Error ? e.message : 'Failed to save'
-  } finally {
-    aiSaving.value = false
-  }
+// Read and saved by ProjectSettingsAi through /projects/:id/ai/settings. The
+// project store only keeps what the editor needs to show the suggest button.
+function onAiChanged(settings: { enabled: boolean; hasKey: boolean }) {
+  if (!store.project) return
+  store.project.aiEnabled = settings.enabled
+  store.project.aiHasKey = settings.hasKey
 }
 
 // ── Delete ────────────────────────────────────────────────────────
@@ -975,56 +880,6 @@ async function confirmDelete() {
 .empty-note {
   color: #888;
   font-size: 0.9rem;
-}
-
-.ai-settings {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-}
-.ai-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
-  cursor: pointer;
-}
-.field-row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  label {
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: #555;
-    min-width: 70px;
-  }
-}
-.ai-input {
-  flex: 1;
-  max-width: 400px;
-}
-.ai-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-.save-msg {
-  font-size: 0.82rem;
-  color: #27ae60;
-}
-.ai-provider-note {
-  font-size: 0.78rem;
-  color: #555;
-  margin: 0.25rem 0 0.5rem;
-  a {
-    color: #4f46e5;
-  }
-  code {
-    background: #f0f0f0;
-    padding: 0 0.3em;
-    border-radius: 3px;
-  }
 }
 
 .danger-zone {
