@@ -437,7 +437,7 @@ table {
     padding-left: 1.1rem;
   }
   code {
-    font-family: monospace;
+    font-family: var(--nb-font-family-mono);
   }
 }
 
@@ -485,7 +485,7 @@ pre {
     color: #9a6a00;
   }
   code {
-    font-family: monospace;
+    font-family: var(--nb-font-family-mono);
   }
 }
 </style>

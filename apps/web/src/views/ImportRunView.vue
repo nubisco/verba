@@ -292,6 +292,6 @@ function formatDate(ts: string) {
   border-radius: 4px;
   font-size: 0.85rem;
   color: #c0392b;
-  font-family: 'Courier New', monospace;
+  font-family: var(--nb-font-family-mono);
 }
 </style>

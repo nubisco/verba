@@ -14,3 +14,12 @@ body {
   font-weight: var(--nb-font-weight-regular);
   overflow: hidden;
 }
+
+// Code-like text (key names, ids, slugs) uses the system's mono face, Fira
+// Code, rather than the browser's default monospace.
+code,
+kbd,
+pre,
+samp {
+  font-family: var(--nb-font-family-mono);
+}

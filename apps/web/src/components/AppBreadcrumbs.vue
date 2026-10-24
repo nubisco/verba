@@ -62,7 +62,7 @@ const { crumbs } = useBreadcrumbs()
 }
 
 .bc-key {
-  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
+  font-family: var(--nb-font-family-mono);
   font-size: 0.8em;
   background: rgba(124, 58, 237, 0.08);
   color: #7c3aed;

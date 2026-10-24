@@ -190,7 +190,7 @@ function handleKeydown(e: KeyboardEvent) {
   text-align: left;
   padding: 0.35rem 0.75rem;
   font-size: 0.8rem;
-  font-family: ui-monospace, monospace;
+  font-family: var(--nb-font-family-mono);
   border: none;
   background: none;
   cursor: pointer;

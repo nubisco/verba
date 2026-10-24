@@ -31,7 +31,7 @@ withDefaults(
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-family: monospace;
+  font-family: var(--nb-font-family-mono);
   font-size: 0.8rem;
   font-weight: 600;
   color: #4f46e5;

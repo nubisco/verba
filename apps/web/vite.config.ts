@@ -2,6 +2,7 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
+import { fonts } from '@nubisco/ui/plugins/fonts'
 import { nubiscoUI } from '@nubisco/ui/vite'
 
 /**
@@ -20,6 +21,11 @@ import { nubiscoUI } from '@nubisco/ui/vite'
  * @property {number} server.port - Development server port (5173)
  */
 export default defineConfig({
+  // fonts() self-hosts the library's typefaces (Plus Jakarta Sans, and Fira
+  // Code for mono) from the @fontsource packages, and main.ts imports the
+  // `unfonts.css` it generates. Without both, --nb-font-family-sans names a
+  // font the browser does not have and every screen falls back to system-ui.
+  // Same setup as the CMS (cms a7627fc) and Acta.
   // @nubisco/ui 4.0.0 stopped registering components from `app.use(NubiscoUI)`.
   // This plugin resolves `<NbButton>` and literal icon/flag names to
   // per-component imports at compile time, and pulls in each component's
@@ -32,7 +38,7 @@ export default defineConfig({
   // supply their own artwork instead: DefaultLayout's sidebar names are
   // registered in main.ts, and LocaleBadge imports the flag catalogue itself.
   // Adding a third such binding without doing one of those throws on render.
-  plugins: [vue(), vueDevTools(), ...nubiscoUI({ components: { dts: false }, glyphs: { catalog: 'off' } })],
+  plugins: [vue(), vueDevTools(), fonts(), ...nubiscoUI({ components: { dts: false }, glyphs: { catalog: 'off' } })],
   css: {
     preprocessorOptions: {
       scss: {

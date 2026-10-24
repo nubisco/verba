@@ -240,7 +240,7 @@ onMounted(load)
 }
 
 .key-link {
-  font-family: 'Courier New', monospace;
+  font-family: var(--nb-font-family-mono);
   font-size: 0.85rem;
   color: #1a1a2e;
   text-decoration: none;

@@ -510,7 +510,7 @@ onUnmounted(() => closeInspector())
 }
 
 .key-name {
-  font-family: 'Courier New', monospace;
+  font-family: var(--nb-font-family-mono);
   font-size: 0.85rem;
   .key-desc {
     display: block;

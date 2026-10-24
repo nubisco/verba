@@ -57,7 +57,7 @@ function parse(text: string): Segment[] {
   display: inline-block;
   border-radius: 4px;
   padding: 0 4px;
-  font-family: monospace;
+  font-family: var(--nb-font-family-mono);
   font-size: 0.85em;
   font-weight: 600;
 }
@@ -81,7 +81,7 @@ function parse(text: string): Segment[] {
   border-radius: 4px;
   padding: 0 4px;
   font-size: 0.85em;
-  font-family: monospace;
+  font-family: var(--nb-font-family-mono);
   cursor: help;
 }
 
@@ -92,7 +92,7 @@ function parse(text: string): Segment[] {
   border-radius: 4px;
   padding: 0 4px;
   font-size: 0.85em;
-  font-family: monospace;
+  font-family: var(--nb-font-family-mono);
   cursor: help;
 }
 
@@ -103,7 +103,7 @@ function parse(text: string): Segment[] {
   border-radius: 4px;
   padding: 0 4px;
   font-size: 0.85em;
-  font-family: monospace;
+  font-family: var(--nb-font-family-mono);
   cursor: help;
   text-decoration: underline wavy #ef4444;
 }
