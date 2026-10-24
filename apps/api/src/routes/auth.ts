@@ -98,6 +98,8 @@ export async function authRoutes(app: FastifyInstance) {
       where: {
         updatedById: userId,
         status: { in: ['IN_PROGRESS', 'SUBMITTED'] },
+        // Only projects the person is still on: leaving one ends its tasks.
+        key: { project: { memberships: { some: { userId } } } },
       },
       include: {
         key: { include: { project: { select: { id: true, name: true } } } },

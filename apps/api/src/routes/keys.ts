@@ -131,6 +131,9 @@ export async function keyRoutes(app: FastifyInstance) {
     async (req) => {
       const { projectId, keyId } = req.params
       await requireProjectRole(req.user.userId, projectId, Role.READER)
+      // Without this, any key id (and so its comments and their authors'
+      // emails) was readable through any project the caller could read.
+      await svc.assertKeyInProject(projectId, keyId)
 
       const translationRows = await prisma.translation.findMany({
         where: { keyId, deletedAt: null },

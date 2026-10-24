@@ -124,9 +124,14 @@ export async function listTranslations(projectId: string, query: TranslationQuer
   }))
 }
 
-export async function getTranslation(id: string) {
-  const t = await prisma.translation.findUnique({
-    where: { id },
+/**
+ * A translation, only if it belongs to `projectId`. Routes are nested under
+ * the project the caller's role was checked in, so a row from any other
+ * project is answered exactly like a missing one.
+ */
+export async function getTranslation(projectId: string, id: string) {
+  const t = await prisma.translation.findFirst({
+    where: { id, key: { projectId } },
     include: {
       key: {
         include: {
@@ -177,8 +182,14 @@ export async function listTranslationsForKanban(projectId: string) {
   return grouped
 }
 
-export async function updateStatus(id: string, newStatus: string, actorRole: string, userId?: string) {
-  const t = await prisma.translation.findUnique({ where: { id } })
+export async function updateStatus(
+  projectId: string,
+  id: string,
+  newStatus: string,
+  actorRole: string,
+  userId?: string,
+) {
+  const t = await prisma.translation.findFirst({ where: { id, key: { projectId } } })
   if (!t) notFound()
   if (t.assignedToId !== null && t.assignedToId !== userId && actorRole !== 'MAINTAINER' && actorRole !== 'ADMIN') {
     throw Object.assign(new Error('This translation is assigned to another user'), {
@@ -245,6 +256,15 @@ export async function assignTranslation(
   })
   if (!t || t.key.projectId !== projectId) {
     throw Object.assign(new Error('Translation not found'), { statusCode: 404 })
+  }
+
+  // Only someone on this project can be handed its work.
+  if (assigneeId !== null) {
+    const member = await prisma.membership.findUnique({
+      where: { userId_projectId: { userId: assigneeId, projectId } },
+      select: { id: true },
+    })
+    if (!member) throw Object.assign(new Error('Assignee is not a member of this project'), { statusCode: 422 })
   }
 
   const isMaintainerPlus = [Role.MAINTAINER, Role.ADMIN].includes(actorRole as typeof Role.ADMIN)

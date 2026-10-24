@@ -7,6 +7,7 @@ import {
 import { z } from 'zod'
 import * as svc from '../services/translation.service.js'
 import * as keySvc from '../services/key.service.js'
+import * as localeSvc from '../services/locale.service.js'
 import * as analytics from '../services/analytics.service.js'
 import { requireProjectRole, canWriteNamespace } from '../services/acl.service.js'
 import { Role } from '../types.js'
@@ -30,7 +31,7 @@ export async function translationRoutes(app: FastifyInstance) {
     { preHandler: [app.authenticate] },
     async (req) => {
       await requireProjectRole(req.user.userId, req.params.projectId, Role.READER)
-      return svc.getTranslation(req.params.id)
+      return svc.getTranslation(req.params.projectId, req.params.id)
     },
   )
 
@@ -43,6 +44,9 @@ export async function translationRoutes(app: FastifyInstance) {
       if (!canWriteNamespace(membership, key.namespaceId)) {
         throw Object.assign(new Error('Forbidden'), { statusCode: 403 })
       }
+      // The locale must be this project's too, or a write here lands a row
+      // pointing at another project's locale.
+      await localeSvc.getLocale(req.params.projectId, req.params.localeId)
       const body = UpsertTranslationSchema.parse(req.body)
       const t = await svc.upsertTranslation(
         req.params.keyId,
@@ -81,11 +85,17 @@ export async function translationRoutes(app: FastifyInstance) {
     async (req) => {
       const membership = await requireProjectRole(req.user.userId, req.params.projectId, Role.TRANSLATOR)
       const body = UpdateTranslationStatusSchema.parse(req.body)
-      const translation = await svc.getTranslation(req.params.id)
+      const translation = await svc.getTranslation(req.params.projectId, req.params.id)
       if (!canWriteNamespace(membership, translation.key.namespaceId)) {
         throw Object.assign(new Error('Forbidden'), { statusCode: 403 })
       }
-      const result = await svc.updateStatus(req.params.id, body.status, membership.role, req.user.userId)
+      const result = await svc.updateStatus(
+        req.params.projectId,
+        req.params.id,
+        body.status,
+        membership.role,
+        req.user.userId,
+      )
       analytics.track('translation_status_changed', {
         userId: req.user.userId,
         props: {

@@ -3,6 +3,16 @@ import { wsManager } from '../ws/index.js'
 import * as audit from './audit.service.js'
 import * as notifSvc from './notification.service.js'
 
+/** The translation, only when it belongs to `projectId`; otherwise a 404. */
+async function translationInProject(projectId: string, translationId: string) {
+  const translation = await prisma.translation.findFirst({
+    where: { id: translationId, key: { projectId } },
+    select: { keyId: true },
+  })
+  if (!translation) throw Object.assign(new Error('Translation not found'), { statusCode: 404 })
+  return translation
+}
+
 export async function addComment(
   translationId: string,
   userId: string,
@@ -10,14 +20,13 @@ export async function addComment(
   projectId: string,
   parentId?: string,
 ) {
-  // Resolve keyId via translation
-  const translation = await prisma.translation.findUnique({
-    where: { id: translationId },
-    select: { keyId: true },
-  })
-  if (!translation) throw Object.assign(new Error('Translation not found'), { statusCode: 404 })
+  const { keyId } = await translationInProject(projectId, translationId)
 
-  const keyId = translation.keyId
+  // A reply belongs to the thread it answers.
+  if (parentId) {
+    const parent = await prisma.comment.findFirst({ where: { id: parentId, translationId }, select: { id: true } })
+    if (!parent) throw Object.assign(new Error('Comment not found'), { statusCode: 404 })
+  }
 
   // Parse @mentions: match @word tokens
   const mentionTokens = [...text.matchAll(/@([\w.-]+)/g)].map((m) => m[1])
@@ -102,7 +111,8 @@ export async function addComment(
   return comment
 }
 
-export async function listComments(translationId: string) {
+export async function listComments(projectId: string, translationId: string) {
+  await translationInProject(projectId, translationId)
   return prisma.comment.findMany({
     where: { translationId, deletedAt: null },
     orderBy: { createdAt: 'asc' },
@@ -110,8 +120,18 @@ export async function listComments(translationId: string) {
   })
 }
 
-export async function deleteComment(id: string, userId: string, actorRole: string) {
-  const comment = await prisma.comment.findUnique({ where: { id } })
+export async function deleteComment(
+  projectId: string,
+  translationId: string,
+  id: string,
+  userId: string,
+  actorRole: string,
+) {
+  // Found through the project, so a maintainer elsewhere cannot moderate
+  // threads in a project they only hold a role in by coincidence of ids.
+  const comment = await prisma.comment.findFirst({
+    where: { id, translationId, translation: { key: { projectId } } },
+  })
   if (!comment) {
     throw Object.assign(new Error('Comment not found'), { statusCode: 404 })
   }

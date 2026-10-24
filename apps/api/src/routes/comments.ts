@@ -27,7 +27,7 @@ export async function commentRoutes(app: FastifyInstance) {
     { preHandler: [app.authenticate] },
     async (req) => {
       await requireProjectRole(req.user.userId, req.params.projectId, Role.READER)
-      return commentSvc.listComments(req.params.translationId)
+      return commentSvc.listComments(req.params.projectId, req.params.translationId)
     },
   )
 
@@ -38,7 +38,13 @@ export async function commentRoutes(app: FastifyInstance) {
     { preHandler: [app.authenticate] },
     async (req, reply) => {
       const membership = await requireProjectRole(req.user.userId, req.params.projectId, Role.TRANSLATOR)
-      await commentSvc.deleteComment(req.params.commentId, req.user.userId, membership.role)
+      await commentSvc.deleteComment(
+        req.params.projectId,
+        req.params.translationId,
+        req.params.commentId,
+        req.user.userId,
+        membership.role,
+      )
       return reply.status(204).send()
     },
   )
