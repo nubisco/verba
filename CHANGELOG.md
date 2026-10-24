@@ -1,3 +1,19 @@
+## [1.13.1](https://github.com/nubisco/verba/compare/v1.13.0...v1.13.1) (2026-10-24)
+
+
+### Bug Fixes
+
+* **acl:** find every nested row through the project in the URL ([623f954](https://github.com/nubisco/verba/commit/623f9544210151cf655f67cf475cdfd4eb6959fa))
+* **admin:** operators are named in VERBA_OPERATORS, not first to sign up ([34387db](https://github.com/nubisco/verba/commit/34387db4df07e4b90ca0a540122c20bb747e226a))
+* **ai:** encrypt AI keys with a dedicated secret, with no fallback ([dcaad16](https://github.com/nubisco/verba/commit/dcaad16f612530b9a7343f3ec03201c58d5de891))
+* **auth:** cap OTP guesses and rate limit every sign-in door ([f230e92](https://github.com/nubisco/verba/commit/f230e927a8aeafbc90f9222d3a9fbb041a1ae830))
+* **auth:** refuse Platform tokens minted for another Nubisco app ([aa1d43b](https://github.com/nubisco/verba/commit/aa1d43b405bedc0abc5b27a467d4ca13eed2e62b))
+* **auth:** sessions expire and renew, and cookies are secure and lax ([7278dc2](https://github.com/nubisco/verba/commit/7278dc291370e9d76b2fbae790c107c1b0ff2bc0))
+* **db:** apply a reviewed PostgreSQL migration history instead of db push ([9f51998](https://github.com/nubisco/verba/commit/9f51998b986046a8f53b559925a66d9136e22430))
+* **members:** scope the user directory to people who share a project ([e8da04e](https://github.com/nubisco/verba/commit/e8da04e66abf6c8355fde874b9d78ea0eb45af4b))
+* **workflow:** a translation's status moves only through the workflow route ([72162ad](https://github.com/nubisco/verba/commit/72162adbd8579d7beed13f4d57691e30c55dd3ec))
+* **ws:** join a project's room only as a member of the project ([e73a145](https://github.com/nubisco/verba/commit/e73a14570c98ee1f301c9b420793f6b3fd602f00))
+
 # [1.13.0](https://github.com/nubisco/verba/compare/v1.12.0...v1.13.0) (2026-10-24)
 
 
