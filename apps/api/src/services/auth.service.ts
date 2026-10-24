@@ -190,6 +190,36 @@ export async function deleteUser(targetUserId: string, actorUserId: string, reas
   })
 }
 
+/**
+ * The people a signed-in user may look up: those who already share a project
+ * with them. It used to search every account on the instance, which on a
+ * shared host is a directory of every customer's staff.
+ */
+export async function searchCoMembers(callerId: string, emailFragment: string) {
+  const fragment = emailFragment.trim().toLowerCase()
+  if (fragment.length < 2) return []
+  const mine = await prisma.membership.findMany({ where: { userId: callerId }, select: { projectId: true } })
+  if (mine.length === 0) return []
+  return prisma.user.findMany({
+    where: {
+      email: { contains: fragment },
+      deactivatedAt: null,
+      memberships: { some: { projectId: { in: mine.map((m) => m.projectId) } } },
+    },
+    select: { id: true, email: true, name: true },
+    take: 10,
+  })
+}
+
+/** An active account by exact address, for adding a member. Null when there is none. */
+export async function findActiveUserByEmail(email: string) {
+  const user = await prisma.user.findUnique({
+    where: { email: email.trim().toLowerCase() },
+    select: { id: true, deactivatedAt: true },
+  })
+  return user && user.deactivatedAt == null ? { id: user.id } : null
+}
+
 export async function listAllUsers() {
   return prisma.user.findMany({
     select: {

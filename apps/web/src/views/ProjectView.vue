@@ -827,18 +827,10 @@ async function addMember() {
   }
   memberAdding.value = true
   try {
-    const users = await apiFetch<{ id: string; email: string }[]>(
-      `/users?email=${encodeURIComponent(newMemberEmail.value.trim())}`,
-    )
-    if (!users.length) {
-      memberError.value = 'No user found with that email'
-      memberAdding.value = false
-      return
-    }
-    const userId = users[0].id
+    // The server resolves the address, so nothing here searches other accounts.
     await apiFetch(`/projects/${projectId}/members`, {
       method: 'POST',
-      body: JSON.stringify({ userId, role: newMemberRole.value }),
+      body: JSON.stringify({ email: newMemberEmail.value.trim(), role: newMemberRole.value }),
     })
     await loadMembers()
     newMemberEmail.value = ''

@@ -435,15 +435,11 @@ export async function authRoutes(app: FastifyInstance) {
     issuer: process.env.PLATFORM_ISSUER ?? null,
   }))
 
-  // User lookup by email: used by the member management UI
+  // People the caller already shares a project with, by email fragment.
+  // Never the whole instance: see authService.searchCoMembers.
   app.get<{ Querystring: { email?: string } }>('/users', { preHandler: [app.authenticate] }, async (req) => {
     const { email } = req.query
     if (!email) return []
-    const users = await prisma.user.findMany({
-      where: { email: { contains: email } },
-      select: { id: true, email: true },
-      take: 10,
-    })
-    return users
+    return authService.searchCoMembers(req.user.userId, email)
   })
 }
