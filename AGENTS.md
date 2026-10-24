@@ -37,7 +37,7 @@ verba/
 │   │   │   └── prisma.ts           # Prisma client singleton
 │   │   ├── prisma/
 │   │   │   ├── schema.prisma       # Data model
-│   │   │   └── migrations/         # SQLite history only, never applied (see Database)
+│   │   │   └── migrations/         # PostgreSQL migration history, applied by migrate deploy
 │   │   ├── plugins/                # Example plugins (JS, loaded at runtime)
 │   │   └── __tests__/              # Vitest unit tests
 │   └── web/                  # Vue 3 + Pinia + SCSS frontend
@@ -120,8 +120,10 @@ Invalid transitions return HTTP 422. Implemented in `canTransitionStatus()` in `
 - Dev: `apps/api/prisma/dev.db` (SQLite). **Do not commit this file.**
 - Prod: Postgres via `DATABASE_URL` env var.
 - Prisma enums are stored as **string constants** (not native DB enums) for SQLite compatibility. Types are in `src/types.ts`.
-- Schema changes are applied with `prisma db push`, never with migrations. The API image runs `prisma db push --accept-data-loss` on every start, `verba migrate` runs `prisma db push` (and needs `--accept-data-loss` to drop data). `prisma/migrations` is SQLite-only history that cannot run on Postgres: do not add to it or run `migrate deploy`.
-- After schema changes: `pnpm prisma db push` then `pnpm prisma:generate` from `apps/api/`.
+- **Production (PostgreSQL) applies a reviewed migration history, never `db push`.** `prisma/migrations` holds PostgreSQL SQL, starting from `20261024000000_baseline`. The API image runs `prisma migrate deploy` on every start, and `verba migrate` does the same for a PostgreSQL `.env`. `db push --accept-data-loss` at start-up was removed (VE-77) because a schema change could silently drop customer columns.
+- **Development (SQLite) uses `db push`.** After a schema change: `pnpm db:push` then `pnpm prisma:generate` from `apps/api/`.
+- **Every schema change ships a migration in the same commit.** Start a scratch Postgres, then from `apps/api/`: `SHADOW_DATABASE_URL=postgresql://... pnpm db:migration:new <snake_case_name>`. Read the SQL it writes (it runs unattended in production), and run `pnpm db:migration:check` to confirm the history matches the schema. Never edit a migration that has shipped.
+- A database created by the old `db push` start-up has no history. It is baselined once by hand (`prisma migrate resolve --applied 20261024000000_baseline`) before the first image with `migrate deploy` runs against it. See docs/self-hosting.md, "Moving an existing database onto migrations".
 - Prisma 7: `prisma generate` writes the client to `apps/api/src/generated/prisma` (gitignored, compiled into `dist`). Import it only through `src/prisma.ts`, which picks the driver adapter from `DATABASE_URL` (`@prisma/adapter-pg` for Postgres, `@prisma/adapter-better-sqlite3` for `file:` URLs). The CLI reads the connection from `apps/api/prisma.config.ts`, not from the schema.
 
 ## Frontend Conventions
@@ -169,7 +171,7 @@ The API refuses to start with the default `JWT_SECRET` in production.
 
 ## New Feature Checklist
 
-1. **Schema change?** → Edit `prisma/schema.prisma`, run `pnpm prisma db push` and `pnpm prisma:generate`.
+1. **Schema change?** → Edit `prisma/schema.prisma`, run `pnpm db:push` and `pnpm prisma:generate`, then write the PostgreSQL migration with `pnpm db:migration:new <name>` (see Database).
 2. **New service function?** → Add to `src/services/`, write unit tests.
 3. **New route?** → Add to `src/routes/`, register in `app.ts`, validate with Zod.
 4. **New event type?** → Add to `VerbaEvent` union in `events.ts`.

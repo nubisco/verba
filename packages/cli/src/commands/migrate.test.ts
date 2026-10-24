@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { resolve } from 'node:path'
-import { dbPushCommand, runMigrate, type MigrateDeps } from './migrate.js'
+import { databaseUrlFromEnvFile, dbPushCommand, runMigrate, type MigrateDeps } from './migrate.js'
 
 class Exit extends Error {
   constructor(readonly code: number) {
@@ -14,6 +14,7 @@ function deps(overrides: Partial<MigrateDeps> = {}) {
   const d: MigrateDeps = {
     root: () => '/repo',
     exists: () => true,
+    readFile: () => 'DATABASE_URL="file:./dev.db"\nJWT_SECRET="x"\n',
     exec: vi.fn(),
     log: (m) => logs.push(m),
     error: (m) => errors.push(m),
@@ -26,7 +27,7 @@ function deps(overrides: Partial<MigrateDeps> = {}) {
 }
 
 describe('dbPushCommand', () => {
-  it('runs prisma db push, never migrate deploy', () => {
+  it('runs prisma db push for SQLite', () => {
     expect(dbPushCommand()).toBe('npx prisma db push')
   })
 
@@ -68,6 +69,21 @@ describe('verba migrate', () => {
     })
     await expect(runMigrate({}, d)).rejects.toMatchObject({ code: 1 })
     expect(errors.join('\n')).toMatch(/prisma db push failed/)
+  })
+
+  it('applies the migration history with migrate deploy on PostgreSQL, never db push', async () => {
+    const { d, logs } = deps({ readFile: () => 'DATABASE_URL="postgresql://verba:pw@db:5432/verba"\n' })
+    await runMigrate({ acceptDataLoss: true }, d)
+    expect(d.exec).toHaveBeenCalledOnce()
+    expect(d.exec).toHaveBeenCalledWith('node scripts/migrations.mjs deploy', resolve('/repo', 'apps/api'))
+    expect(logs.join('\n')).toMatch(/prisma migrate deploy/)
+    expect(logs.join('\n')).not.toMatch(/db push/)
+  })
+
+  it('reads DATABASE_URL from the .env the wizard writes', () => {
+    expect(databaseUrlFromEnvFile('PORT=4000\nDATABASE_URL="postgres://a@b/c"\n')).toBe('postgres://a@b/c')
+    expect(databaseUrlFromEnvFile("DATABASE_URL='file:./dev.db'")).toBe('file:./dev.db')
+    expect(databaseUrlFromEnvFile('PORT=4000')).toBeUndefined()
   })
 
   it('exits non-zero outside a Verba checkout', async () => {

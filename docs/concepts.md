@@ -245,6 +245,6 @@ Verba ships with a command-line tool in `packages/cli/`:
 | Command         | Description                                                                |
 | --------------- | -------------------------------------------------------------------------- |
 | `verba setup`   | Interactive wizard: configure database, create admin user, generate `.env` |
-| `verba migrate` | Apply the schema with `prisma db push` (`--accept-data-loss` to drop data) |
+| `verba migrate` | Apply pending migrations (PostgreSQL) or the schema (SQLite, `db push`)    |
 
 The CLI is used during initial setup and when upgrading Verba to a new version.

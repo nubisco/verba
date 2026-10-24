@@ -131,7 +131,7 @@ docs/production-deployment
 
 ## New Feature Checklist
 
-- [ ] Prisma schema updated (if new model/field) and applied with `prisma db push`
+- [ ] Prisma schema updated (if new model/field), applied locally with `prisma db push`, and a PostgreSQL migration written with `pnpm --filter @nubisco/verba-api db:migration:new <name>`
 - [ ] Zod schema in `src/schemas/`
 - [ ] Service function with `requireProjectRole` guard
 - [ ] Route registered in `src/routes/`

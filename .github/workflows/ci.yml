@@ -10,6 +10,21 @@ jobs:
   check:
     runs-on: ubuntu-latest
 
+    # A scratch PostgreSQL for the migration check below. Prisma replays the
+    # migration history into it to compare it with the schema.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: shadow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
       - uses: actions/checkout@v6
 
@@ -35,6 +50,13 @@ jobs:
 
       - name: Lint
         run: pnpm lint
+
+      - name: Verify the PostgreSQL migrations match the schema
+        # A schema change without a migration would never reach production,
+        # because the API image only applies prisma/migrations.
+        env:
+          SHADOW_DATABASE_URL: postgresql://postgres:shadow@localhost:5432/postgres
+        run: pnpm --filter @nubisco/verba-api db:migration:check
 
       - name: Verify forbidden EE imports in CE code
         run: |

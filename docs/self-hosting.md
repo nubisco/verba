@@ -38,21 +38,23 @@ The wizard:
 3. Optionally configures SMTP for email / OTP delivery
 4. Creates the initial admin user
 5. Writes `apps/api/.env`
-6. Creates the database schema with `prisma db push`
+6. Creates the database schema (`prisma migrate deploy` on PostgreSQL, `prisma db push` on SQLite)
 
 ### Keeping the database schema up to date
 
-Verba brings the database in line with `apps/api/prisma/schema.prisma` using
-`prisma db push`. This is the one supported path, for SQLite and PostgreSQL
-alike. The files in `apps/api/prisma/migrations` are SQLite history from early
-development: they cannot be applied to PostgreSQL, so do not run
-`prisma migrate deploy`.
+**PostgreSQL** (every production install, and the Docker image) applies the
+migration history in `apps/api/prisma/migrations` with
+`prisma migrate deploy`. Each migration is SQL that was reviewed before it was
+released, applied once, in order, and recorded in the `_prisma_migrations`
+table. Nothing is ever dropped unless a migration says so in writing.
 
-**Docker:** nothing to run. The API image runs
-`prisma db push --accept-data-loss` every time it starts, so a new image brings
-the schema up to date on its own. `--accept-data-loss` means a release that
-removes a column or a table drops it, with its data, without asking. Back up the
-database before you pull a new image (see [Data Backup](#data-backup)).
+**SQLite** (development and single-server trials) has no migration history and
+is brought in line with `prisma db push`.
+
+**Docker:** nothing to run. The API container runs `prisma migrate deploy`
+every time it starts, before it serves anything, and refuses to start if a
+migration fails. Back up the database before you pull a new image anyway (see
+[Data Backup](#data-backup)).
 
 **From source:** after updating the code, run
 
@@ -60,14 +62,55 @@ database before you pull a new image (see [Data Backup](#data-backup)).
 node packages/cli/dist/index.js migrate
 ```
 
-It runs `prisma db push` from `apps/api`, against the `DATABASE_URL` in
-`apps/api/.env`. A change that would lose data stops with Prisma's warning and
-changes nothing. Back up the database, then run it again with
-`--accept-data-loss` to apply it:
+It reads `DATABASE_URL` from `apps/api/.env`. On PostgreSQL it runs
+`prisma migrate deploy`. On SQLite it runs `prisma db push`, where a change that
+would lose data stops with Prisma's warning and changes nothing. Back up the
+database, then run it again with `--accept-data-loss` to apply it:
 
 ```bash
 node packages/cli/dist/index.js migrate --accept-data-loss
 ```
+
+### Moving an existing database onto migrations
+
+Releases before the migration history created and updated the PostgreSQL
+schema with `prisma db push` at start-up, so an existing database has the right
+tables but no `_prisma_migrations` table. `migrate deploy` would then try to
+create every table again and stop. Such a database is **baselined once**: you
+tell Prisma that the first migration, `20261024000000_baseline`, is already in
+place, and every later migration then applies normally.
+
+Do this once, by hand, with the new image, **before** the API container starts
+on it. The baseline only describes a database that the last `db push` release
+brought fully up to date, so run the last `db push` release once first if you
+skipped versions.
+
+```bash
+# 1. Stop the API so nothing writes during the change, and back up.
+docker compose stop api
+docker compose exec postgres pg_dump -U verba verba > backup_before_baseline_$(date +%Y%m%d).sql
+
+# 2. Pull the new image without starting it.
+docker compose pull api
+
+# 3. Check the database is what the baseline expects. This is read only. It
+#    prints the SQL that would bring the database to the new schema, which must
+#    be exactly the migrations after the baseline (compare it with their
+#    migration.sql files in apps/api/prisma/migrations), and nothing else.
+docker compose run --rm --no-deps api \
+  node_modules/.bin/prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script
+
+# 4. Record the baseline as applied. This only writes to _prisma_migrations.
+docker compose run --rm --no-deps api \
+  node_modules/.bin/prisma migrate resolve --applied 20261024000000_baseline
+
+# 5. Start the API. It applies the migrations after the baseline, then serves.
+docker compose up -d api
+```
+
+If step 3 prints anything other than the post-baseline migrations, stop: the
+database has drifted from the release it was last pushed by. Restore nothing
+(nothing has changed yet) and ask for help on the issue tracker with the output.
 
 ---
 
@@ -204,8 +247,8 @@ The `docker-compose.yml` already defines a `db` Postgres service. To use it:
 docker compose up -d
 ```
 
-The API container waits for Postgres to report healthy, then creates or updates
-the schema with `prisma db push --accept-data-loss` before it starts serving.
+The API container waits for Postgres to report healthy, then applies any pending
+migrations with `prisma migrate deploy` before it starts serving.
 
 ---
 
@@ -258,7 +301,7 @@ Set `CORS_ORIGIN=https://verba.example.com` in your `.env` when behind a proxy.
 - [ ] HTTPS is enabled on the reverse proxy
 - [ ] SMTP is configured (or users will need console access to retrieve OTP codes)
 - [ ] Database is backed up regularly (see below)
-- [ ] The database is backed up before each upgrade (the API image applies schema changes, including ones that drop data, when it starts)
+- [ ] The database is backed up before each upgrade (the API image applies pending migrations when it starts)
 
 ---
 
@@ -268,10 +311,11 @@ Set `CORS_ORIGIN=https://verba.example.com` in your `.env` when behind a proxy.
 # Pull the latest code
 git pull
 
-# Back up the database first: the new API image applies schema changes on start,
-# including ones that drop columns or tables (prisma db push --accept-data-loss)
+# Back up the database first: the new API image applies pending migrations on start
+# (prisma migrate deploy). Upgrading from a release that used prisma db push?
+# Baseline the database once first, see "Moving an existing database onto migrations".
 
-# Pull the new images and restart. The API brings the schema up to date as it starts.
+# Pull the new images and restart. The API applies pending migrations as it starts.
 docker compose pull
 docker compose up -d
 ```

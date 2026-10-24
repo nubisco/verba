@@ -196,7 +196,7 @@ export async function runSetupWizard(): Promise<void> {
     {
       type: 'confirm',
       name: 'runMigrateNow',
-      message: 'Create the database schema now (prisma db push)?',
+      message: 'Create the database schema now?',
       default: true,
     },
   ])
@@ -210,10 +210,11 @@ export async function runSetupWizard(): Promise<void> {
           exec: (command, cwd) => execSync(command, { cwd, stdio: 'inherit' }),
           log: (message) => console.log(message),
         },
+        databaseUrl,
       )
       console.log(chalk.green('Database schema applied.'))
     } catch (err) {
-      console.error(chalk.red('prisma db push failed. Check your database connection.'))
+      console.error(chalk.red('Creating the schema failed. Check your database connection.'))
       console.error(chalk.red((err as Error).message))
     }
   }
