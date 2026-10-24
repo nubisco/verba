@@ -666,6 +666,37 @@ async function confirmDelete() {
   overflow-y: auto;
 }
 
+// On a phone the section list becomes one scrolling row above the pane, so
+// the pane gets the whole width. Gated, so the desktop does not move.
+@include variables.phone {
+  .settings-tab {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .settings-sidenav {
+    width: auto;
+    flex-direction: row;
+    overflow-x: auto;
+    border-right: none;
+    border-bottom: 1px solid #f0f0f8;
+    padding: 0.5rem 0;
+    gap: 0.25rem;
+
+    > * {
+      flex-shrink: 0;
+    }
+  }
+
+  .snav-spacer {
+    display: none;
+  }
+
+  .settings-pane {
+    padding: 1rem 0;
+  }
+}
+
 .section {
   background: #fff;
   border: 1px solid #e0e0e0;
