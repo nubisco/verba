@@ -1,3 +1,18 @@
+# [1.13.0](https://github.com/nubisco/verba/compare/v1.12.0...v1.13.0) (2026-10-24)
+
+
+### Bug Fixes
+
+* **deps:** upgrade zod from 4.3.6 to 4.6.7 ([8935387](https://github.com/nubisco/verba/commit/89353871866baff20a9d1c33feefc2ad32294e4c))
+* **web:** keep every topbar action on screen on a phone ([2533219](https://github.com/nubisco/verba/commit/2533219b0252b5b163dc595cab5bcec242d162e8))
+* **web:** keep the project overview's export buttons on screen on a phone ([75b4eb8](https://github.com/nubisco/verba/commit/75b4eb880154dfedab211fbc041184bb5f602799))
+
+
+### Features
+
+* **cli:** make prisma db push the supported way to apply the schema ([e298863](https://github.com/nubisco/verba/commit/e298863d7f2ba74f73ec3dcb2be696736b1f224c))
+* **web:** render in Plus Jakarta Sans and Fira Code ([b11af0d](https://github.com/nubisco/verba/commit/b11af0dadae71a9a27aa7c038cce54608420c3cb))
+
 # [1.12.0](https://github.com/nubisco/verba/compare/v1.11.3...v1.12.0) (2026-10-23)
 
 
