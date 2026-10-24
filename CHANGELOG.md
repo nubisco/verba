@@ -1,3 +1,10 @@
+# [1.16.0](https://github.com/nubisco/verba/compare/v1.15.1...v1.16.0) (2026-10-24)
+
+
+### Features
+
+* **user-menu:** Profile opens Nubisco Platform, the profile page becomes Your settings ([3db2fe4](https://github.com/nubisco/verba/commit/3db2fe4693b56cffdefb86aa08e6bf67da26adab))
+
 ## [1.15.1](https://github.com/nubisco/verba/compare/v1.15.0...v1.15.1) (2026-10-24)
 
 
