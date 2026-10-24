@@ -1,3 +1,10 @@
+## [1.15.1](https://github.com/nubisco/verba/compare/v1.15.0...v1.15.1) (2026-10-24)
+
+
+### Bug Fixes
+
+* **ui:** pin the light theme ahead of the user menu's theme picker ([6b52552](https://github.com/nubisco/verba/commit/6b5255270aa39d7c607d917e8d9d8f90167ee641))
+
 # [1.15.0](https://github.com/nubisco/verba/compare/v1.14.0...v1.15.0) (2026-10-24)
 
 
