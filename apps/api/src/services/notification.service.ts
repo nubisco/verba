@@ -17,9 +17,18 @@ export async function createNotification(data: {
   return notif
 }
 
+/**
+ * Notifications only from projects the person can still open: a member of the
+ * project and of its account. Leaving either stops them, and the unread count
+ * follows, so the bell never points at a project that answers 403.
+ */
+function reachable(userId: string) {
+  return { project: { memberships: { some: { userId } }, account: { members: { some: { userId } } } } }
+}
+
 export async function listNotifications(userId: string, unreadOnly = false) {
   return prisma.notification.findMany({
-    where: { userId, ...(unreadOnly ? { isRead: false } : {}) },
+    where: { userId, ...reachable(userId), ...(unreadOnly ? { isRead: false } : {}) },
     orderBy: { createdAt: 'desc' },
     take: 50,
     include: {
@@ -47,5 +56,5 @@ export async function markAllRead(userId: string) {
 }
 
 export async function unreadCount(userId: string) {
-  return prisma.notification.count({ where: { userId, isRead: false } })
+  return prisma.notification.count({ where: { userId, isRead: false, ...reachable(userId) } })
 }

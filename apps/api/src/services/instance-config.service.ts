@@ -15,9 +15,10 @@ export interface SsoPublicConfig {
 }
 
 export interface PublicInstanceConfig {
-  features: {
-    organizations: boolean
-  }
+  // Accounts used to sit behind ENABLE_ORGANIZATIONS, reported here. They are
+  // always on now, so there are no instance feature flags left to report. The
+  // object stays so a client reading `features` keeps working.
+  features: Record<string, boolean>
   auth: AuthConfig & { sso?: SsoPublicConfig }
 }
 
@@ -58,9 +59,7 @@ export function getAuthConfig(): AuthConfig {
 
 export function getPublicInstanceConfig(): PublicInstanceConfig {
   return {
-    features: {
-      organizations: process.env.ENABLE_ORGANIZATIONS === 'true',
-    },
+    features: {},
     auth: getAuthConfig(),
   }
 }

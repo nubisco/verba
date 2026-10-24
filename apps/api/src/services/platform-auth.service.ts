@@ -149,7 +149,15 @@ export interface ResolvedIdentity {
  * unknown gets null rather than an account.
  */
 export async function upsertUserFromClaims(
-  claims: { sub: string; email: string; name?: string; app_plan?: string; iss?: string; picture?: unknown },
+  claims: {
+    sub: string
+    email: string
+    name?: string
+    app_plan?: string
+    iss?: string
+    picture?: unknown
+    role?: unknown
+  },
   opts: { autoProvision?: boolean } = {},
 ): Promise<ResolvedIdentity | null> {
   const email = claims.email.toLowerCase().trim()
@@ -158,12 +166,17 @@ export async function upsertUserFromClaims(
   // provider omits `picture` for someone with no avatar. `iss` has already
   // been checked against the configured issuer by whoever verified the token.
   const avatarUrl = acceptedPicture(claims.picture, claims.iss)
+  // The app-level role Platform gives this person in Verba. "admin" may create
+  // accounts (account.service.ts). Refreshed at every sign-in like the
+  // avatar, so taking the role away in Platform takes the right away here at
+  // the next sign-in. A provider that sends no role leaves it empty.
+  const platformRole = typeof claims.role === 'string' && claims.role ? claims.role : null
 
   const existing = await prisma.user.findUnique({ where: { email } })
   if (existing) {
     if (existing.deactivatedAt != null) return null
-    if (existing.avatarUrl !== avatarUrl) {
-      await prisma.user.update({ where: { id: existing.id }, data: { avatarUrl } })
+    if (existing.avatarUrl !== avatarUrl || existing.platformRole !== platformRole) {
+      await prisma.user.update({ where: { id: existing.id }, data: { avatarUrl, platformRole } })
     }
     return {
       userId: existing.id,
@@ -185,6 +198,7 @@ export async function upsertUserFromClaims(
       name: claims.name ?? email.split('@')[0],
       isGlobalAdmin: false,
       avatarUrl,
+      platformRole,
     },
     select: { id: true, email: true, name: true },
   })

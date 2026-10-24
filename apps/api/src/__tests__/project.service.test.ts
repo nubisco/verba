@@ -36,7 +36,7 @@ const mockProject = {
   aiModel: null,
   aiEnabled: false,
   aiUpdatedAt: null,
-  organizationId: null,
+  accountId: 'acc1',
   createdAt: new Date(),
   updatedAt: new Date(),
 }
@@ -55,21 +55,20 @@ describe('toClientProject', () => {
 })
 
 describe('listProjects', () => {
-  it('returns only projects the user is a member of', async () => {
-    vi.mocked(prisma.user.findUnique).mockResolvedValue({
-      isGlobalAdmin: false,
-    } as never)
-    vi.mocked(prisma.membership.findMany).mockResolvedValue([{ projectId: mockProject.id }] as never)
+  it("returns only the account's projects the user is a member of", async () => {
     vi.mocked(prisma.project.findMany).mockResolvedValue([mockProject])
-    const result = await listProjects('u1')
+    const result = await listProjects('u1', 'acc1')
     expect(result).toEqual([toClientProject(mockProject)])
+    expect(prisma.project.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { accountId: 'acc1', memberships: { some: { userId: 'u1' } } } }),
+    )
   })
 
-  it('lists only member projects for an instance operator too', async () => {
-    vi.mocked(prisma.membership.findMany).mockResolvedValue([])
+  it('never lists the projects of another account, even ones the person is a member of', async () => {
     vi.mocked(prisma.project.findMany).mockResolvedValue([])
-    await listProjects('operator')
-    expect(prisma.project.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { id: { in: [] } } }))
+    await listProjects('u1', 'acc2')
+    const where = vi.mocked(prisma.project.findMany).mock.calls[0]![0]!.where
+    expect(where).toMatchObject({ accountId: 'acc2' })
   })
 })
 
@@ -93,7 +92,7 @@ describe('createProject', () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValue({ isGlobalAdmin: true } as never)
     vi.mocked(prisma.project.findUnique).mockResolvedValue(null)
     vi.mocked(prisma.project.create).mockResolvedValue(mockProject)
-    const result = await createProject('user1', 'pro', {
+    const result = await createProject('user1', 'pro', 'acc1', {
       name: 'Test Project',
       slug: 'test-project',
     })
@@ -104,16 +103,18 @@ describe('createProject', () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValue({ isGlobalAdmin: true } as never)
     vi.mocked(prisma.project.findUnique).mockResolvedValueOnce(mockProject).mockResolvedValueOnce(null)
     vi.mocked(prisma.project.create).mockResolvedValue(mockProject)
-    await createProject('user1', 'pro', { name: 'Other', slug: 'test-project' })
+    await createProject('user1', 'pro', 'acc1', { name: 'Other', slug: 'test-project' })
     expect(prisma.project.create).toHaveBeenCalledWith({
-      data: { name: 'Other', slug: 'test-project-2' },
+      data: { name: 'Other', slug: 'test-project-2', accountId: 'acc1' },
     })
   })
 
   it('throws 402 when free-plan user is at the project cap', async () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValue({ isGlobalAdmin: false } as never)
     vi.mocked(prisma.membership.count).mockResolvedValue(3)
-    await expect(createProject('user1', 'free', { name: 'X', slug: 'x' })).rejects.toMatchObject({ statusCode: 402 })
+    await expect(createProject('user1', 'free', 'acc1', { name: 'X', slug: 'x' })).rejects.toMatchObject({
+      statusCode: 402,
+    })
   })
 })
 

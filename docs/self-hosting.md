@@ -212,12 +212,14 @@ links) before it is shown or written, and one that fails is discarded.
 
 The people who run an instance are named in `VERBA_OPERATORS`, a comma-separated
 list of email addresses. Nobody becomes an operator by signing up first. An
-operator can manage accounts under **Admin → Users** (deactivate, reactivate,
-delete) and read the instance's plan. An operator has no access to projects they
+operator can manage the people signed up on the instance under **Admin → Users**
+(deactivate, reactivate, delete), create accounts, and read an account's plan
+under that account's **Settings → Plan & Entitlements**. An operator has no access to projects they
 are not a member of, the same as anyone else.
 
-The first-run setup wizard only creates an account for an address already in
-`VERBA_OPERATORS`. Adding or removing an address takes effect on the next request
+The first-run setup wizard only signs up an address already in
+`VERBA_OPERATORS`, and creates the instance's first account, owned by that
+operator and named after the instance. Adding or removing an address takes effect on the next request
 for every decision, and the change is recorded (`operator.granted`,
 `operator.revoked`) in the instance audit record at that person's next sign-in.
 Operator actions on accounts are recorded there too, readable at
@@ -422,6 +424,18 @@ Instance operators (`VERBA_OPERATORS`) can access **Admin → Users** to:
 - **Deactivate** a user: prevents login without deleting their work.
 - **Delete** a user: permanently removes their account.
 - View all registered users and their project memberships.
+
+### Accounts
+
+Every project lives in an account (see [Core Concepts](./concepts.md#account)).
+Upgrading to the release that introduced accounts puts every existing project
+and every existing person into one account, so nobody's access changes:
+operators become its owners, project admins its admins, everyone else a member.
+New accounts are created by the people Nubisco Platform marks as admins of this
+app (the app-level `role` claim is `admin`) and by instance operators. Account
+owners and admins add people under **Settings → Members** at the bottom of the
+rail. Someone signing in for the first time sees "You are not in any account
+yet" until they are added.
 
 ### Project Members
 

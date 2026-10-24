@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('../prisma.js', () => ({
   prisma: {
     user: { findUnique: vi.fn() },
-    membership: { findUnique: vi.fn() },
+    membership: { findFirst: vi.fn() },
   },
 }))
 
@@ -36,22 +36,22 @@ describe('project rooms on the WebSocket', () => {
   })
 
   it('closes the socket of a signed-in user who is not a member of the project', async () => {
-    vi.mocked(prisma.membership.findUnique).mockResolvedValue(null)
+    vi.mocked(prisma.membership.findFirst).mockResolvedValue(null)
     const ws = await app.injectWS('/ws/projects/p-other', { headers: { cookie: `token=${token}` } })
     expect(await closed(ws)).toBe(1008)
-    expect(prisma.membership.findUnique).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { userId_projectId: { userId: 'u1', projectId: 'p-other' } } }),
+    expect(prisma.membership.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ userId: 'u1', projectId: 'p-other' }) }),
     )
   })
 
   it('closes a socket with no session', async () => {
     const ws = await app.injectWS('/ws/projects/p1')
     expect(await closed(ws)).toBe(1008)
-    expect(prisma.membership.findUnique).not.toHaveBeenCalled()
+    expect(prisma.membership.findFirst).not.toHaveBeenCalled()
   })
 
   it('keeps a member connected', async () => {
-    vi.mocked(prisma.membership.findUnique).mockResolvedValue({
+    vi.mocked(prisma.membership.findFirst).mockResolvedValue({
       id: 'm',
       userId: 'u1',
       projectId: 'p1',

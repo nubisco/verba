@@ -89,6 +89,15 @@ ADMIN (4) > MAINTAINER (3) > TRANSLATOR (2) > READER (1)
 
 Higher roles inherit the permissions of lower roles. Defined in `acl.service.ts`.
 
+## Accounts
+
+Every project belongs to one **account** (the tenant, fleet standard "Every rail has the same anatomy"). Account roles are `OWNER > ADMIN > MEMBER` (`types.ts` `AccountRole`). Rules, all in `account.service.ts`:
+
+- Project access needs membership of the project **and** of its account. `getMembership` checks both in one query, so every route that calls `requireProjectRole` is account-scoped. Never look a membership up any other way for an access decision.
+- Routes that are not about one project resolve the account with `resolveAccount(userId, accountSelector(req))`: the `X-Verba-Account` header or `?account=` (id or slug), else the person's only account. Several and none named is a 400 listing them, someone else's is a 404.
+- Only Platform admins of this app (`User.platformRole === 'admin'`, the app-level `role` claim stored at sign-in) and instance operators create accounts. Account owners and admins add people. Only owners touch owners, and the last owner cannot leave.
+- Accounts are Community Edition code: access control cannot depend on the EE package. Plans, limits and billing per account stay in `packages/ee`.
+
 ## Workflow State Machine
 
 ```
@@ -188,6 +197,6 @@ Do not implement unless explicitly requested:
 
 - Real-time collaboration (WebSockets, SSE)
 - Machine translation integration
-- Billing or multi-tenancy (SaaS model)
+- Billing, and self-serve account creation (accounts exist, but only admins create them)
 - Native mobile apps
 - GraphQL API

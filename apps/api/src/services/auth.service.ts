@@ -130,6 +130,8 @@ export async function getMe(userId: string) {
     notificationOpenMode: user.notificationOpenMode,
     // The Platform avatar, or null for initials.
     avatarUrl: user.avatarUrl ?? null,
+    // Whether the web app offers "New account" (account.service.ts).
+    canCreateAccounts: user.platformRole === 'admin' || isOperatorEmail(user.email),
   }
 }
 

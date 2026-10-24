@@ -32,6 +32,7 @@ const mockUser = {
   preferredLocales: '[]',
   notificationOpenMode: 'inspector',
   avatarUrl: null,
+  platformRole: null,
 }
 
 beforeEach(() => {

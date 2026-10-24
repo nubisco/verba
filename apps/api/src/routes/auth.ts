@@ -95,8 +95,9 @@ export async function authRoutes(app: FastifyInstance) {
       where: {
         updatedById: userId,
         status: { in: ['IN_PROGRESS', 'SUBMITTED'] },
-        // Only projects the person is still on: leaving one ends its tasks.
-        key: { project: { memberships: { some: { userId } } } },
+        // Only projects the person is still on, in an account they are still
+        // in: leaving either ends its tasks.
+        key: { project: { memberships: { some: { userId } }, account: { members: { some: { userId } } } } },
       },
       include: {
         key: { include: { project: { select: { id: true, name: true } } } },
@@ -207,7 +208,15 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.redirect(ssoService.loginErrorUrl(query.error))
     }
 
-    let claims: { sub: string; email: string; name?: string; app_plan?: string; iss?: string; picture?: unknown }
+    let claims: {
+      sub: string
+      email: string
+      name?: string
+      app_plan?: string
+      iss?: string
+      picture?: unknown
+      role?: unknown
+    }
     if (runtime.mode === 'oidc') {
       const raw = req.cookies?.[SSO_HANDSHAKE_COOKIE]
       if (!raw || !query.code || !query.state) {

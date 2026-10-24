@@ -87,6 +87,43 @@ All incoming request payloads are validated with **Zod** schemas before reaching
 
 - Authentication uses **JWT** tokens issued at login.
 - ACL is enforced in the service layer. Role checks happen before any mutation.
+- Project access needs two memberships, of the project and of the project's
+  account, checked in one query by `requireProjectRole`. Leaving an account
+  closes every project in it.
+
+### Accounts
+
+Routes that are not about one project (the project list, project creation) run
+in **one account**, resolved by `resolveAccount` in
+`apps/api/src/services/account.service.ts`:
+
+- The caller names it, by id or slug, in the **`X-Verba-Account`** header, or as
+  `?account=` where a header cannot be set.
+- With none named, a person in **exactly one** account works in it. That keeps
+  every client written before accounts working unchanged.
+- A person in several accounts who names none gets a `400` listing them in
+  `accounts`.
+- An account the caller is not in answers `404`, exactly like one that does not
+  exist, so membership cannot be probed.
+
+Routes under `/projects/:projectId` need no header: the project names its
+account. Notifications and personal tasks only come from projects the person
+can still open.
+
+| Route                                  | Who                                                    |
+| -------------------------------------- | ------------------------------------------------------ |
+| `GET /accounts`                        | The caller's accounts, with their role                 |
+| `POST /accounts`                       | Platform admins of this app, and instance operators    |
+| `GET` / `PATCH /accounts/:id`          | Members read, admins rename                            |
+| `GET /accounts/:id/members`            | Members                                                |
+| `POST /accounts/:id/members`           | Admins: add someone who has signed in once, by email   |
+| `PATCH /accounts/:id/members/:userId`  | Admins (owners for anything owner): change a role      |
+| `DELETE /accounts/:id/members/:userId` | Admins, or the member themselves. The last owner stays |
+| `GET /admin/entitlements?accountId=`   | Instance operators: the account's plan                 |
+
+Account changes are recorded in the instance audit record
+(`GET /admin/audit`), since they belong to no project.
+
 - Namespace-scoped permissions are resolved per request.
 
 ## Event System
@@ -122,6 +159,10 @@ Plugins **cannot**:
 ## Data Model Summary
 
 ```
+Account
+ ├── AccountMember[]   (User + OWNER | ADMIN | MEMBER)
+ └── Project[]
+
 Project
  ├── Locale[]          (en, pt-PT, de, ...)
  ├── Namespace[]

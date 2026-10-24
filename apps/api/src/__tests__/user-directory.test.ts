@@ -3,7 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('../prisma.js', () => ({
   prisma: {
     user: { findUnique: vi.fn(), findMany: vi.fn() },
-    membership: { findMany: vi.fn(), findUnique: vi.fn(), upsert: vi.fn() },
+    membership: { findMany: vi.fn(), findUnique: vi.fn(), findFirst: vi.fn(), upsert: vi.fn() },
+    project: { findUnique: vi.fn() },
+    accountMember: { findUnique: vi.fn(), create: vi.fn() },
+    instanceAuditLog: { create: vi.fn() },
   },
 }))
 
@@ -68,7 +71,8 @@ describe('adding a member', () => {
     const app = buildApp()
     await app.ready()
     const token = app.jwt.sign({ userId: 'admin', email: 'admin@example.com' })
-    vi.mocked(prisma.membership.findUnique).mockResolvedValue({
+    vi.mocked(prisma.project.findUnique).mockResolvedValue({ accountId: 'acc1' } as never)
+    vi.mocked(prisma.membership.findFirst).mockResolvedValue({
       id: 'm',
       userId: 'admin',
       projectId: 'p1',
@@ -81,6 +85,8 @@ describe('adding a member', () => {
 
   it('takes an email address and resolves it on the server', async () => {
     const { app, cookies } = await asProjectAdmin()
+    // Already in the project's account.
+    vi.mocked(prisma.accountMember.findUnique).mockResolvedValue({ role: 'MEMBER' } as never)
     vi.mocked(prisma.user.findUnique).mockResolvedValue({ id: 'u9', deactivatedAt: null } as never)
     vi.mocked(prisma.membership.upsert).mockResolvedValue({
       id: 'm9',
@@ -127,5 +133,50 @@ describe('adding a member', () => {
     })
     await app.close()
     expect(res.statusCode).toBe(404)
+  })
+
+  it("refuses someone outside the project's account when the project admin is not an account admin", async () => {
+    const { app, cookies } = await asProjectAdmin()
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ id: 'u9', deactivatedAt: null } as never)
+    vi.mocked(prisma.accountMember.findUnique)
+      .mockResolvedValueOnce(null) // the person being added
+      .mockResolvedValueOnce({ role: 'MEMBER' } as never) // the project admin
+    const res = await app.inject({
+      method: 'POST',
+      url: '/projects/p1/members',
+      cookies,
+      payload: { email: 'outsider@example.com', role: 'READER' },
+    })
+    await app.close()
+    expect(res.statusCode).toBe(403)
+    expect(prisma.accountMember.create).not.toHaveBeenCalled()
+    expect(prisma.membership.upsert).not.toHaveBeenCalled()
+  })
+
+  it('brings someone into the account as a member when an account admin adds them to a project', async () => {
+    const { app, cookies } = await asProjectAdmin()
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ id: 'u9', deactivatedAt: null } as never)
+    vi.mocked(prisma.accountMember.findUnique)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ role: 'ADMIN' } as never)
+    vi.mocked(prisma.membership.upsert).mockResolvedValue({
+      id: 'm9',
+      userId: 'u9',
+      projectId: 'p1',
+      role: 'READER',
+      namespaces: '[]',
+      assignedLocales: '[]',
+    } as never)
+    const res = await app.inject({
+      method: 'POST',
+      url: '/projects/p1/members',
+      cookies,
+      payload: { email: 'newcomer@example.com', role: 'READER' },
+    })
+    await app.close()
+    expect(res.statusCode).toBe(201)
+    expect(prisma.accountMember.create).toHaveBeenCalledWith({
+      data: { userId: 'u9', accountId: 'acc1', role: 'MEMBER' },
+    })
   })
 })

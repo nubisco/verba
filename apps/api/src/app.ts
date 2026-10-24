@@ -25,7 +25,7 @@ import { commentRoutes } from './routes/comments.js'
 import { exportRoutes } from './routes/export.js'
 import { importRunRoutes } from './routes/import-runs.js'
 import { importRoutes } from './routes/import.js'
-import { orgRoutes } from './routes/orgs.js'
+import { accountRoutes } from './routes/accounts.js'
 import { wsRoutes } from './routes/ws.js'
 import { adminRoutes } from './routes/admin.js'
 import { notificationRoutes } from './routes/notifications.js'
@@ -72,9 +72,11 @@ export function buildApp() {
     if (err instanceof ZodError) {
       return reply.status(400).send({ error: 'Validation error', issues: err.issues })
     }
-    const e = err as { statusCode?: number; message?: string }
+    const e = err as { statusCode?: number; message?: string; details?: Record<string, unknown> }
     const statusCode = e.statusCode ?? 500
-    return reply.status(statusCode).send({ error: e.message ?? 'Internal Server Error' })
+    // `details` carries what a caller needs to recover, such as the accounts
+    // to choose from when a request did not name one (account.service.ts).
+    return reply.status(statusCode).send({ error: e.message ?? 'Internal Server Error', ...(e.details ?? {}) })
   })
 
   app.get('/health', async () => ({ status: 'ok' }))
@@ -98,7 +100,7 @@ export function buildApp() {
   app.register(exportRoutes)
   app.register(importRunRoutes)
   app.register(importRoutes)
-  app.register(orgRoutes)
+  app.register(accountRoutes)
   app.register(wsRoutes)
   app.register(adminRoutes)
   app.register(notificationRoutes)

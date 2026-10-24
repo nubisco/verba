@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('../prisma.js', () => ({
   prisma: {
     membership: {
+      findFirst: vi.fn(),
       findMany: vi.fn(),
       findUnique: vi.fn(),
       upsert: vi.fn(),
@@ -103,12 +104,12 @@ describe('removeMember', () => {
 
 describe('getMembership', () => {
   it('returns null when no membership', async () => {
-    vi.mocked(prisma.membership.findUnique).mockResolvedValue(null)
+    vi.mocked(prisma.membership.findFirst).mockResolvedValue(null)
     expect(await getMembership('u1', 'p1')).toBeNull()
   })
 
   it('returns membership with parsed namespaces', async () => {
-    vi.mocked(prisma.membership.findUnique).mockResolvedValue(mockMembership)
+    vi.mocked(prisma.membership.findFirst).mockResolvedValue(mockMembership)
     const result = await getMembership('u1', 'p1')
     expect(result?.namespaces).toEqual(['ns1'])
   })

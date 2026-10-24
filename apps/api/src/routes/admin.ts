@@ -43,11 +43,16 @@ export async function adminRoutes(app: FastifyInstance) {
   })
 
   // GET /admin/entitlements: inspect the current plan and effective entitlements.
-  // Accepts an optional ?orgId query param for multi-tenant installs.
-  // Returns the resolved plan, entitlement set, license state, and whether an
-  // override is active. Restricted to ADMIN role.
-  app.get<{ Querystring: { orgId?: string } }>('/admin/entitlements', { preHandler: [requireAdmin] }, async (req) => {
-    const orgId = req.query.orgId ?? null
-    return serializeEntitlementContext(orgId)
-  })
+  // ?accountId names the account (the EE tables key it as orgId, which is
+  // still accepted). Returns the resolved plan, entitlement set, license state,
+  // and whether an override is active. Operators only: it is shown under an
+  // account's Settings, but only to an operator.
+  app.get<{ Querystring: { accountId?: string; orgId?: string } }>(
+    '/admin/entitlements',
+    { preHandler: [requireAdmin] },
+    async (req) => {
+      const accountId = req.query.accountId ?? req.query.orgId ?? null
+      return serializeEntitlementContext(accountId)
+    },
+  )
 }

@@ -21,9 +21,11 @@ export function canTransitionStatus(role: string, from: string, to: string): boo
 /**
  * The caller's membership of a project, at `minRole` or above, or a 403.
  *
- * Membership is the only way in. Instance operators used to bypass this and
- * act as ADMIN on every project, which on a shared host is every customer's
- * data: they now need a membership like anyone else.
+ * Membership is the only way in: of the project, and of the account the
+ * project belongs to (getMembership checks both in one query). Instance
+ * operators used to bypass this and act as ADMIN on every project, which on a
+ * shared host is every customer's data: they now need a membership like
+ * anyone else.
  */
 export async function requireProjectRole(userId: string, projectId: string, minRole: string) {
   const membership = await getMembership(userId, projectId)

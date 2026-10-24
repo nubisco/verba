@@ -6,15 +6,14 @@ function notFound(): never {
   throw Object.assign(new Error('Project not found'), { statusCode: 404 })
 }
 
-/** The projects this person is a member of. Operators included: see acl.service. */
-export async function listProjects(userId: string) {
-  const memberships = await prisma.membership.findMany({
-    where: { userId },
-    select: { projectId: true },
-  })
-  const projectIds = memberships.map((m) => m.projectId)
+/**
+ * The projects of one account this person is a member of. Operators
+ * included: see acl.service. The caller has already resolved the account
+ * against the person's account memberships (account.service resolveAccount).
+ */
+export async function listProjects(userId: string, accountId: string) {
   const projects = await prisma.project.findMany({
-    where: { id: { in: projectIds } },
+    where: { accountId, memberships: { some: { userId } } },
     orderBy: { createdAt: 'desc' },
   })
   return projects.map(toClientProject)
@@ -62,7 +61,13 @@ async function resolveUniqueSlug(base: string): Promise<string> {
   throw Object.assign(new Error('Could not allocate a unique slug'), { statusCode: 409 })
 }
 
-export async function createProject(userId: string, plan: string | undefined, data: CreateProjectInput) {
+/** A new project in `accountId`, which the caller has resolved against the person's memberships. */
+export async function createProject(
+  userId: string,
+  plan: string | undefined,
+  accountId: string,
+  data: CreateProjectInput,
+) {
   if (!(await isOperator(userId))) {
     const cap = getProjectCapForPlan(plan)
     if (Number.isFinite(cap)) {
@@ -78,7 +83,7 @@ export async function createProject(userId: string, plan: string | undefined, da
     }
   }
   const slug = await resolveUniqueSlug(data.slug)
-  return toClientProject(await prisma.project.create({ data: { ...data, slug } }))
+  return toClientProject(await prisma.project.create({ data: { ...data, slug, accountId } }))
 }
 
 export async function updateProject(id: string, data: UpdateProjectInput) {

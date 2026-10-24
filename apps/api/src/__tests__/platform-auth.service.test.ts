@@ -122,7 +122,10 @@ describe('upsertUserFromClaims avatar', () => {
     } as never)
     const picture = `${ISSUER}/api/avatars/abc`
     await upsertUserFromClaims({ sub: 'p-1', email: 'alice@example.com', iss: ISSUER, picture })
-    expect(prisma.user.update).toHaveBeenCalledWith({ where: { id: 'u1' }, data: { avatarUrl: picture } })
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: 'u1' },
+      data: { avatarUrl: picture, platformRole: null },
+    })
 
     vi.mocked(prisma.user.findUnique).mockResolvedValue({
       id: 'u1',
@@ -132,7 +135,10 @@ describe('upsertUserFromClaims avatar', () => {
       avatarUrl: picture,
     } as never)
     await upsertUserFromClaims({ sub: 'p-1', email: 'alice@example.com', iss: ISSUER })
-    expect(prisma.user.update).toHaveBeenLastCalledWith({ where: { id: 'u1' }, data: { avatarUrl: null } })
+    expect(prisma.user.update).toHaveBeenLastCalledWith({
+      where: { id: 'u1' },
+      data: { avatarUrl: null, platformRole: null },
+    })
   })
 
   it('writes nothing when the avatar has not changed', async () => {
@@ -143,8 +149,33 @@ describe('upsertUserFromClaims avatar', () => {
       name: 'Alice',
       deactivatedAt: null,
       avatarUrl: picture,
+      platformRole: null,
     } as never)
     await upsertUserFromClaims({ sub: 'p-1', email: 'alice@example.com', iss: ISSUER, picture })
     expect(prisma.user.update).not.toHaveBeenCalled()
+  })
+})
+
+describe('upsertUserFromClaims platform role', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  const alice = { id: 'u1', email: 'alice@example.com', name: 'Alice', deactivatedAt: null, avatarUrl: null }
+
+  it('stores the app-level role claim, which decides who may create accounts', async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ ...alice, platformRole: null } as never)
+    await upsertUserFromClaims({ sub: 'p-1', email: 'alice@example.com', iss: ISSUER, role: 'admin' })
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: 'u1' },
+      data: { avatarUrl: null, platformRole: 'admin' },
+    })
+  })
+
+  it('takes the role away when Platform stops sending it', async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ ...alice, platformRole: 'admin' } as never)
+    await upsertUserFromClaims({ sub: 'p-1', email: 'alice@example.com', iss: ISSUER, role: 'user' })
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: 'u1' },
+      data: { avatarUrl: null, platformRole: 'user' },
+    })
   })
 })

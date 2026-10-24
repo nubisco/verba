@@ -100,9 +100,17 @@ export async function removeMember(projectId: string, userId: string) {
   })
 }
 
+/**
+ * A person's membership of a project, or null.
+ *
+ * Only while they are also a member of the project's account: leaving an
+ * account (or being removed from it) closes every project in it, even if a
+ * project membership row were somehow left behind. One query, so the account
+ * check costs nothing extra on every request.
+ */
 export async function getMembership(userId: string, projectId: string) {
-  const m = await prisma.membership.findUnique({
-    where: { userId_projectId: { userId, projectId } },
+  const m = await prisma.membership.findFirst({
+    where: { userId, projectId, project: { account: { members: { some: { userId } } } } },
   })
   if (!m) return null
   return {

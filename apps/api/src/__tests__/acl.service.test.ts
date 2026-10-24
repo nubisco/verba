@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('../prisma.js', () => ({
   prisma: {
     membership: {
-      findUnique: vi.fn(),
+      findFirst: vi.fn(),
     },
     user: {
       findUnique: vi.fn(),
@@ -66,15 +66,27 @@ describe('canTransitionStatus', () => {
 })
 
 describe('requireProjectRole', () => {
+  it("asks for the membership only while the person is also in the project's account", async () => {
+    vi.mocked(prisma.membership.findFirst).mockResolvedValue(null)
+    await expect(requireProjectRole('user1', 'proj1', Role.READER)).rejects.toMatchObject({ statusCode: 403 })
+    expect(prisma.membership.findFirst).toHaveBeenCalledWith({
+      where: {
+        userId: 'user1',
+        projectId: 'proj1',
+        project: { account: { members: { some: { userId: 'user1' } } } },
+      },
+    })
+  })
+
   it('throws 403 when membership not found', async () => {
-    vi.mocked(prisma.membership.findUnique).mockResolvedValue(null)
+    vi.mocked(prisma.membership.findFirst).mockResolvedValue(null)
     await expect(requireProjectRole('user1', 'proj1', Role.READER)).rejects.toMatchObject({
       statusCode: 403,
     })
   })
 
   it('throws 403 when role is insufficient (READER requires MAINTAINER)', async () => {
-    vi.mocked(prisma.membership.findUnique).mockResolvedValue({
+    vi.mocked(prisma.membership.findFirst).mockResolvedValue({
       id: 'm1',
       userId: 'user1',
       projectId: 'proj1',
@@ -89,7 +101,7 @@ describe('requireProjectRole', () => {
   })
 
   it('passes when role meets minimum (ADMIN requires READER)', async () => {
-    vi.mocked(prisma.membership.findUnique).mockResolvedValue({
+    vi.mocked(prisma.membership.findFirst).mockResolvedValue({
       id: 'm1',
       userId: 'user1',
       projectId: 'proj1',
@@ -103,7 +115,7 @@ describe('requireProjectRole', () => {
   })
 
   it('passes when role exactly meets minimum', async () => {
-    vi.mocked(prisma.membership.findUnique).mockResolvedValue({
+    vi.mocked(prisma.membership.findFirst).mockResolvedValue({
       id: 'm1',
       userId: 'user1',
       projectId: 'proj1',
@@ -117,7 +129,7 @@ describe('requireProjectRole', () => {
   })
 
   it('gives an instance operator no way into a project they are not a member of', async () => {
-    vi.mocked(prisma.membership.findUnique).mockResolvedValue(null)
+    vi.mocked(prisma.membership.findFirst).mockResolvedValue(null)
     await expect(requireProjectRole('operator', 'customer-project', Role.READER)).rejects.toMatchObject({
       statusCode: 403,
     })

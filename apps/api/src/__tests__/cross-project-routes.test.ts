@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('../prisma.js', () => ({
   prisma: {
     user: { findUnique: vi.fn() },
-    membership: { findUnique: vi.fn() },
+    membership: { findFirst: vi.fn() },
     key: { findFirst: vi.fn(), findUnique: vi.fn() },
     locale: { findFirst: vi.fn() },
     translation: { findFirst: vi.fn(), findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn() },
@@ -32,7 +32,7 @@ describe('routes nested under a project only reach that project', () => {
     await app.ready()
     cookies = { token: app.jwt.sign({ userId: 'u-admin-p1', email: 'a@example.com' }) }
     vi.mocked(prisma.user.findUnique).mockResolvedValue({ isGlobalAdmin: false } as never)
-    vi.mocked(prisma.membership.findUnique).mockResolvedValue({
+    vi.mocked(prisma.membership.findFirst).mockResolvedValue({
       id: 'm',
       userId: 'u-admin-p1',
       projectId: 'p1',
@@ -108,7 +108,7 @@ describe('routes nested under a project only reach that project', () => {
   })
 
   it('PUT translation: a client cannot set the status, so a translator cannot approve', async () => {
-    vi.mocked(prisma.membership.findUnique).mockResolvedValue({
+    vi.mocked(prisma.membership.findFirst).mockResolvedValue({
       id: 'm',
       userId: 'u-admin-p1',
       projectId: 'p1',

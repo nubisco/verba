@@ -6,6 +6,7 @@ import { createOtpOnlyUser, register } from '../services/auth.service.js'
 import { getAuthConfig } from '../services/instance-config.service.js'
 import { startSession } from '../session.js'
 import { isOperatorEmail } from '../services/operator.service.js'
+import { createOwnedAccount } from '../services/account.service.js'
 import { z } from 'zod'
 
 const setupSchema = z.object({
@@ -49,6 +50,11 @@ export async function setupRoutes(app: FastifyInstance) {
     const user = authConfig.localPasswordEnabled
       ? await register(adminEmail, adminPassword ?? '')
       : await createOtpOnlyUser(adminEmail)
+
+    // The instance's first account, owned by the operator, so the first
+    // project has somewhere to live. Named after the instance when setup was
+    // given a name.
+    await createOwnedAccount(user.id, { name: body.data.instanceName?.trim() || 'My account' })
 
     // Sign the user in straight away
     await startSession(app, reply, { userId: user.id, email: user.email })

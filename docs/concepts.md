@@ -4,16 +4,41 @@ Understanding Verba's data model and workflow makes the rest of the application 
 
 ---
 
+## Account
+
+An **Account** is the organisation you work in: a company, a team, a client. It
+holds **projects** and the **people** who may work in them. Every project belongs
+to exactly one account, and nobody reaches a project without being a member of
+its account as well as of the project.
+
+After you sign in, you choose the project you want to work on from your
+account's projects. If you are in more than one account, the first entry in the
+rail switches between them.
+
+| Account role | What it allows                                                                        |
+| ------------ | ------------------------------------------------------------------------------------- |
+| `MEMBER`     | Work in the account's projects you are a member of, and create projects               |
+| `ADMIN`      | Add and remove people, change roles below owner; MEMBER permissions                   |
+| `OWNER`      | Everything, including adding and removing owners. An account keeps one owner at least |
+
+Account owners and admins manage people under **Settings** at the bottom of the
+rail. Someone signing in for the first time joins no account until an owner or
+admin adds them. New accounts are created by the people Nubisco Platform marks
+as admins of Verba (or, on an instance without Platform sign-in, by the instance
+operators).
+
+---
+
 ## Project
 
-A **Project** is the top-level container for everything in Verba. It holds:
+A **Project** is the container for one product's translations. It holds:
 
 - A list of **locales** (languages) used by the project.
 - A set of **namespaces** for organising keys.
 - All **translation keys** and their **translations**.
 - **Members** with their assigned roles and locale assignments.
 
-Every resource in Verba belongs to exactly one project. Access control is scoped per project.
+Every resource in Verba belongs to exactly one project, and every project to one account. Access control is scoped per project, inside the account.
 
 Projects display a **2-letter avatar** generated from the project name initials.
 
@@ -119,7 +144,7 @@ Verba uses role-based access control (RBAC) enforced on the server. Roles are as
 | `MAINTAINER` | Approve/reject translations, manage keys and namespaces; TRANSLATOR permissions |
 | `ADMIN`      | Full project management (members, locales, settings); MAINTAINER permissions    |
 
-**Instance operator:** A user whose email is in `VERBA_OPERATORS`. Operators manage accounts on the instance. They have no special access to projects: like everyone else, they reach a project only as one of its members.
+**Instance operator:** A user whose email is in `VERBA_OPERATORS`. Operators manage the people signed up on the instance and may create accounts. They have no special access to projects: like everyone else, they reach a project only as one of its members.
 
 ---
 

@@ -24,39 +24,50 @@ model User {
   // The Platform avatar: the OIDC `picture` claim, refreshed at every sign-in.
   // Null means no avatar, and the web app draws initials.
   avatarUrl            String?
+  // The app-level `role` claim on the Platform token, refreshed at every
+  // Platform sign-in. "admin" may create accounts (account.service.ts).
+  // Null for a person who has never signed in through Platform.
+  platformRole         String?
 
   memberships              Membership[]
   comments                 Comment[]
   translations             Translation[]
   auditLogs                AuditLog[]
   importRuns               ImportRun[]
-  orgMemberships           OrgMembership[]
+  accountMemberships       AccountMember[]
   assignedTranslations     Translation[]  @relation("AssignedTranslations")
   notifications            Notification[] @relation("NotificationRecipient")
   triggeredNotifications   Notification[] @relation("NotificationActor")
 }
 
-model Organization {
+// The tenant: an account holds projects, and its members are the people who
+// may work in them. Every project belongs to exactly one account, and project
+// access requires membership of both (acl.service.ts). Only people Platform
+// marks as admins of this app create accounts. Owners add people.
+model Account {
   id        String   @id @default(cuid())
   name      String
   slug      String   @unique
   createdAt DateTime @default(now())
 
   projects Project[]
-  members  OrgMembership[]
+  members  AccountMember[]
 }
 
-model OrgMembership {
+// role: "OWNER" | "ADMIN" | "MEMBER" (types.ts AccountRole). An account always
+// keeps at least one owner.
+model AccountMember {
   id        String   @id @default(cuid())
   userId    String
-  orgId     String
+  accountId String
   role      String   @default("MEMBER")
   createdAt DateTime @default(now())
 
-  user User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, orgId])
+  @@unique([userId, accountId])
+  @@index([accountId])
 }
 
 model Project {
@@ -66,14 +77,14 @@ model Project {
   avatar         String?  // Emoji or short icon text, e.g. "🌍" or "VP"
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
-  organizationId String?
+  accountId      String
   aiProvider     String?  // "openai" | "anthropic" | "gemini"
   aiApiKey       String?  // the project's own provider key, sealed by encryption.service.ts, never sent to a client
   aiModel        String?  // null means the fleet default for the provider (ai.service.ts DEFAULT_MODELS)
   aiEnabled      Boolean  @default(false)
   aiUpdatedAt    DateTime?
 
-  organization  Organization? @relation(fields: [organizationId], references: [id])
+  account       Account       @relation(fields: [accountId], references: [id], onDelete: Restrict)
   locales       Locale[]
   namespaces    Namespace[]
   keys          Key[]
@@ -83,6 +94,8 @@ model Project {
   notifications  Notification[]
   xliffSkeletons XliffSkeleton[]
   aiUsage        AiUsage[]
+
+  @@index([accountId])
 }
 
 model Locale {

@@ -4,16 +4,22 @@ import * as svc from '../services/project.service.js'
 import * as membershipService from '../services/membership.service.js'
 import * as analytics from '../services/analytics.service.js'
 import { requireProjectRole } from '../services/acl.service.js'
+import { resolveAccount } from '../services/account.service.js'
+import { accountSelector } from '../account-selector.js'
 import { Role } from '../types.js'
 
 export async function projectRoutes(app: FastifyInstance) {
+  // The project list and project creation work in one account: the one the
+  // request names, or the person's only account (account.service.ts).
   app.get('/projects', { preHandler: [app.authenticate] }, async (req) => {
-    return svc.listProjects(req.user.userId)
+    const account = await resolveAccount(req.user.userId, accountSelector(req))
+    return svc.listProjects(req.user.userId, account.id)
   })
 
   app.post('/projects', { preHandler: [app.authenticate] }, async (req, reply) => {
     const body = CreateProjectSchema.parse(req.body)
-    const project = await svc.createProject(req.user.userId, req.user.plan, body)
+    const account = await resolveAccount(req.user.userId, accountSelector(req))
+    const project = await svc.createProject(req.user.userId, req.user.plan, account.id, body)
     await membershipService.addMember(project.id, {
       userId: req.user.userId,
       role: Role.ADMIN,

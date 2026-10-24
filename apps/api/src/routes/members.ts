@@ -4,6 +4,7 @@ import * as membershipService from '../services/membership.service.js'
 import { findActiveUserByEmail } from '../services/auth.service.js'
 import * as analytics from '../services/analytics.service.js'
 import { requireProjectRole } from '../services/acl.service.js'
+import { ensureMemberForProject } from '../services/account.service.js'
 import { Role } from '../types.js'
 
 export async function memberRoutes(app: FastifyInstance) {
@@ -25,8 +26,13 @@ export async function memberRoutes(app: FastifyInstance) {
       const user = await findActiveUserByEmail(body.email)
       if (!user) {
         // Invitations for people without an account come with workspaces (VE-78).
-        return reply.status(404).send({ error: 'No Verba account uses that email. Ask them to sign in once first.' })
+        return reply
+          .status(404)
+          .send({ error: 'Nobody with that email has signed in to Verba yet. Ask them to sign in once first.' })
       }
+      // A project's people are its account's people: someone from outside
+      // joins the account first, which only an account admin may do.
+      await ensureMemberForProject(req.user.userId, req.params.projectId, user.id)
       const member = await membershipService.addMember(req.params.projectId, {
         userId: user.id,
         role: body.role,

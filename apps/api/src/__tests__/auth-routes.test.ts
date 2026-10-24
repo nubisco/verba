@@ -31,6 +31,10 @@ vi.mock('../services/analytics.service.js', () => ({
   track: vi.fn(),
 }))
 
+vi.mock('../services/account.service.js', () => ({
+  createOwnedAccount: vi.fn(async () => ({ id: 'acc1' })),
+}))
+
 vi.mock('../services/operator.service.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../services/operator.service.js')>()),
   syncOperatorFlag: vi.fn(),
@@ -51,6 +55,7 @@ vi.mock('../prisma.js', () => ({
 import { buildApp } from '../app.js'
 import { prisma } from '../prisma.js'
 import * as authService from '../services/auth.service.js'
+import * as accountService from '../services/account.service.js'
 import * as otpService from '../services/otp.service.js'
 import * as platformAuthService from '../services/platform-auth.service.js'
 import { AUTH_LIMITS, trustProxySetting } from '../rate-limits.js'
@@ -118,9 +123,7 @@ describe('auth and setup routes', () => {
         platformEnabled: false,
         platformIssuer: null,
       },
-      features: {
-        organizations: false,
-      },
+      features: {},
     })
   })
 
@@ -276,6 +279,8 @@ describe('auth and setup routes', () => {
 
     expect(res.statusCode).toBe(201)
     expect(vi.mocked(authService.createOtpOnlyUser)).toHaveBeenCalledWith('admin@example.com')
+    // The operator owns the instance's first account, so the first project has a home.
+    expect(vi.mocked(accountService.createOwnedAccount)).toHaveBeenCalledWith('u1', { name: 'My account' })
     expect(res.cookies.some((cookie) => cookie.name === 'token')).toBe(true)
   })
 
