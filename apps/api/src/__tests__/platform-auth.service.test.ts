@@ -7,12 +7,18 @@ vi.mock('../prisma.js', () => ({
       findUnique: vi.fn(),
       count: vi.fn(),
       create: vi.fn(),
+      update: vi.fn(),
     },
   },
 }))
 
 import { prisma } from '../prisma.js'
-import { tokenNamesApp, verifyPlatformToken } from '../services/platform-auth.service.js'
+import {
+  acceptedPicture,
+  tokenNamesApp,
+  upsertUserFromClaims,
+  verifyPlatformToken,
+} from '../services/platform-auth.service.js'
 
 // A real key pair, so the signature check itself runs.
 const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
@@ -82,5 +88,63 @@ describe('tokenNamesApp', () => {
     expect(tokenNamesApp({ aud: ['x', 'verba'] }, 'verba')).toBe(true)
     expect(tokenNamesApp({ app: 'acta', aud: 'acta' }, 'verba')).toBe(false)
     expect(tokenNamesApp({ app: 'verba' }, undefined)).toBe(false)
+  })
+})
+
+describe('acceptedPicture', () => {
+  it('keeps an avatar on the issuer under /api/avatars/', () => {
+    expect(acceptedPicture(`${ISSUER}/api/avatars/abc`, ISSUER)).toBe(`${ISSUER}/api/avatars/abc`)
+  })
+
+  it('treats an absent or empty claim as no avatar', () => {
+    expect(acceptedPicture(undefined, ISSUER)).toBeNull()
+    expect(acceptedPicture('', ISSUER)).toBeNull()
+  })
+
+  it('refuses another host, another path, or credentials in the URL', () => {
+    expect(acceptedPicture('https://elsewhere.example.com/api/avatars/abc', ISSUER)).toBeNull()
+    expect(acceptedPicture(`${ISSUER}/files/abc`, ISSUER)).toBeNull()
+    expect(acceptedPicture('https://a:b@platform.example.com/api/avatars/abc', ISSUER)).toBeNull()
+    expect(acceptedPicture(`${ISSUER}/api/avatars/abc`, undefined)).toBeNull()
+  })
+})
+
+describe('upsertUserFromClaims avatar', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('stores the picture on sign-in, and clears it when the claim is gone', async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      id: 'u1',
+      email: 'alice@example.com',
+      name: 'Alice',
+      deactivatedAt: null,
+      avatarUrl: null,
+    } as never)
+    const picture = `${ISSUER}/api/avatars/abc`
+    await upsertUserFromClaims({ sub: 'p-1', email: 'alice@example.com', iss: ISSUER, picture })
+    expect(prisma.user.update).toHaveBeenCalledWith({ where: { id: 'u1' }, data: { avatarUrl: picture } })
+
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      id: 'u1',
+      email: 'alice@example.com',
+      name: 'Alice',
+      deactivatedAt: null,
+      avatarUrl: picture,
+    } as never)
+    await upsertUserFromClaims({ sub: 'p-1', email: 'alice@example.com', iss: ISSUER })
+    expect(prisma.user.update).toHaveBeenLastCalledWith({ where: { id: 'u1' }, data: { avatarUrl: null } })
+  })
+
+  it('writes nothing when the avatar has not changed', async () => {
+    const picture = `${ISSUER}/api/avatars/abc`
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      id: 'u1',
+      email: 'alice@example.com',
+      name: 'Alice',
+      deactivatedAt: null,
+      avatarUrl: picture,
+    } as never)
+    await upsertUserFromClaims({ sub: 'p-1', email: 'alice@example.com', iss: ISSUER, picture })
+    expect(prisma.user.update).not.toHaveBeenCalled()
   })
 })

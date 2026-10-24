@@ -53,6 +53,7 @@ type PlatformClaims = {
   aud?: string | string[]
   app_plan?: string
   app_entitlements?: Record<string, unknown>
+  picture?: string
 }
 
 export async function verifyPlatformJwt(
@@ -92,6 +93,37 @@ export async function verifyPlatformJwt(
   return claims
 }
 
+// ── Avatar ────────────────────────────────────────────────────────────────────
+
+/**
+ * The avatar a person carries in from their provider, or null for none.
+ *
+ * Platform puts a public URL in the OIDC `picture` claim and omits the claim
+ * when someone has no avatar (platform docs, guide/avatars.md). The value ends
+ * up as an <img src> in the rail, so it is checked rather than trusted: only an
+ * address on the issuer's own origin under `/api/avatars/` is kept, as Acta
+ * does. The token is signed, so this is not the defence against forgery. It
+ * stops a provider change or a misconfiguration from pointing every Verba page
+ * at some third-party host.
+ */
+export function acceptedPicture(value: unknown, issuer: string | undefined): string | null {
+  if (typeof value !== 'string' || value === '' || !issuer) return null
+  let url: URL
+  let origin: string
+  try {
+    url = new URL(value)
+    origin = new URL(issuer).origin
+  } catch {
+    return null
+  }
+  if (url.origin !== origin) return null
+  if (!url.pathname.startsWith('/api/avatars/')) return null
+  // Credentials in the URL would be sent by the browser on every page that
+  // renders the avatar, and would sit in the database in plain text.
+  if (url.username || url.password) return null
+  return url.toString()
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export interface ResolvedIdentity {
@@ -117,15 +149,22 @@ export interface ResolvedIdentity {
  * unknown gets null rather than an account.
  */
 export async function upsertUserFromClaims(
-  claims: { sub: string; email: string; name?: string; app_plan?: string },
+  claims: { sub: string; email: string; name?: string; app_plan?: string; iss?: string; picture?: unknown },
   opts: { autoProvision?: boolean } = {},
 ): Promise<ResolvedIdentity | null> {
   const email = claims.email.toLowerCase().trim()
   const plan = claims.app_plan ?? 'free'
+  // Every sign-in refreshes the avatar, and an absent claim clears it: the
+  // provider omits `picture` for someone with no avatar. `iss` has already
+  // been checked against the configured issuer by whoever verified the token.
+  const avatarUrl = acceptedPicture(claims.picture, claims.iss)
 
   const existing = await prisma.user.findUnique({ where: { email } })
   if (existing) {
     if (existing.deactivatedAt != null) return null
+    if (existing.avatarUrl !== avatarUrl) {
+      await prisma.user.update({ where: { id: existing.id }, data: { avatarUrl } })
+    }
     return {
       userId: existing.id,
       email: existing.email,
@@ -145,6 +184,7 @@ export async function upsertUserFromClaims(
       passwordHash: '',
       name: claims.name ?? email.split('@')[0],
       isGlobalAdmin: false,
+      avatarUrl,
     },
     select: { id: true, email: true, name: true },
   })

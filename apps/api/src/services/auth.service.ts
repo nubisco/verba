@@ -128,6 +128,8 @@ export async function getMe(userId: string) {
     createdAt: user.createdAt,
     preferredLocales,
     notificationOpenMode: user.notificationOpenMode,
+    // The Platform avatar, or null for initials.
+    avatarUrl: user.avatarUrl ?? null,
   }
 }
 

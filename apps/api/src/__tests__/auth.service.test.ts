@@ -31,6 +31,7 @@ const mockUser = {
   deactivatedAt: null,
   preferredLocales: '[]',
   notificationOpenMode: 'inspector',
+  avatarUrl: null,
 }
 
 beforeEach(() => {

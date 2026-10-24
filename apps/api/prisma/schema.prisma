@@ -21,6 +21,9 @@ model User {
   deactivatedAt        DateTime?
   preferredLocales     String    @default("[]") // JSON array of locale codes e.g. ["en","fr"]
   notificationOpenMode String    @default("inspector")
+  // The Platform avatar: the OIDC `picture` claim, refreshed at every sign-in.
+  // Null means no avatar, and the web app draws initials.
+  avatarUrl            String?
 
   memberships              Membership[]
   comments                 Comment[]

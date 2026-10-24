@@ -207,7 +207,7 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.redirect(ssoService.loginErrorUrl(query.error))
     }
 
-    let claims: { sub: string; email: string; name?: string; app_plan?: string }
+    let claims: { sub: string; email: string; name?: string; app_plan?: string; iss?: string; picture?: unknown }
     if (runtime.mode === 'oidc') {
       const raw = req.cookies?.[SSO_HANDSHAKE_COOKIE]
       if (!raw || !query.code || !query.state) {
