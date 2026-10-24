@@ -1,14 +1,18 @@
 <template>
   <div>
     <div class="card">
-      <h3>{{ t('profile.accountDetails') }}</h3>
+      <h3>{{ platformEnabled ? t('profile.preferences') : t('profile.accountDetails') }}</h3>
 
-      <div class="field">
+      <!-- Name, email and password are the person's identity. On an instance
+           that signs in through Nubisco Platform they belong to Platform,
+           which the user menu's Profile opens, so only an instance with its
+           own accounts edits them here. -->
+      <div v-if="!platformEnabled" class="field">
         <label>{{ t('profile.name') }}</label>
         <NbTextInput v-model="name" type="text" :placeholder="t('profile.namePlaceholder')" />
       </div>
 
-      <div class="field">
+      <div v-if="!platformEnabled" class="field">
         <label>{{ t('profile.email') }}</label>
         <NbTextInput v-model="email" type="email" :placeholder="t('profile.emailPlaceholder')" />
       </div>
@@ -36,21 +40,23 @@
         </div>
       </div>
 
-      <div class="section-divider">{{ t('profile.changePassword') }}</div>
-      <p class="section-hint">{{ t('profile.changePasswordHint') }}</p>
+      <template v-if="!platformEnabled">
+        <div class="section-divider">{{ t('profile.changePassword') }}</div>
+        <p class="section-hint">{{ t('profile.changePasswordHint') }}</p>
 
-      <div class="field">
-        <label>{{ t('profile.currentPassword') }}</label>
-        <NbTextInput v-model="currentPassword" type="password" autocomplete="current-password" />
-      </div>
-      <div class="field">
-        <label>{{ t('profile.newPassword') }}</label>
-        <NbTextInput v-model="newPassword" type="password" autocomplete="new-password" />
-      </div>
-      <div class="field">
-        <label>{{ t('profile.confirmPassword') }}</label>
-        <NbTextInput v-model="confirmPassword" type="password" autocomplete="new-password" />
-      </div>
+        <div class="field">
+          <label>{{ t('profile.currentPassword') }}</label>
+          <NbTextInput v-model="currentPassword" type="password" autocomplete="current-password" />
+        </div>
+        <div class="field">
+          <label>{{ t('profile.newPassword') }}</label>
+          <NbTextInput v-model="newPassword" type="password" autocomplete="new-password" />
+        </div>
+        <div class="field">
+          <label>{{ t('profile.confirmPassword') }}</label>
+          <NbTextInput v-model="confirmPassword" type="password" autocomplete="new-password" />
+        </div>
+      </template>
 
       <div v-if="error" class="alert alert-error">{{ error }}</div>
       <div v-if="success" class="alert alert-success">{{ success }}</div>
@@ -70,36 +76,6 @@
           {{ auth.user?.isGlobalAdmin ? t('profile.globalAdmin') : t('profile.user') }}
         </dd>
       </dl>
-    </div>
-
-    <div v-if="platformEnabled" class="card identities-card">
-      <h3>Accounts on this device</h3>
-      <p class="section-hint">
-        Switch between Nubisco accounts that have signed in to Verba in this browser. Each app remembers its own active
-        account, switching here does not affect your other apps.
-      </p>
-
-      <ul v-if="identities.length > 0" class="identity-list">
-        <li v-for="i in identities" :key="i.platform_sub" class="identity-row" :class="{ active: i.is_active }">
-          <div class="identity-avatar">{{ initialsFor(i.email) }}</div>
-          <div class="identity-info">
-            <div class="identity-email">{{ i.email }}</div>
-            <div v-if="i.name" class="identity-name">{{ i.name }}</div>
-            <div v-if="i.is_active" class="identity-status">Active in this app</div>
-          </div>
-          <div class="identity-actions">
-            <NbButton v-if="!i.is_active" :disabled="switching" @click="switchToIdentity(i)"
-              >Switch to this account</NbButton
-            >
-            <NbButton variant="danger" :disabled="switching" @click="removeIdentity(i)">Sign out</NbButton>
-          </div>
-        </li>
-      </ul>
-      <p v-else class="section-hint">No other accounts on this device yet.</p>
-
-      <div class="form-actions">
-        <NbButton variant="primary" @click="addAccount">Add another account</NbButton>
-      </div>
     </div>
 
     <div class="card danger-card">
@@ -264,45 +240,8 @@ async function deactivateAccount() {
   }
 }
 
-// Account switcher state lives in usePlatformIdentities so the sidebar menu
-// in DefaultLayout and this profile card share one source of truth.
-import { usePlatformIdentities, type PlatformIdentity } from '../composables/usePlatformIdentities'
-
+// Platform owns the identity fields when this instance signs in through it.
 const platformEnabled = computed(() => instanceConfig.auth.platformEnabled)
-const { identities, switching, load, switchTo, addAnother, remove } = usePlatformIdentities()
-
-function initialsFor(email: string): string {
-  return email.slice(0, 2).toUpperCase()
-}
-
-async function switchToIdentity(identity: PlatformIdentity) {
-  try {
-    await switchTo(identity)
-  } catch (e: unknown) {
-    alert(e instanceof Error ? e.message : 'Failed to switch account.')
-  }
-}
-
-function addAccount() {
-  addAnother()
-}
-
-async function removeIdentity(identity: PlatformIdentity) {
-  if (!window.confirm(`Sign ${identity.email} out of this device?`)) return
-  try {
-    const { activeRemoved } = await remove(identity)
-    if (activeRemoved) {
-      auth.user = null
-      window.location.href = '/login'
-    }
-  } catch (e: unknown) {
-    alert(e instanceof Error ? e.message : 'Failed to sign out.')
-  }
-}
-
-onMounted(() => {
-  if (platformEnabled.value) void load()
-})
 </script>
 
 <style lang="scss" scoped>
@@ -430,75 +369,5 @@ onMounted(() => {
   &:hover:not(.active) {
     background: #e8e8e8;
   }
-}
-
-.identities-card .identity-list {
-  list-style: none;
-  margin: 0 0 1rem;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.identity-row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem;
-  border: 1px solid #eee;
-  border-radius: 6px;
-  background: #fafafa;
-
-  &.active {
-    border-color: #4f7df0;
-    background: #f4f7ff;
-  }
-}
-
-.identity-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: #1a1a2e;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 0.8rem;
-  flex-shrink: 0;
-}
-
-.identity-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.identity-email {
-  font-weight: 500;
-  font-size: 0.95rem;
-  color: #111;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.identity-name {
-  font-size: 0.8rem;
-  color: #888;
-}
-
-.identity-status {
-  font-size: 0.75rem;
-  color: #4f7df0;
-  font-weight: 600;
-  margin-top: 0.15rem;
-}
-
-.identity-actions {
-  display: flex;
-  gap: 0.4rem;
-  flex-shrink: 0;
 }
 </style>

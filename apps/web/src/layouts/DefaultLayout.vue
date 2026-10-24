@@ -77,17 +77,18 @@
         :accounts="accounts"
         :accounts-unknown="accountsUnknown"
         :show-account-actions="platformEnabled"
+        :show-profile="platformEnabled"
         trigger="identity"
         @open="loadAccounts()"
         @switch="switchTo"
         @switch-account="selectAccount"
         @add-account="addAccount"
         @remove="remove"
-        @profile="router.push('/profile')"
+        @profile="openProfile"
         @sign-out="auth.logout()"
       >
-        <template v-if="availableLocales.length > 1" #default>
-          <div class="user-language">
+        <template #default="{ close }">
+          <div v-if="availableLocales.length > 1" class="user-language">
             <p class="user-language__title">Language</p>
             <NbRadio
               name="user-menu-language"
@@ -96,6 +97,10 @@
               @update:model-value="changeLocale(String($event))"
             />
           </div>
+          <!-- What only Verba keeps about the person: preferred languages,
+               how notifications open, and, on an instance with its own
+               accounts, the name, email and password. -->
+          <NbMenuItem icon="user-gear" :label="t('nav.yourSettings')" @select="openPersonalSettings(close)" />
         </template>
       </NbUserMenu>
     </template>
@@ -166,6 +171,19 @@ const menuUser = computed(() => ({
   name: auth.user?.name ?? undefined,
   picture: auth.user?.avatarUrl ?? undefined,
 }))
+
+// Profile is Platform's (name, picture, passkeys), so it opens the person's
+// Platform profile in a new tab. An instance without Platform hides it.
+function openProfile(): void {
+  const issuer = instanceConfig.auth.platformIssuer
+  if (!issuer) return
+  window.open(`${issuer.replace(/\/$/, '')}/profile`, '_blank', 'noopener')
+}
+
+function openPersonalSettings(close: () => void): void {
+  close()
+  void router.push({ name: 'personal-settings' })
+}
 
 const DOCS_URL = 'https://docs.nubisco.io/verba/'
 function openDocs(): void {

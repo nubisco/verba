@@ -246,12 +246,16 @@ See [Import & Export](./import-export) for full details on formats and CI integr
 
 ---
 
-## Profile & Password
+## Your settings
 
-Click your email address in the top navigation to open your profile page. From there you can:
+Click your name at the foot of the sidebar and choose **Your settings**. From there you can:
 
-- Change your email address.
-- Set a new password (requires your current password).
+- Choose your preferred languages and how notifications open.
+- On an instance with its own accounts, change your name and email address, and set a new password (requires
+  your current password).
+
+On an instance that signs in through Nubisco Platform, your name, email, picture and sign-in methods belong to
+Platform. **Profile** in the same menu opens your Platform profile in a new tab.
 
 ## OTP / Passwordless Login
 

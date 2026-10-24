@@ -1,6 +1,7 @@
 {
   "title": "My Profile",
   "accountDetails": "Account Details",
+  "preferences": "Preferences",
   "name": "Display name",
   "namePlaceholder": "Your name",
   "email": "Email address",
