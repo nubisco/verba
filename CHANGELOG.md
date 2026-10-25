@@ -1,3 +1,10 @@
+# [1.18.0](https://github.com/nubisco/verba/compare/v1.17.0...v1.18.0) (2026-10-25)
+
+
+### Features
+
+* **web:** operators wear the user menu's Operator badge, and the Platform footer shows only with Platform sign-in ([1248c2b](https://github.com/nubisco/verba/commit/1248c2ba9ab0f285eab8d37a6d1e3e6284c875b2))
+
 # [1.17.0](https://github.com/nubisco/verba/compare/v1.16.0...v1.17.0) (2026-10-24)
 
 
