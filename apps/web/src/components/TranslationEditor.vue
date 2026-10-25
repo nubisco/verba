@@ -8,7 +8,6 @@
     :placeholder="placeholder ?? ''"
     helper="Use {variables} for placeholders and @:key.name for key references"
     class="t-editor"
-    @keydown="handleKeydown"
     @focus="emit('focus')"
     @input="nextTick(checkAutocomplete)"
   >
@@ -24,19 +23,20 @@
       </NbButton>
     </template>
 
-    <!-- Autocomplete dropdown -->
+    <!-- Key-reference suggestions: the product decides when (after "@:")
+         and which keys, NbSuggestionList does the keyboard and the a11y. -->
     <template v-if="autocomplete.visible" #dropdown>
-      <div class="t-editor__autocomplete">
-        <NbButton
-          v-for="(item, i) in autocomplete.filtered"
-          :key="item"
-          class="t-editor__ac-item"
-          :class="{ 'is-active': i === autocomplete.selectedIndex }"
-          @mousedown.prevent="insertAutocomplete(item)"
-        >
-          @:{{ item }}
-        </NbButton>
-      </div>
+      <NbSuggestionList
+        v-model:open="autocomplete.visible"
+        :items="autocomplete.filtered"
+        placement="top"
+        label="Key references"
+        @select="insertAutocomplete"
+      >
+        <template #item="{ item }">
+          <code class="t-editor__ac-item">@:{{ item }}</code>
+        </template>
+      </NbSuggestionList>
     </template>
   </NbTextInput>
 </template>
@@ -70,7 +70,9 @@ const emit = defineEmits<{
   suggest: []
 }>()
 
-const editorRef = ref()
+// NbTextInput exposes `nativeEl` as a ref, which the component proxy unwraps,
+// so this is the element itself, not a ref to it.
+const editorRef = ref<{ nativeEl?: HTMLTextAreaElement | HTMLInputElement }>()
 
 const localValue = computed({
   get: () => props.modelValue,
@@ -100,7 +102,7 @@ function highlight(text: string): string {
 }
 
 function checkAutocomplete() {
-  const nativeEl = editorRef.value?.nativeEl?.value
+  const nativeEl = editorRef.value?.nativeEl as HTMLTextAreaElement | undefined
   if (!nativeEl) return
   const pos = nativeEl.selectionStart ?? 0
   const before = nativeEl.value.slice(0, pos)
@@ -119,7 +121,7 @@ function checkAutocomplete() {
 }
 
 function insertAutocomplete(key: string) {
-  const nativeEl = editorRef.value?.nativeEl?.value
+  const nativeEl = editorRef.value?.nativeEl as HTMLTextAreaElement | undefined
   if (!nativeEl) return
   const pos = nativeEl.selectionStart ?? 0
   const before = nativeEl.value.slice(0, pos)
@@ -131,31 +133,13 @@ function insertAutocomplete(key: string) {
   localValue.value = newValue
   autocomplete.visible = false
   nextTick(() => {
-    const el = editorRef.value?.nativeEl?.value
+    const el = editorRef.value?.nativeEl as HTMLTextAreaElement | undefined
     if (el) {
       const newPos = newBefore.length
       el.setSelectionRange(newPos, newPos)
       el.focus()
     }
   })
-}
-
-function handleKeydown(e: KeyboardEvent) {
-  if (!autocomplete.visible) return
-  if (e.key === 'ArrowDown') {
-    e.preventDefault()
-    autocomplete.selectedIndex = Math.min(autocomplete.selectedIndex + 1, autocomplete.filtered.length - 1)
-  } else if (e.key === 'ArrowUp') {
-    e.preventDefault()
-    autocomplete.selectedIndex = Math.max(autocomplete.selectedIndex - 1, 0)
-  } else if (e.key === 'Enter' || e.key === 'Tab') {
-    if (autocomplete.visible && autocomplete.filtered.length > 0) {
-      e.preventDefault()
-      insertAutocomplete(autocomplete.filtered[autocomplete.selectedIndex])
-    }
-  } else if (e.key === 'Escape') {
-    autocomplete.visible = false
-  }
 }
 </script>
 
@@ -170,35 +154,8 @@ function handleKeydown(e: KeyboardEvent) {
   font-style: italic;
 }
 
-.t-editor__autocomplete {
-  position: absolute;
-  bottom: calc(100% + 4px);
-  left: 0;
-  z-index: 100;
-  background: var(--nb-c-layer-3);
-  border: 1px solid var(--nb-c-border);
-  border-radius: 4px;
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--nb-c-black) 10%, transparent);
-  max-height: 200px;
-  overflow-y: auto;
-  min-width: 200px;
-}
-
 .t-editor__ac-item {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 0.35rem 0.75rem;
-  font-size: 0.8rem;
   font-family: var(--nb-font-family-mono);
-  border: none;
-  background: none;
-  cursor: pointer;
   color: var(--nb-c-primary);
-
-  &.is-active,
-  &:hover {
-    background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
-  }
 }
 </style>

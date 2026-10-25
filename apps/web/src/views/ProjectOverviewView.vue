@@ -1,15 +1,14 @@
 <template>
   <div class="tab-content">
-    <div class="stats-row">
-      <RouterLink :to="`/keys/${projectId}`" class="stat-card clickable">
-        <div class="stat-value">{{ store.totalKeys }}</div>
-        <div class="stat-label">{{ t('projects.header.totalKeys') }}</div>
-      </RouterLink>
-      <RouterLink :to="`/review/${projectId}`" class="stat-card warning clickable">
-        <div class="stat-value">{{ store.needsReview }}</div>
-        <div class="stat-label">{{ t('projects.header.needsReview') }}</div>
-      </RouterLink>
-    </div>
+    <NbCardGrid min="160px" class="stats-row">
+      <NbStat :label="t('projects.header.totalKeys')" :value="store.totalKeys" :to="`/keys/${projectId}`" />
+      <NbStat
+        :label="t('projects.header.needsReview')"
+        :value="store.needsReview"
+        :status="store.needsReview ? 'warning' : 'neutral'"
+        :to="`/review/${projectId}`"
+      />
+    </NbCardGrid>
 
     <NbPanel class="section">
       <h3>{{ t('projects.namespaces.title') }}</h3>
@@ -28,20 +27,17 @@
     <NbPanel class="section">
       <h3>My Tasks</h3>
       <div v-if="store.tasks.length === 0" class="empty-note">No active tasks</div>
-      <div v-else class="task-list">
-        <RouterLink
-          v-for="task in store.tasks"
-          :key="task.id"
-          :to="`/keys/${projectId}/${task.key.id}`"
-          class="task-card"
-        >
-          <code class="task-key">{{ task.key.name }}</code>
-          <div class="task-meta">
+      <NbCardGrid v-else min="220px" gap="sm">
+        <NbCard v-for="task in store.tasks" :key="task.id" :to="`/keys/${projectId}/${task.key.id}`">
+          <template #title>
+            <code class="task-key">{{ task.key.name }}</code>
+          </template>
+          <template #footer>
             <LocaleBadge :code="task.locale.code" />
             <span class="status-dot" :style="{ background: STATUS_COLORS[task.status] || 'var(--nb-c-text-subtle)' }" />
-          </div>
-        </RouterLink>
-      </div>
+          </template>
+        </NbCard>
+      </NbCardGrid>
     </NbPanel>
 
     <NbPanel class="section">
@@ -50,7 +46,14 @@
         <div v-for="lp in store.localeProgress" :key="lp.code" class="locale-row">
           <LocaleBadge :code="lp.code" />
           <span class="locale-name">{{ lp.name }}</span>
-          <NbProgressBar :value="lp.approved" :max="lp.total || 1" size="sm" :status="localeProgressStatus(lp)" />
+          <NbProgressBar
+            :label="lp.name"
+            hide-label
+            :value="lp.approved"
+            :max="lp.total || 1"
+            size="sm"
+            :status="localeProgressStatus(lp)"
+          />
           <span class="progress-label">{{ lp.approved }} / {{ lp.total }}</span>
           <NbButton
             variant="ghost"
@@ -113,40 +116,7 @@ function exportLocale(localeCode: string) {
 }
 
 .stats-row {
-  display: flex;
-  gap: 1rem;
   margin-bottom: 1.5rem;
-}
-
-.stat-card {
-  background: var(--nb-c-layer-1);
-  border: 1px solid var(--nb-c-border);
-  border-radius: 8px;
-  padding: 1.25rem 1.75rem;
-  min-width: 140px;
-  text-decoration: none;
-  display: block;
-  .stat-value {
-    font-size: 2rem;
-    font-weight: 700;
-    line-height: 1;
-    margin-bottom: 0.25rem;
-    color: var(--nb-c-text);
-  }
-  .stat-label {
-    font-size: 0.8rem;
-    color: var(--nb-c-text-subtle);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-  &.warning .stat-value {
-    color: var(--nb-c-status-warning);
-  }
-  &.clickable:hover {
-    border-color: var(--nb-c-primary);
-    box-shadow: 0 2px 8px color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
-    cursor: pointer;
-  }
 }
 
 .section {
@@ -184,33 +154,9 @@ function exportLocale(localeCode: string) {
   color: var(--nb-c-text-subtle);
 }
 
-.task-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-.task-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.45rem 0.75rem;
-  background: var(--nb-c-layer-2);
-  border: 1px solid var(--nb-c-border);
-  border-radius: 6px;
-  text-decoration: none;
-  color: inherit;
-  &:hover {
-    box-shadow: 0 2px 8px color-mix(in srgb, var(--nb-c-black) 7%, transparent);
-  }
-}
 .task-key {
   font-size: 0.82rem;
   color: var(--nb-c-text);
-}
-.task-meta {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
 }
 .status-dot {
   width: 8px;

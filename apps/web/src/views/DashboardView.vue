@@ -95,23 +95,20 @@
             </h3>
           </div>
           <NbEmptyState v-if="group.projects.length === 0" :title="t('dashboard.noProjects')" size="sm" bordered />
-          <div v-else class="projects-grid">
-            <RouterLink
+          <NbCardGrid v-else min="220px" gap="sm">
+            <NbCard
               v-for="project in group.projects"
               :key="project.id"
+              :title="project.name"
+              :subtitle="project.slug"
               :to="`/projects/${project.id}`"
-              class="project-card"
               @click="accountsStore.select(group.account.id)"
             >
-              <div class="project-card__avatar">
-                {{ project.name.slice(0, 2).toUpperCase() }}
-              </div>
-              <div class="project-card__info">
-                <h4>{{ project.name }}</h4>
-                <span class="slug">{{ project.slug }}</span>
-              </div>
-            </RouterLink>
-          </div>
+              <template #icon>
+                <ProjectAvatar :avatar="project.avatar" :name="project.name" />
+              </template>
+            </NbCard>
+          </NbCardGrid>
         </section>
       </template>
 
@@ -123,22 +120,19 @@
             <RouterLink :to="`/projects/${group.project.id}`" class="project-name">
               {{ group.project.name }}
             </RouterLink>
-            <div class="task-list">
-              <RouterLink
-                v-for="task in group.tasks"
-                :key="task.id"
-                :to="`/keys/${group.project.id}/${task.key.id}`"
-                class="task-card"
-              >
-                <code class="task-key">{{ task.key.name }}</code>
-                <div class="task-meta">
+            <NbCardGrid min="220px" gap="sm">
+              <NbCard v-for="task in group.tasks" :key="task.id" :to="`/keys/${group.project.id}/${task.key.id}`">
+                <template #title>
+                  <code class="task-key">{{ task.key.name }}</code>
+                </template>
+                <template #footer>
                   <LocaleBadge :code="task.locale.code" />
                   <NbBadge size="sm" :variant="STATUS_VARIANTS[task.status] ?? 'grey'">
                     {{ STATUS_LABELS[task.status as keyof typeof STATUS_LABELS] }}
                   </NbBadge>
-                </div>
-              </RouterLink>
-            </div>
+                </template>
+              </NbCard>
+            </NbCardGrid>
           </div>
         </div>
       </section>
@@ -154,6 +148,7 @@ import { apiFetch } from '../api'
 import { useI18n } from 'vue-i18n'
 import { usePhoneLayout } from '@nubisco/ui'
 import LocaleBadge from '../components/LocaleBadge.vue'
+import ProjectAvatar from '../components/ProjectAvatar.vue'
 
 const auth = useAuthStore()
 const accountsStore = useAccountsStore()
@@ -163,6 +158,7 @@ interface Project {
   id: string
   name: string
   slug: string
+  avatar?: string | null
   accountId?: string
 }
 
@@ -355,56 +351,6 @@ async function createProject() {
   margin: 0 0 0.75rem;
 }
 
-.projects-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 0.75rem;
-}
-
-.project-card {
-  background: var(--nb-c-layer-1);
-  border: 1px solid var(--nb-c-border);
-  border-radius: 8px;
-  padding: 1rem 1.25rem;
-  text-decoration: none;
-  color: inherit;
-  transition: box-shadow 0.15s;
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-  &:hover {
-    box-shadow: 0 2px 12px color-mix(in srgb, var(--nb-c-black) 9%, transparent);
-  }
-
-  &__avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 8px;
-    background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
-    color: var(--nb-c-primary);
-    font-size: 0.95rem;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-  &__info {
-    min-width: 0;
-  }
-  h4 {
-    margin: 0 0 0.2rem;
-    font-size: 0.92rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .slug {
-    font-size: 0.75rem;
-    color: var(--nb-c-text-subtle);
-  }
-}
-
 .project-tasks {
   display: flex;
   flex-direction: column;
@@ -432,39 +378,9 @@ async function createProject() {
   }
 }
 
-.task-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.task-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.5rem 0.75rem;
-  background: var(--nb-c-layer-2);
-  border: 1px solid var(--nb-c-border);
-  border-radius: 6px;
-  text-decoration: none;
-  color: inherit;
-  transition: box-shadow 0.15s;
-  &:hover {
-    box-shadow: 0 2px 8px color-mix(in srgb, var(--nb-c-black) 8%, transparent);
-  }
-}
-
 .task-key {
   font-size: 0.82rem;
   color: var(--nb-c-text);
   word-break: break-all;
-}
-
-.task-meta {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  flex-shrink: 0;
-  margin-left: 0.75rem;
 }
 </style>

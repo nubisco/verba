@@ -223,21 +223,21 @@
                 multiline
                 :rows="2"
                 @input="onNewCommentInput"
-                @keydown="onNewCommentKeydown"
               >
                 <template v-if="mentionActive && mentionSuggestions.length > 0" #dropdown>
-                  <div class="mention-dropdown">
-                    <div
-                      v-for="(m, i) in mentionSuggestions"
-                      :key="m.userId"
-                      class="mention-item"
-                      :class="{ active: i === mentionIndex }"
-                      @mousedown.prevent="insertMention(m)"
-                    >
+                  <NbSuggestionList
+                    v-model:open="mentionActive"
+                    :items="mentionSuggestions"
+                    :item-key="(m) => m.userId"
+                    placement="top"
+                    label="People"
+                    @select="insertMention"
+                  >
+                    <template #item="{ item: m }">
                       <span class="mention-name">{{ m.user?.name?.trim() || m.user?.email }}</span>
                       <span v-if="m.user?.name" class="mention-email">{{ m.user?.email }}</span>
-                    </div>
-                  </div>
+                    </template>
+                  </NbSuggestionList>
                 </template>
               </NbTextInput>
               <NbButton variant="primary" @click="addComment">
@@ -487,7 +487,6 @@ const replyText = ref('')
 // @mention autocomplete state
 const mentionQuery = ref('')
 const mentionActive = ref(false)
-const mentionIndex = ref(0)
 
 const mentionSuggestions = computed(() => {
   if (!mentionQuery.value) return members.value.slice(0, 8)
@@ -515,26 +514,9 @@ function onNewCommentInput(e: Event) {
   if (atMatch) {
     mentionQuery.value = atMatch[1]
     mentionActive.value = true
-    mentionIndex.value = 0
   } else {
     mentionActive.value = false
     mentionQuery.value = ''
-  }
-}
-
-function onNewCommentKeydown(e: KeyboardEvent) {
-  if (!mentionActive.value || mentionSuggestions.value.length === 0) return
-  if (e.key === 'ArrowDown') {
-    e.preventDefault()
-    mentionIndex.value = (mentionIndex.value + 1) % mentionSuggestions.value.length
-  } else if (e.key === 'ArrowUp') {
-    e.preventDefault()
-    mentionIndex.value = (mentionIndex.value - 1 + mentionSuggestions.value.length) % mentionSuggestions.value.length
-  } else if (e.key === 'Enter' || e.key === 'Tab') {
-    e.preventDefault()
-    insertMention(mentionSuggestions.value[mentionIndex.value])
-  } else if (e.key === 'Escape') {
-    mentionActive.value = false
   }
 }
 
@@ -1128,34 +1110,6 @@ function assignedUserLabel(t: Translation | undefined): string {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-}
-
-.mention-dropdown {
-  position: absolute;
-  bottom: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  background: var(--nb-c-layer-3);
-  border: 1px solid var(--nb-c-border);
-  border-radius: 6px;
-  box-shadow: 0 4px 16px color-mix(in srgb, var(--nb-c-black) 12%, transparent);
-  z-index: 50;
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.mention-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.65rem;
-  cursor: pointer;
-  font-size: 0.82rem;
-
-  &:hover,
-  &.active {
-    background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
-  }
 }
 
 .mention-name {

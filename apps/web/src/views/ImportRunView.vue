@@ -27,24 +27,12 @@
 
       <NbPanel class="section">
         <h3>Stats</h3>
-        <div class="stats-grid">
-          <div class="stat-card created">
-            <div class="stat-value">{{ stats.created ?? 0 }}</div>
-            <div class="stat-label">Created</div>
-          </div>
-          <div class="stat-card updated">
-            <div class="stat-value">{{ stats.updated ?? 0 }}</div>
-            <div class="stat-label">Updated</div>
-          </div>
-          <div class="stat-card skipped">
-            <div class="stat-value">{{ stats.skipped ?? 0 }}</div>
-            <div class="stat-label">Skipped</div>
-          </div>
-          <div class="stat-card errors">
-            <div class="stat-value">{{ stats.errors ?? 0 }}</div>
-            <div class="stat-label">Errors</div>
-          </div>
-        </div>
+        <NbCardGrid min="140px" gap="sm">
+          <NbStat label="Created" :value="stats.created ?? 0" status="success" />
+          <NbStat label="Updated" :value="stats.updated ?? 0" status="warning" />
+          <NbStat label="Skipped" :value="stats.skipped ?? 0" />
+          <NbStat label="Errors" :value="errorCount" :status="errorCount ? 'danger' : 'neutral'" />
+        </NbCardGrid>
       </NbPanel>
 
       <NbPanel v-if="errorsList.length > 0" class="section">
@@ -60,7 +48,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { apiFetch } from '../api'
 
@@ -91,6 +79,8 @@ const error = ref('')
 
 const stats = ref<Stats>({})
 const errorsList = ref<string[]>([])
+// A run stores its errors as a list beside the stats, not as a count in them.
+const errorCount = computed(() => stats.value.errors ?? errorsList.value.length)
 
 onMounted(async () => {
   try {
@@ -183,68 +173,6 @@ function formatDate(ts: string) {
 .meta-value {
   font-size: 0.88rem;
   color: var(--nb-c-text);
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.75rem;
-}
-
-.stat-card {
-  padding: 1rem;
-  border-radius: 8px;
-  text-align: center;
-
-  .stat-value {
-    font-size: 2rem;
-    font-weight: 700;
-    line-height: 1;
-    margin-bottom: 0.3rem;
-  }
-
-  .stat-label {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  &.created {
-    background: var(--nb-c-success-surface);
-    .stat-value {
-      color: var(--nb-c-on-success-surface);
-    }
-    .stat-label {
-      color: var(--nb-c-on-success-surface);
-    }
-  }
-  &.updated {
-    background: var(--nb-c-warning-surface);
-    .stat-value {
-      color: var(--nb-c-on-warning-surface);
-    }
-    .stat-label {
-      color: var(--nb-c-on-warning-surface);
-    }
-  }
-  &.skipped {
-    background: var(--nb-c-neutral-surface);
-    .stat-value {
-      color: var(--nb-c-on-neutral-surface);
-    }
-    .stat-label {
-      color: var(--nb-c-on-neutral-surface);
-    }
-  }
-  &.errors {
-    background: var(--nb-c-danger-surface);
-    .stat-value {
-      color: var(--nb-c-on-danger-surface);
-    }
-    .stat-label {
-      color: var(--nb-c-on-danger-surface);
-    }
-  }
 }
 
 .errors-list {
