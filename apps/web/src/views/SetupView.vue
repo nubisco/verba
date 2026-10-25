@@ -27,10 +27,10 @@
         </p>
         <form class="setup-form" @submit.prevent="submit">
           <div class="field">
-            <label for="email">Email</label>
             <NbTextInput
               id="email"
               v-model="adminEmail"
+              label="Email"
               type="email"
               required
               autocomplete="email"
@@ -38,10 +38,10 @@
             />
           </div>
           <div class="field">
-            <label for="password">Password</label>
             <NbTextInput
               id="password"
               v-model="adminPassword"
+              label="Password"
               type="password"
               required
               autocomplete="new-password"
@@ -169,14 +169,6 @@ function finish() {
 
   .field {
     margin-bottom: 1rem;
-
-    label {
-      display: block;
-      font-size: 0.85rem;
-      font-weight: 500;
-      color: var(--nb-c-text-muted);
-      margin-bottom: 0.3rem;
-    }
   }
 }
 

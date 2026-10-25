@@ -2,17 +2,18 @@
   <div v-if="variables.length > 0 || hasPluralForms" class="translation-tester">
     <div class="tester-header">
       <span class="tester-title">Test string</span>
-      <span v-if="hasPluralForms" class="tester-pill">plural</span>
+      <NbBadge v-if="hasPluralForms" variant="purple" size="sm">plural</NbBadge>
     </div>
 
     <!-- Variable inputs -->
     <div v-if="variables.length > 0" class="tester-vars">
       <div v-for="v in variables" :key="v" class="var-row">
-        <label class="var-label">
+        <span class="var-label" aria-hidden="true">
           <code>{{ '{' + v + '}' }}</code>
-        </label>
+        </span>
         <NbTextInput
           v-model="values[v]"
+          :aria-label="v"
           class="var-input"
           :type="v === 'count' || v === 'n' ? 'number' : 'text'"
           :placeholder="v"
@@ -143,15 +144,6 @@ const activeLocales = computed(() => props.locales.filter((l) => props.translati
   border-bottom: 1px solid var(--nb-c-border);
   font-weight: 600;
   color: var(--nb-c-text-subtle);
-}
-
-.tester-pill {
-  background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
-  color: var(--nb-c-primary);
-  border-radius: 999px;
-  padding: 1px 7px;
-  font-size: 11px;
-  font-weight: 500;
 }
 
 .tester-vars {

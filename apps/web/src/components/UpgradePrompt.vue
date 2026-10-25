@@ -1,24 +1,22 @@
 <template>
-  <div class="upgrade-prompt" :class="`upgrade-prompt--${variant}`">
-    <div class="upgrade-prompt__icon">
-      <span v-if="variant === 'saas'">⬆️</span>
-      <span v-else>🔑</span>
-    </div>
-    <div class="upgrade-prompt__body">
-      <p class="upgrade-prompt__title">{{ title }}</p>
-      <p class="upgrade-prompt__message">{{ message }}</p>
-      <a
+  <NbBanner :status="variant === 'saas' ? 'info' : 'warning'" variant="callout" :title="title">
+    {{ message }}
+    <template #action>
+      <NbButton
         v-if="variant === 'saas'"
         :href="upgradeUrl"
         target="_blank"
         rel="noopener noreferrer"
-        class="upgrade-prompt__cta"
+        variant="secondary"
+        size="sm"
       >
         Upgrade plan
-      </a>
-      <a v-else href="mailto:licensing@nubisco.io" class="upgrade-prompt__cta"> Contact us for a license </a>
-    </div>
-  </div>
+      </NbButton>
+      <NbButton v-else href="mailto:licensing@nubisco.io" variant="secondary" size="sm">
+        Contact us for a license
+      </NbButton>
+    </template>
+  </NbBanner>
 </template>
 
 <script setup lang="ts">
@@ -80,62 +78,3 @@ const upgradeUrl = computed(() => {
   return props.feature ? `${base}?feature=${props.feature}` : base
 })
 </script>
-
-<style scoped>
-.upgrade-prompt {
-  display: flex;
-  gap: 0.75rem;
-  padding: 1rem 1.25rem;
-  border-radius: 8px;
-  border: 1px solid var(--nb-c-border);
-  background: var(--nb-c-layer-2);
-}
-
-.upgrade-prompt--saas {
-  border-color: var(--nb-c-info-surface-border);
-  background: var(--nb-c-info-surface);
-}
-
-.upgrade-prompt--self-hosted {
-  border-color: var(--nb-c-warning-surface-border);
-  background: var(--nb-c-warning-surface);
-}
-
-.upgrade-prompt__icon {
-  font-size: 1.25rem;
-  line-height: 1;
-  flex-shrink: 0;
-}
-
-.upgrade-prompt__body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.upgrade-prompt__title {
-  margin: 0;
-  font-weight: 600;
-  font-size: 0.9rem;
-  color: var(--nb-c-text);
-}
-
-.upgrade-prompt__message {
-  margin: 0;
-  font-size: 0.85rem;
-  color: var(--nb-c-text-muted);
-}
-
-.upgrade-prompt__cta {
-  display: inline-block;
-  margin-top: 0.5rem;
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--nb-c-info);
-  text-decoration: none;
-}
-
-.upgrade-prompt__cta:hover {
-  text-decoration: underline;
-}
-</style>

@@ -1,6 +1,6 @@
 <template>
   <div class="project-import-panel">
-    <div class="section">
+    <NbPanel class="section">
       <NbFileUploader
         :heading="t('import.selectFile')"
         :description="t('import.uploaderDescription')"
@@ -9,41 +9,44 @@
         :max-size="512000"
         @change="onFileChange"
       />
-    </div>
+    </NbPanel>
 
-    <div v-if="isXliffFile" class="section json-info">
+    <NbPanel v-if="isXliffFile" class="section json-info">
       <div class="json-detected">{{ t('import.xliffDetected') }}</div>
-    </div>
+    </NbPanel>
 
-    <div v-if="isJsonFile" class="section json-info">
+    <NbPanel v-if="isJsonFile" class="section json-info">
       <h3>{{ t('import.columnMapping') }}</h3>
       <div v-if="detectedJsonLocales.length > 0" class="json-detected">
         ✅ Multi-locale JSON detected. Locales found:
         <strong>{{ detectedJsonLocales.join(', ') }}</strong>
       </div>
       <div v-else class="field">
-        <label>
-          Single-locale JSON: select the target locale:
-          <NbSelect v-model="jsonSingleLocale" :options="jsonLocaleOptions" />
-        </label>
+        <NbSelect
+          v-model="jsonSingleLocale"
+          label="Single-locale JSON: select the target locale:"
+          :options="jsonLocaleOptions"
+        />
       </div>
-    </div>
+    </NbPanel>
 
-    <div v-else-if="!isXliffFile" class="section">
+    <NbPanel v-else-if="!isXliffFile" class="section">
       <h3>{{ t('import.columnMapping') }}</h3>
       <div class="field">
-        <label>{{ t('import.keyColumn') }}</label>
-        <NbTextInput v-model="keyColumn" placeholder="key" />
+        <NbTextInput v-model="keyColumn" :label="t('import.keyColumn')" placeholder="key" />
       </div>
       <div class="field">
-        <label>{{ t('import.namespaceColumn') }}</label>
-        <NbTextInput v-model="namespaceColumn" placeholder="namespace" />
+        <NbTextInput v-model="namespaceColumn" :label="t('import.namespaceColumn')" placeholder="namespace" />
       </div>
       <div v-for="locale in locales" :key="locale.code" class="field">
-        <label><LocaleBadge :code="locale.code" /> {{ locale.name }} column</label>
-        <NbTextInput v-model="localeColumnMap[locale.code]" :placeholder="locale.code" />
+        <LocaleBadge :code="locale.code" class="field-locale" />
+        <NbTextInput
+          v-model="localeColumnMap[locale.code]"
+          :label="`${locale.name} column`"
+          :placeholder="locale.code"
+        />
       </div>
-    </div>
+    </NbPanel>
 
     <div class="actions">
       <NbButton :disabled="loading" @click="doPreview">
@@ -53,60 +56,63 @@
 
     <div v-if="error" class="error">{{ error }}</div>
 
-    <div v-if="preview" class="section preview">
+    <NbPanel v-if="preview" class="section preview">
       <h3>{{ t('import.previewTitle') }}</h3>
       <div class="counts">
-        <span class="badge create">{{ t('import.create', { count: preview.created }) }}</span>
-        <span class="badge update">{{ t('import.update', { count: preview.updated }) }}</span>
-        <span class="badge skip">{{ t('import.skip', { count: preview.skipped }) }}</span>
+        <NbBadge variant="green">{{ t('import.create', { count: preview.created }) }}</NbBadge>
+        <NbBadge variant="orange">{{ t('import.update', { count: preview.updated }) }}</NbBadge>
+        <NbBadge>{{ t('import.skip', { count: preview.skipped }) }}</NbBadge>
       </div>
       <div v-if="preview.targetLanguage" class="xliff-meta">
         {{ t('import.xliffTarget', { source: preview.sourceLanguage, target: preview.targetLanguage }) }}
       </div>
-      <div v-if="preview.warnings && preview.warnings.length" class="warnings">
-        <strong>{{ t('import.placeholderWarnings', { count: preview.warnings.length }) }}</strong>
+      <NbBanner
+        v-if="preview.warnings && preview.warnings.length"
+        status="warning"
+        :title="t('import.placeholderWarnings', { count: preview.warnings.length })"
+        class="warnings"
+      >
         <ul>
           <li v-for="w in preview.warnings.slice(0, 10)" :key="w.id">
             <code>{{ w.id }}</code
             >: {{ w.message }}
           </li>
         </ul>
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th>Key</th>
-            <th>Status</th>
-            <th>Changes</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in preview.rows.slice(0, 10)" :key="row.keyName">
-            <td>{{ row.keyName }}</td>
-            <td>
-              <span :class="['badge', row.status]">{{ row.status }}</span>
-            </td>
-            <td>
-              <span v-for="c in row.localeChanges" :key="c.localeCode" class="change">
-                {{ c.localeCode }}: {{ c.oldText ?? '∅' }} → {{ c.newText }}
-              </span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      </NbBanner>
+      <NbDataTable
+        :columns="previewColumns"
+        :rows="preview.rows.slice(0, 10)"
+        row-key="keyName"
+        size="sm"
+        aria-label="Import preview"
+        stack-on-phone
+      >
+        <template #cell-status="{ row }">
+          <NbBadge :variant="PREVIEW_STATUS_BADGE[row.status]">{{ row.status }}</NbBadge>
+        </template>
+        <template #cell-changes="{ row }">
+          <span v-for="c in row.localeChanges" :key="c.localeCode" class="change">
+            {{ c.localeCode }}: {{ c.oldText ?? '∅' }} → {{ c.newText }}
+          </span>
+        </template>
+      </NbDataTable>
       <div class="actions">
         <NbButton variant="primary" :disabled="loading" @click="doApply">
           {{ loading ? t('import.applying') : t('import.applyImport') }}
         </NbButton>
       </div>
-    </div>
+    </NbPanel>
 
-    <div v-if="applyResult" class="section result">
+    <NbPanel v-if="applyResult" class="section result">
       <h3>{{ t('import.importComplete') }}</h3>
       <pre>{{ JSON.stringify(applyResult.stats, null, 2) }}</pre>
-      <RouterLink :to="`/projects/${projectId}/import-runs/${applyResult.importRunId}`" class="nav-link">
+      <NbButton
+        variant="secondary"
+        :to="`/projects/${projectId}/import-runs/${applyResult.importRunId}`"
+        class="import-run-link"
+      >
         {{ t('import.viewImportRun') }}
-      </RouterLink>
+      </NbButton>
 
       <div v-if="isXliffFile && xliffTargetLocale" class="ai-fill">
         <p class="ai-fill-hint">{{ t('import.aiFillHint', { locale: xliffTargetLocale }) }}</p>
@@ -124,7 +130,7 @@
           </ul>
         </div>
       </div>
-    </div>
+    </NbPanel>
   </div>
 </template>
 
@@ -133,7 +139,7 @@ import { ref, onMounted, computed } from 'vue'
 import { apiFetch } from '../api'
 import { trackEvent } from '../composables/useAnalytics'
 import { useI18n } from 'vue-i18n'
-import { type ISelectOption } from '@nubisco/ui'
+import { type IDataTableColumn, type ISelectOption } from '@nubisco/ui'
 import LocaleBadge from './LocaleBadge.vue'
 
 const props = defineProps<{ projectId: string }>()
@@ -176,6 +182,16 @@ const keyColumn = ref('key')
 const namespaceColumn = ref('')
 const localeColumnMap = ref<Record<string, string>>({})
 const preview = ref<PreviewResult | null>(null)
+const previewColumns: IDataTableColumn<PreviewRow>[] = [
+  { key: 'keyName', header: 'Key', primary: true },
+  { key: 'status', header: 'Status' },
+  { key: 'changes', header: 'Changes' },
+]
+const PREVIEW_STATUS_BADGE: Record<PreviewRow['status'], 'green' | 'orange' | 'grey'> = {
+  create: 'green',
+  update: 'orange',
+  skip: 'grey',
+}
 const applyResult = ref<{ importRunId: string; stats: object } | null>(null)
 const loading = ref(false)
 const error = ref('')
@@ -330,13 +346,7 @@ async function aiFill() {
 </script>
 
 <style lang="scss" scoped>
-.project-import-panel {
-}
-
 .section {
-  background: var(--nb-c-layer-1);
-  border: 1px solid var(--nb-c-border);
-  border-radius: 8px;
   padding: 1.25rem 1.5rem;
   margin-bottom: 1.25rem;
   h3 {
@@ -350,11 +360,9 @@ async function aiFill() {
 
 .field {
   margin-bottom: 0.75rem;
-  label {
-    display: block;
-    font-size: 0.9rem;
-    margin-bottom: 0.3rem;
-  }
+}
+.field-locale {
+  margin-bottom: 0.3rem;
 }
 
 .actions {
@@ -372,38 +380,6 @@ async function aiFill() {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 1rem;
-}
-
-.badge {
-  display: inline-block;
-  padding: 0.15rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  &.create {
-    background: var(--nb-c-success-surface);
-    color: var(--nb-c-on-success-surface);
-  }
-  &.update {
-    background: var(--nb-c-warning-surface);
-    color: var(--nb-c-on-warning-surface);
-  }
-  &.skip {
-    background: var(--nb-c-neutral-surface);
-    color: var(--nb-c-on-neutral-surface);
-  }
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.85rem;
-  th,
-  td {
-    text-align: left;
-    padding: 0.4rem 0.6rem;
-    border-bottom: 1px solid var(--nb-c-border);
-  }
 }
 
 .change {
@@ -425,13 +401,7 @@ table {
 }
 
 .warnings {
-  background: var(--nb-c-warning-surface);
-  border: 1px solid var(--nb-c-warning-surface-border);
-  border-radius: 6px;
-  padding: 0.75rem 1rem;
   margin-bottom: 1rem;
-  font-size: 0.85rem;
-  color: var(--nb-c-on-warning-surface);
   ul {
     margin: 0.4rem 0 0;
     padding-left: 1.1rem;
@@ -447,22 +417,6 @@ pre {
   border-radius: 4px;
   font-size: 0.85rem;
   overflow: auto;
-}
-
-.nav-link {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.5rem 1rem;
-  background: var(--nb-c-layer-2);
-  border: 1px solid var(--nb-c-border);
-  border-radius: 6px;
-  text-decoration: none;
-  color: var(--nb-c-text);
-  font-size: 0.9rem;
-  margin-top: 0.75rem;
-  &:hover {
-    background: var(--nb-c-surface-hover);
-  }
 }
 
 .ai-fill {
@@ -487,5 +441,8 @@ pre {
   code {
     font-family: var(--nb-font-family-mono);
   }
+}
+.import-run-link {
+  margin-top: 0.75rem;
 }
 </style>

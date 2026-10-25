@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="card">
+    <NbPanel class="card">
       <h3>{{ platformEnabled ? t('profile.preferences') : t('profile.accountDetails') }}</h3>
 
       <!-- Name, email and password are the person's identity. On an instance
@@ -8,36 +8,43 @@
            which the user menu's Profile opens, so only an instance with its
            own accounts edits them here. -->
       <div v-if="!platformEnabled" class="field">
-        <label>{{ t('profile.name') }}</label>
-        <NbTextInput v-model="name" type="text" :placeholder="t('profile.namePlaceholder')" />
+        <NbTextInput
+          v-model="name"
+          :label="t('profile.name')"
+          type="text"
+          :placeholder="t('profile.namePlaceholder')"
+        />
       </div>
 
       <div v-if="!platformEnabled" class="field">
-        <label>{{ t('profile.email') }}</label>
-        <NbTextInput v-model="email" type="email" :placeholder="t('profile.emailPlaceholder')" />
+        <NbTextInput
+          v-model="email"
+          :label="t('profile.email')"
+          type="email"
+          :placeholder="t('profile.emailPlaceholder')"
+        />
       </div>
 
       <div class="field">
-        <label>{{ t('profile.preferredLocales') }}</label>
-        <LocaleMultiSelect v-model="preferredLocales" :options="KNOWN_LOCALES" value-field="code" />
+        <LocaleMultiSelect
+          v-model="preferredLocales"
+          :label="t('profile.preferredLocales')"
+          :options="KNOWN_LOCALES"
+          value-field="code"
+        />
       </div>
 
       <div class="field">
-        <label>Open notifications with</label>
-        <div class="open-mode-toggle">
-          <NbButton
-            :class="['mode-btn', { active: notificationOpenMode === 'inspector' }]"
-            @click="notificationOpenMode = 'inspector'"
-          >
-            Inspector
-          </NbButton>
-          <NbButton
-            :class="['mode-btn', { active: notificationOpenMode === 'modal' }]"
-            @click="notificationOpenMode = 'modal'"
-          >
-            Modal
-          </NbButton>
-        </div>
+        <NbRadio
+          v-model="notificationOpenMode"
+          name="notification-open-mode"
+          label="Open notifications with"
+          direction="horizontal"
+          :options="[
+            { label: 'Inspector', value: 'inspector' },
+            { label: 'Modal', value: 'modal' },
+          ]"
+        />
       </div>
 
       <template v-if="!platformEnabled">
@@ -45,30 +52,42 @@
         <p class="section-hint">{{ t('profile.changePasswordHint') }}</p>
 
         <div class="field">
-          <label>{{ t('profile.currentPassword') }}</label>
-          <NbTextInput v-model="currentPassword" type="password" autocomplete="current-password" />
+          <NbTextInput
+            v-model="currentPassword"
+            :label="t('profile.currentPassword')"
+            type="password"
+            autocomplete="current-password"
+          />
         </div>
         <div class="field">
-          <label>{{ t('profile.newPassword') }}</label>
-          <NbTextInput v-model="newPassword" type="password" autocomplete="new-password" />
+          <NbTextInput
+            v-model="newPassword"
+            :label="t('profile.newPassword')"
+            type="password"
+            autocomplete="new-password"
+          />
         </div>
         <div class="field">
-          <label>{{ t('profile.confirmPassword') }}</label>
-          <NbTextInput v-model="confirmPassword" type="password" autocomplete="new-password" />
+          <NbTextInput
+            v-model="confirmPassword"
+            :label="t('profile.confirmPassword')"
+            type="password"
+            autocomplete="new-password"
+          />
         </div>
       </template>
 
-      <div v-if="error" class="alert alert-error">{{ error }}</div>
-      <div v-if="success" class="alert alert-success">{{ success }}</div>
+      <NbBanner v-if="error" status="error" class="alert">{{ error }}</NbBanner>
+      <NbBanner v-if="success" status="success" class="alert">{{ success }}</NbBanner>
 
       <div class="form-actions">
         <NbButton variant="primary" :disabled="saving" @click="save">
           {{ saving ? t('profile.savingProfile') : t('profile.saveProfile') }}
         </NbButton>
       </div>
-    </div>
+    </NbPanel>
 
-    <div class="card info-card">
+    <NbPanel class="card info-card">
       <h3>{{ t('profile.accountInfo') }}</h3>
       <dl>
         <dt>{{ t('profile.role') }}</dt>
@@ -76,15 +95,15 @@
           {{ auth.user?.isGlobalAdmin ? t('profile.globalAdmin') : t('profile.user') }}
         </dd>
       </dl>
-    </div>
+    </NbPanel>
 
-    <div class="card danger-card">
+    <NbPanel class="card danger-card">
       <h3>{{ t('profile.dangerZone') }}</h3>
       <p class="section-hint">{{ t('profile.dangerHint') }}</p>
       <NbButton variant="danger" @click="deactivateAccount">
         {{ t('profile.deactivate') }}
       </NbButton>
-    </div>
+    </NbPanel>
   </div>
 </template>
 
@@ -254,9 +273,6 @@ const platformEnabled = computed(() => instanceConfig.auth.platformEnabled)
 }
 
 .card {
-  background: var(--nb-c-layer-1);
-  border: 1px solid var(--nb-c-border);
-  border-radius: 8px;
   padding: 1.5rem;
   margin-bottom: 1.25rem;
   h3 {
@@ -289,28 +305,10 @@ const platformEnabled = computed(() => instanceConfig.auth.platformEnabled)
   flex-direction: column;
   gap: 0.3rem;
   margin-bottom: 0.9rem;
-  label {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--nb-c-text-muted);
-  }
 }
 
 .alert {
-  padding: 0.6rem 0.9rem;
-  border-radius: 5px;
-  font-size: 0.85rem;
   margin-bottom: 0.75rem;
-  &.alert-error {
-    background: var(--nb-c-danger-surface);
-    color: var(--nb-c-on-danger-surface);
-    border: 1px solid var(--nb-c-danger-surface-border);
-  }
-  &.alert-success {
-    background: var(--nb-c-success-surface);
-    color: var(--nb-c-on-success-surface);
-    border: 1px solid var(--nb-c-success-surface-border);
-  }
 }
 
 .form-actions {
@@ -340,34 +338,6 @@ const platformEnabled = computed(() => instanceConfig.auth.platformEnabled)
   border-color: var(--nb-c-danger-surface-border);
   h3 {
     color: var(--nb-c-status-error);
-  }
-}
-
-.open-mode-toggle {
-  display: flex;
-  gap: 0;
-  border: 1px solid var(--nb-c-border);
-  border-radius: 5px;
-  overflow: hidden;
-  width: fit-content;
-}
-
-.mode-btn {
-  padding: 0.4rem 1rem;
-  border: none;
-  background: var(--nb-c-layer-2);
-  color: var(--nb-c-text-muted);
-  cursor: pointer;
-  font-size: 0.85rem;
-  &:not(:last-child) {
-    border-right: 1px solid var(--nb-c-border);
-  }
-  &.active {
-    background: var(--nb-c-text);
-    color: var(--nb-c-text-a11y);
-  }
-  &:hover:not(.active) {
-    background: var(--nb-c-surface-hover);
   }
 }
 </style>

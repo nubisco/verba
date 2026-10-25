@@ -1,46 +1,44 @@
 <template>
   <div class="project-export-panel">
-    <div class="section">
+    <NbPanel class="section">
       <h3>{{ t('export.format') }}</h3>
-      <div class="radio-group">
-        <label v-for="f in ['json', 'csv', 'xlsx', 'xliff']" :key="f" class="radio-label">
-          <input v-model="format" type="radio" :value="f" />
-          {{ f.toUpperCase() }}
-        </label>
-      </div>
+      <NbRadio
+        :model-value="format"
+        name="export-format"
+        direction="horizontal"
+        :options="formatOptions"
+        @update:model-value="format = $event as ExportFormat"
+      />
       <p v-if="isXliff" class="option-hint xliff-hint">{{ t('export.xliffHint') }}</p>
-    </div>
+    </NbPanel>
 
-    <div class="section">
+    <NbPanel class="section">
       <h3>{{ t('export.filters') }}</h3>
       <div class="field">
-        <label>{{ isXliff ? t('export.xliffLocale') : t('export.locale') }}</label>
         <LocaleSelect
           v-model="selectedLocale"
+          :label="isXliff ? t('export.xliffLocale') : t('export.locale')"
           :options="locales"
           :clearable="!isXliff"
           :clear-label="t('export.allLocales')"
         />
       </div>
       <div v-if="!isXliff" class="field">
-        <label>{{ t('export.status') }}</label>
-        <NbSelect v-model="selectedStatus" :options="statusOptions" />
+        <NbSelect v-model="selectedStatus" :label="t('export.status')" :options="statusOptions" />
       </div>
-    </div>
+    </NbPanel>
 
-    <div v-if="!isXliff" class="section">
+    <NbPanel v-if="!isXliff" class="section">
       <h3>{{ t('export.options') }}</h3>
-      <label class="export-option">
-        <input v-model="resolveRefs" type="checkbox" />
-        <span>{{ t('export.resolveRefs') }}</span>
+      <div class="export-option">
+        <NbCheckbox v-model="resolveRefs" :label="t('export.resolveRefs')" />
         <span class="option-hint">{{ t('export.resolveHint') }}</span>
-      </label>
-      <label v-if="format === 'json'" class="export-option">
-        <input v-model="splitByNamespace" type="checkbox" />
-        <span>{{ t('export.splitByNamespace') }}</span>
+      </div>
+      <div v-if="format === 'json'" class="export-option">
+        <NbCheckbox v-model="splitByNamespace" :label="t('export.splitByNamespace')" />
         <span class="option-hint">{{ t('export.splitHint') }}</span>
-      </label>
-    </div>
+      </div>
+    </NbPanel>
 
     <div class="actions">
       <NbButton variant="primary" :disabled="exporting" @click="doExport">
@@ -70,7 +68,9 @@ interface Locale {
 }
 
 const locales = ref<Locale[]>([])
-const format = ref<'json' | 'csv' | 'xlsx' | 'xliff'>('json')
+type ExportFormat = 'json' | 'csv' | 'xlsx' | 'xliff'
+const format = ref<ExportFormat>('json')
+const formatOptions = (['json', 'csv', 'xlsx', 'xliff'] as const).map((f) => ({ label: f.toUpperCase(), value: f }))
 const isXliff = computed(() => format.value === 'xliff')
 const selectedLocale = ref('')
 const selectedStatus = ref('')
@@ -143,13 +143,7 @@ async function doExport() {
 </script>
 
 <style lang="scss" scoped>
-.project-export-panel {
-}
-
 .section {
-  background: var(--nb-c-layer-1);
-  border: 1px solid var(--nb-c-border);
-  border-radius: 8px;
   padding: 1.25rem 1.5rem;
   margin-bottom: 1.25rem;
   h3 {
@@ -161,29 +155,11 @@ async function doExport() {
   }
 }
 
-.radio-group {
-  display: flex;
-  gap: 1.5rem;
-}
-.radio-label {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.9rem;
-  cursor: pointer;
-  font-weight: 600;
-}
-
 .field {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
   margin-bottom: 0.75rem;
-  label {
-    font-size: 0.85rem;
-    color: var(--nb-c-text-muted);
-    font-weight: 600;
-  }
 }
 
 .actions {
@@ -199,16 +175,13 @@ async function doExport() {
 
 .export-option {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.9rem;
-  cursor: pointer;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-bottom: 0.75rem;
 }
 
 .option-hint {
-  width: 100%;
-  padding-left: 1.4rem;
+  padding-left: 1.75rem;
   font-size: 0.78rem;
   color: var(--nb-c-text-subtle);
   font-weight: 400;

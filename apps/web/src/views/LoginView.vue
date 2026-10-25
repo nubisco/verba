@@ -1,6 +1,6 @@
 <template>
   <div class="login-page">
-    <div class="login-card">
+    <NbPanel class="login-card">
       <div class="auth-logo-wrap">
         <img :src="logoSrc" alt="Verba" class="auth-logo" />
         <span v-if="platformOnly" class="auth-logo-name">Verba</span>
@@ -35,44 +35,16 @@
       <!-- Local auth (OTP / password) with optional Platform button -->
       <template v-else>
         <!-- Mode tabs -->
-        <div v-if="mode !== 'otp-verify'" class="tabs">
-          <NbButton
-            v-if="instanceConfig.auth.localPasswordEnabled"
-            :class="{ active: mode === 'login' }"
-            @click="
-              () => {
-                mode = 'login'
-                error = ''
-              }
-            "
-          >
-            {{ t('auth.login.tab.password') }}
-          </NbButton>
-          <NbButton
-            v-if="instanceConfig.auth.localOtpEnabled"
-            :class="{ active: mode === 'otp-request' }"
-            @click="
-              () => {
-                mode = 'otp-request'
-                error = ''
-              }
-            "
-          >
-            {{ t('auth.login.tab.magic') }}
-          </NbButton>
-          <NbButton
-            v-if="instanceConfig.auth.localPasswordEnabled"
-            :class="{ active: mode === 'register' }"
-            @click="
-              () => {
-                mode = 'register'
-                error = ''
-              }
-            "
-          >
-            {{ t('auth.login.tab.register') }}
-          </NbButton>
-        </div>
+        <NbTabs
+          v-if="mode !== 'otp-verify'"
+          :model-value="mode"
+          :items="modeTabs"
+          variant="contained"
+          full-width
+          aria-label="Sign-in method"
+          class="tabs"
+          @update:model-value="switchMode($event as Mode)"
+        />
 
         <p class="subtitle">
           <span v-if="mode === 'login'">{{ t('auth.login.subtitle') }}</span>
@@ -95,14 +67,20 @@
 
         <form @submit.prevent="submit">
           <div v-if="mode !== 'otp-verify'" class="field">
-            <label for="email">{{ t('auth.login.email') }}</label>
-            <NbTextInput id="email" v-model="email" type="email" required autocomplete="email" />
+            <NbTextInput
+              id="email"
+              v-model="email"
+              :label="t('auth.login.email')"
+              type="email"
+              required
+              autocomplete="email"
+            />
           </div>
           <div v-if="mode === 'login' || mode === 'register'" class="field">
-            <label for="password">{{ t('auth.login.password') }}</label>
             <NbTextInput
               id="password"
               v-model="password"
+              :label="t('auth.login.password')"
               type="password"
               required
               :autocomplete="mode === 'login' ? 'current-password' : 'new-password'"
@@ -110,10 +88,10 @@
             />
           </div>
           <div v-if="mode === 'otp-verify'" class="field">
-            <label for="otp">One-time code</label>
             <NbTextInput
               id="otp"
               v-model="otpCode"
+              label="One-time code"
               type="text"
               inputmode="numeric"
               :maxlength="6"
@@ -152,7 +130,7 @@
           </NbButton>
         </p>
       </template>
-    </div>
+    </NbPanel>
   </div>
 </template>
 
@@ -172,7 +150,20 @@ const instanceConfig = useInstanceConfigStore()
 const { t } = useI18n()
 const logoSrc = `${import.meta.env.BASE_URL}logo.svg`
 
-const mode = ref<'login' | 'register' | 'otp-request' | 'otp-verify'>('login')
+type Mode = 'login' | 'register' | 'otp-request' | 'otp-verify'
+const mode = ref<Mode>('login')
+
+// The sign-in methods this instance offers, as tabs. Picking one clears any
+// error the previous method left behind.
+const modeTabs = computed(() => [
+  ...(instanceConfig.auth.localPasswordEnabled ? [{ id: 'login', label: t('auth.login.tab.password') }] : []),
+  ...(instanceConfig.auth.localOtpEnabled ? [{ id: 'otp-request', label: t('auth.login.tab.magic') }] : []),
+  ...(instanceConfig.auth.localPasswordEnabled ? [{ id: 'register', label: t('auth.login.tab.register') }] : []),
+])
+function switchMode(next: Mode) {
+  mode.value = next
+  error.value = ''
+}
 const email = ref('')
 const password = ref('')
 const otpCode = ref('')
@@ -438,9 +429,7 @@ function clearPlatformCallbackQuery() {
 }
 
 .login-card {
-  background: var(--nb-c-surface);
   padding: 2.5rem 2rem;
-  border-radius: 8px;
   box-shadow: 0 2px 16px color-mix(in srgb, var(--nb-c-black) 10%, transparent);
   width: 100%;
   max-width: 380px;
@@ -474,46 +463,11 @@ function clearPlatformCallbackQuery() {
 }
 
 .tabs {
-  display: flex;
-  gap: 0;
-  border: 1px solid var(--nb-c-border);
-  border-radius: 6px;
-  overflow: hidden;
   margin-bottom: 0;
-
-  button {
-    flex: 1;
-    padding: 0.45rem 0.5rem;
-    background: var(--nb-c-layer-2);
-    border: none;
-    font-size: 0.82rem;
-    cursor: pointer;
-    color: var(--nb-c-text-subtle);
-    border-right: 1px solid var(--nb-c-border);
-    transition: background 0.12s;
-    &:last-child {
-      border-right: none;
-    }
-    &:hover {
-      background: var(--nb-c-surface-hover);
-    }
-    &.active {
-      background: var(--nb-c-text);
-      color: var(--nb-c-text-a11y);
-      font-weight: 600;
-    }
-  }
 }
 
 .field {
   margin-bottom: 1rem;
-  label {
-    display: block;
-    font-size: 0.85rem;
-    font-weight: 500;
-    margin-bottom: 0.35rem;
-    color: var(--nb-c-text-muted);
-  }
   .hint {
     font-size: 0.78rem;
     color: var(--nb-c-text-subtle);

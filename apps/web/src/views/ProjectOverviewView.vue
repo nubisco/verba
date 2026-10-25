@@ -11,21 +11,21 @@
       </RouterLink>
     </div>
 
-    <div class="section">
+    <NbPanel class="section">
       <h3>{{ t('projects.namespaces.title') }}</h3>
       <div v-if="store.namespaces.length === 0" class="empty-note">
         {{ t('projects.namespaces.empty') }}
       </div>
       <div v-else class="ns-count-list">
         <div v-for="ns in store.namespaces" :key="ns.id" class="ns-count-row">
-          <span class="ns-tag">{{ ns.slug }}</span>
+          <NbBadge variant="primary">{{ ns.slug }}</NbBadge>
           <span class="ns-name">{{ ns.name }}</span>
-          <span class="ns-count-badge">{{ (ns as any)._count?.keys ?? 0 }} keys</span>
+          <NbBadge class="ns-count">{{ (ns as any)._count?.keys ?? 0 }} keys</NbBadge>
         </div>
       </div>
-    </div>
+    </NbPanel>
 
-    <div class="section">
+    <NbPanel class="section">
       <h3>My Tasks</h3>
       <div v-if="store.tasks.length === 0" class="empty-note">No active tasks</div>
       <div v-else class="task-list">
@@ -42,23 +42,28 @@
           </div>
         </RouterLink>
       </div>
-    </div>
+    </NbPanel>
 
-    <div class="section">
+    <NbPanel class="section">
       <h3>{{ t('projects.locales.title') }}</h3>
       <div v-if="store.localeProgress.length > 0" class="locale-list">
         <div v-for="lp in store.localeProgress" :key="lp.code" class="locale-row">
           <LocaleBadge :code="lp.code" />
           <span class="locale-name">{{ lp.name }}</span>
-          <div class="progress-bar-wrap">
-            <div class="progress-bar-fill" :style="{ width: lp.total ? `${(lp.approved / lp.total) * 100}%` : '0%' }" />
-          </div>
+          <NbProgressBar :value="lp.approved" :max="lp.total || 1" size="sm" :status="localeProgressStatus(lp)" />
           <span class="progress-label">{{ lp.approved }} / {{ lp.total }}</span>
-          <NbButton class="icon-btn" title="Export JSON" @click="exportLocale(lp.code)">⬇</NbButton>
+          <NbButton
+            variant="ghost"
+            size="sm"
+            icon="download-simple"
+            title="Export JSON"
+            aria-label="Export JSON"
+            @click="exportLocale(lp.code)"
+          />
         </div>
       </div>
       <div v-else class="empty-note">No locales yet</div>
-    </div>
+    </NbPanel>
   </div>
 </template>
 
@@ -67,6 +72,7 @@ import { useRoute } from 'vue-router'
 import { useProjectStore } from '../stores/project'
 import { useI18n } from 'vue-i18n'
 import LocaleBadge from '../components/LocaleBadge.vue'
+import { localeProgressStatus } from '../utils/localeProgress'
 
 const route = useRoute()
 const projectId = route.params.id as string
@@ -144,9 +150,6 @@ function exportLocale(localeCode: string) {
 }
 
 .section {
-  background: var(--nb-c-layer-1);
-  border: 1px solid var(--nb-c-border);
-  border-radius: 8px;
   padding: 1.25rem 1.5rem;
   margin-bottom: 1.25rem;
   h3 {
@@ -173,26 +176,12 @@ function exportLocale(localeCode: string) {
     border-bottom: none;
   }
 }
-.ns-count-badge {
+.ns-count {
   margin-left: auto;
-  font-size: 0.75rem;
-  background: var(--nb-c-surface-hover);
-  color: var(--nb-c-text-muted);
-  padding: 0.1rem 0.45rem;
-  border-radius: 999px;
-  font-weight: 600;
 }
 .ns-name {
   font-size: 0.85rem;
   color: var(--nb-c-text-subtle);
-}
-.ns-tag {
-  font-size: 0.78rem;
-  background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
-  color: var(--nb-c-primary);
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-  font-weight: 600;
 }
 
 .task-list {
@@ -237,7 +226,7 @@ function exportLocale(localeCode: string) {
 }
 .locale-row {
   display: grid;
-  grid-template-columns: 70px 1fr 120px 70px 28px;
+  grid-template-columns: 70px 1fr 120px 70px auto;
   align-items: center;
   gap: 0.6rem;
   padding: 0.35rem 0;
@@ -249,7 +238,7 @@ function exportLocale(localeCode: string) {
   // Five fixed columns need about 330px, more than a phone's card has. On a
   // phone the bar takes a second line, so the export button stays on screen.
   @include variables.phone {
-    grid-template-columns: auto minmax(0, 1fr) auto 28px;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
     grid-template-areas:
       'badge name label export'
       'bar bar bar bar';
@@ -279,34 +268,10 @@ function exportLocale(localeCode: string) {
   font-size: 0.85rem;
   color: var(--nb-c-text-subtle);
 }
-.progress-bar-wrap {
-  height: 8px;
-  background: var(--nb-c-surface-hover);
-  border-radius: 4px;
-  overflow: hidden;
-}
-.progress-bar-fill {
-  height: 100%;
-  background: var(--nb-c-success);
-  border-radius: 4px;
-  transition: width 0.4s;
-}
 .progress-label {
   font-size: 0.8rem;
   color: var(--nb-c-text-subtle);
   text-align: right;
-}
-.icon-btn {
-  background: none;
-  border: 1px solid var(--nb-c-border);
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.75rem;
-  padding: 0.15rem 0.35rem;
-  line-height: 1;
-  &:hover {
-    background: var(--nb-c-surface-hover);
-  }
 }
 .empty-note {
   color: var(--nb-c-text-subtle);

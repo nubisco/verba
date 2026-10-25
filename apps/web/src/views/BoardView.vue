@@ -5,30 +5,33 @@
     <Teleport defer to="#verba-topbar" :disabled="phone">
       <NbGrid align="center" gap="md" class="board-toolbar">
         <NbGrid gap="sm" align="center" class="board-toolbar__filters">
-          <button
-            class="avatar-filter-chip"
-            :class="{ active: filterUserIds.size === 0 }"
+          <NbBadge
+            interactive
+            :variant="filterUserIds.size === 0 ? 'primary' : 'grey'"
+            :aria-pressed="filterUserIds.size === 0"
             @click="filterUserIds = new Set()"
           >
             {{ t('common.all') }}
-          </button>
-          <button
+          </NbBadge>
+          <NbBadge
             v-for="m in members"
             :key="m.userId"
-            class="avatar-filter-chip"
-            :class="{ active: filterUserIds.has(m.userId) }"
-            :title="m.user.name?.trim() || m.user.email"
+            interactive
+            :variant="filterUserIds.has(m.userId) ? 'primary' : 'grey'"
+            :aria-pressed="filterUserIds.has(m.userId)"
+            :title="userDisplayLabel(m.user)"
+            :aria-label="userDisplayLabel(m.user)"
             @click="toggleUserFilter(m.userId)"
           >
-            {{ (m.user.name?.trim() || m.user.email).slice(0, 2).toUpperCase() }}
-          </button>
+            {{ avatarInitials(m.user) }}
+          </NbBadge>
           <NbSelect v-model="filterNamespaceId" :options="nsSelectOptions" />
           <NbButton v-if="hasActiveFilters" variant="secondary" outlined size="sm" @click="clearFilters">
             {{ t('common.clearFilters') }}
           </NbButton>
         </NbGrid>
-        <span v-if="connected" class="live-badge">● {{ t('board.liveIndicator') }}</span>
-        <span v-else class="offline-badge">● {{ t('board.offlineIndicator') }}</span>
+        <NbBadge v-if="connected" variant="green" dot>{{ t('board.liveIndicator') }}</NbBadge>
+        <NbBadge v-else variant="orange" dot>{{ t('board.offlineIndicator') }}</NbBadge>
       </NbGrid>
     </Teleport>
     <div v-if="loading" class="loading">{{ t('common.loading') }}</div>
@@ -45,32 +48,30 @@
             :style="{ borderTopColor: STATUS_COLORS[status] }"
           >
             <span class="col-title">{{ t('common.status.' + status) }}</span>
-            <span class="col-count">
-              {{ allTranslations.filter((tr) => tr.status === status).length }}
-            </span>
+            <NbBadge size="sm">{{ allTranslations.filter((tr) => tr.status === status).length }}</NbBadge>
           </div>
 
           <!-- Swim lanes -->
           <template v-for="lane in swimLanes" :key="lane.id ?? '__backlog__'">
             <!-- Full-width lane header row -->
             <div class="lane-header-row" @click="toggleLane(lane.id)">
-              <button
-                class="collapse-toggle"
+              <NbButton
+                variant="ghost"
+                size="xs"
+                :icon="isCollapsed(lane.id) ? 'caret-right' : 'caret-down'"
                 :aria-label="isCollapsed(lane.id) ? t('board.expand') : t('board.collapse')"
-              >
-                {{ isCollapsed(lane.id) ? '▶' : '▼' }}
-              </button>
-              <span v-if="lane.id !== null" class="avatar">
-                {{
-                  avatarInitials({
-                    email: lane.email,
-                    name: lane.label !== lane.email ? lane.label : undefined,
-                  })
-                }}
-              </span>
-              <span v-else class="backlog-icon">📥</span>
+                :aria-expanded="!isCollapsed(lane.id)"
+              />
+              <NbAvatar
+                v-if="lane.id !== null"
+                :email="lane.email"
+                :name="lane.label !== lane.email ? lane.label : undefined"
+                size="sm"
+                decorative
+              />
+              <NbIcon v-else name="tray" :size="20" />
               <span class="lane-name">{{ lane.id === null ? t('nav.backlog', 'Backlog') : lane.label }}</span>
-              <span class="lane-count">{{ laneCount(lane.id) }}</span>
+              <NbBadge size="sm">{{ laneCount(lane.id) }}</NbBadge>
             </div>
 
             <!-- Cells per status column: visible when expanded -->
@@ -102,18 +103,24 @@
                   <div class="card-meta">
                     <LocaleBadge :code="card.locale.code" />
                     <NbBadge size="sm" :variant="STATUS_BADGE[status]">{{ t('common.status.' + status) }}</NbBadge>
-                    <span v-if="card.assignedTo" class="avatar-sm" :title="userDisplayLabel(card.assignedTo)">
-                      {{ avatarInitials(card.assignedTo) }}
-                    </span>
-                    <button
+                    <NbAvatar
+                      v-if="card.assignedTo"
+                      :email="card.assignedTo.email"
+                      :name="card.assignedTo.name"
+                      size="xs"
+                      :title="userDisplayLabel(card.assignedTo)"
+                    />
+                    <NbButton
                       v-if="card.assignedTo && isMaintainerPlus"
+                      variant="ghost"
+                      size="xs"
+                      icon="x"
                       class="unassign-btn"
                       :title="t('board.unassign')"
+                      :aria-label="t('board.unassign')"
                       @click.stop="unassignCard(card)"
                       @mousedown.stop
-                    >
-                      ×
-                    </button>
+                    />
                   </div>
                 </div>
                 <div v-if="getCell(lane.id, status).length === 0" class="empty-cell"></div>
@@ -141,22 +148,23 @@
     </div>
 
     <!-- Modal (double click) -->
-    <Teleport to="body">
-      <div v-if="modalKeyId" class="modal-backdrop" @click.self="modalKeyId = null">
-        <div class="modal-box">
-          <KeyDetailPanel
-            :key="modalKeyId"
-            :project-id="projectId"
-            :key-id="modalKeyId"
-            :compact="true"
-            @close="modalKeyId = null"
-            @deleted="modalKeyId = null"
-          />
-        </div>
-      </div>
-    </Teleport>
-
-    <Teleport to="body"> </Teleport>
+    <NbModal
+      :open="!!modalKeyId"
+      :title="modalKeyName"
+      size="lg"
+      close-on-overlay
+      class="key-modal"
+      @close="modalKeyId = null"
+    >
+      <KeyDetailPanel
+        v-if="modalKeyId"
+        :key="modalKeyId"
+        :project-id="projectId"
+        :key-id="modalKeyId"
+        :compact="true"
+        @deleted="modalKeyId = null"
+      />
+    </NbModal>
   </div>
 </template>
 
@@ -233,6 +241,7 @@ const nsSelectOptions = computed<ISelectOption[]>(() => [
 ])
 
 const modalKeyId = ref<string | null>(null)
+const modalKeyName = computed(() => allTranslations.value.find((tr) => tr.key.id === modalKeyId.value)?.key.name ?? '')
 // Staged drafts: keyId → localeId → text (preserved when switching cards)
 const stagedDrafts = ref(new Map<string, Record<string, string>>())
 
@@ -544,20 +553,6 @@ function onCardDblClick(card: Translation) {
   }
 }
 
-.live-badge {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--nb-c-success);
-  letter-spacing: 0.04em;
-}
-
-.offline-badge {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--nb-c-warning);
-  letter-spacing: 0.04em;
-}
-
 .loading {
   color: var(--nb-c-text-subtle);
   padding: 2rem;
@@ -622,15 +617,6 @@ function onCardDblClick(card: Translation) {
     letter-spacing: 0.06em;
     color: var(--nb-c-text-muted);
   }
-
-  .col-count {
-    font-size: 0.72rem;
-    background: var(--nb-c-surface-hover);
-    color: var(--nb-c-text-subtle);
-    padding: 0.1rem 0.4rem;
-    border-radius: 999px;
-    font-weight: 600;
-  }
 }
 
 // Full-width lane header spanning all 4 columns
@@ -651,51 +637,11 @@ function onCardDblClick(card: Translation) {
   }
 }
 
-.collapse-toggle {
-  background: none;
-  border: none;
-  font-size: 0.65rem;
-  color: var(--nb-c-text-subtle);
-  cursor: pointer;
-  padding: 0;
-  line-height: 1;
-  flex-shrink: 0;
-}
-
 .lane-name {
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--nb-c-text);
   flex: 1;
-}
-
-.backlog-icon {
-  font-size: 1rem;
-  line-height: 1;
-}
-
-.lane-count {
-  font-size: 0.7rem;
-  background: var(--nb-c-surface-hover);
-  color: var(--nb-c-text-muted);
-  padding: 0.05rem 0.35rem;
-  border-radius: 999px;
-  font-weight: 600;
-  flex-shrink: 0;
-}
-
-.avatar {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: var(--nb-c-primary);
-  color: var(--nb-c-primary-a11y);
-  font-size: 0.65rem;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
 }
 
 .cell {
@@ -754,99 +700,11 @@ function onCardDblClick(card: Translation) {
   flex-wrap: wrap;
 }
 
-.avatar-sm {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--nb-c-primary);
-  color: var(--nb-c-primary-a11y);
-  font-size: 0.58rem;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .unassign-btn {
-  background: none;
-  border: none;
-  color: var(--nb-c-text-subtle);
-  font-size: 0.85rem;
-  cursor: pointer;
-  padding: 0 0.15rem;
-  line-height: 1;
   margin-left: auto;
-
-  &:hover {
-    color: var(--nb-c-status-error);
-  }
 }
 
 .empty-cell {
   min-height: 40px;
-}
-
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: var(--nb-c-scrim);
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal-box {
-  background: var(--nb-c-layer-3);
-  border-radius: 8px;
-  width: 700px;
-  max-width: 95vw;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px color-mix(in srgb, var(--nb-c-black) 30%, transparent);
-}
-
-.filter-bar {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 0;
-  margin-bottom: 0.5rem;
-  flex-shrink: 0;
-  flex-wrap: wrap;
-}
-
-.filter-avatars {
-  display: flex;
-  gap: 0.3rem;
-  flex-wrap: wrap;
-}
-
-.avatar-filter-chip {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 2px solid var(--nb-c-border);
-  background: var(--nb-c-layer-2);
-  font-size: 0.7rem;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition:
-    border-color 0.15s,
-    background 0.15s;
-  color: var(--nb-c-text-muted);
-
-  &.active {
-    border-color: var(--nb-c-primary);
-    background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
-    color: var(--nb-c-primary);
-  }
-  &:hover:not(.active) {
-    border-color: var(--nb-c-text-subtle);
-    background: var(--nb-c-surface-hover);
-  }
 }
 </style>

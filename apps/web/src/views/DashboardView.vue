@@ -39,16 +39,19 @@
     <div v-if="loading" class="loading">{{ t('common.loading') }}</div>
 
     <template v-else>
-      <div v-if="showAccountForm" class="inline-form">
+      <NbPanel v-if="showAccountForm" class="inline-form">
         <div class="field">
-          <label>{{ t('dashboard.accountName') }}</label>
-          <NbTextInput v-model="newAccountName" :placeholder="t('dashboard.accountNamePlaceholder')" />
+          <NbTextInput
+            v-model="newAccountName"
+            :label="t('dashboard.accountName')"
+            :placeholder="t('dashboard.accountNamePlaceholder')"
+          />
         </div>
         <p v-if="accountError" class="error">{{ accountError }}</p>
         <NbButton variant="primary" :disabled="!newAccountName.trim()" @click="createAccount">
           {{ t('common.create') }}
         </NbButton>
-      </div>
+      </NbPanel>
 
       <!-- Someone signing in for the first time joins no account until an
            owner adds them (workspace AGENTS.md, "Only Jose creates accounts"). -->
@@ -60,23 +63,30 @@
       />
 
       <template v-else>
-        <div v-if="showForm" class="inline-form">
+        <NbPanel v-if="showForm" class="inline-form">
           <div v-if="accountsStore.accounts.length > 1" class="field">
             <NbSelect v-model="newAccountId" :label="t('dashboard.account')" :options="accountOptions" />
           </div>
           <div class="field">
-            <label>{{ t('common.name') }}</label>
-            <NbTextInput v-model="newName" :placeholder="t('projects.create.namePlaceholder')" @input="autoSlug" />
+            <NbTextInput
+              v-model="newName"
+              :label="t('common.name')"
+              :placeholder="t('projects.create.namePlaceholder')"
+              @input="autoSlug"
+            />
           </div>
           <div class="field">
-            <label>{{ t('common.slug') }}</label>
-            <NbTextInput v-model="newSlug" :placeholder="t('projects.create.slugPlaceholder')" />
+            <NbTextInput
+              v-model="newSlug"
+              :label="t('common.slug')"
+              :placeholder="t('projects.create.slugPlaceholder')"
+            />
           </div>
           <p v-if="formError" class="error">{{ formError }}</p>
           <NbButton variant="primary" @click="createProject">
             {{ t('common.create') }}
           </NbButton>
-        </div>
+        </NbPanel>
 
         <section v-for="group in groups" :key="group.account.id" class="section">
           <div class="section-header">
@@ -84,9 +94,7 @@
               {{ grouped ? group.account.name : t('dashboard.myProjects') }}
             </h3>
           </div>
-          <div v-if="group.projects.length === 0" class="empty-state">
-            <p>{{ t('dashboard.noProjects') }}</p>
-          </div>
+          <NbEmptyState v-if="group.projects.length === 0" :title="t('dashboard.noProjects')" size="sm" bordered />
           <div v-else class="projects-grid">
             <RouterLink
               v-for="project in group.projects"
@@ -332,22 +340,12 @@ async function createProject() {
 }
 
 .inline-form {
-  background: var(--nb-c-layer-1);
-  border: 1px solid var(--nb-c-border);
-  border-radius: 8px;
   padding: 1.25rem;
   margin-bottom: 1rem;
   max-width: 400px;
 
   .field {
     margin-bottom: 0.75rem;
-    label {
-      display: block;
-      font-size: 0.78rem;
-      font-weight: 600;
-      margin-bottom: 0.3rem;
-      color: var(--nb-c-text-muted);
-    }
   }
 }
 
@@ -355,19 +353,6 @@ async function createProject() {
   color: var(--nb-c-status-error);
   font-size: 0.85rem;
   margin: 0 0 0.75rem;
-}
-
-.empty-state {
-  background: var(--nb-c-layer-1);
-  border: 1px dashed var(--nb-c-border);
-  border-radius: 8px;
-  padding: 2rem;
-  text-align: center;
-  color: var(--nb-c-text-subtle);
-  font-size: 0.9rem;
-  p {
-    margin: 0;
-  }
 }
 
 .projects-grid {

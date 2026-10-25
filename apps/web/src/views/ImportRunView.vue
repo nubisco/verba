@@ -1,14 +1,14 @@
 <template>
   <div>
-    <div v-if="loading" class="loading">Loading…</div>
+    <NbSkeleton v-if="loading" variant="block" :height="200" radius="md" label="Loading import run" />
     <div v-else-if="error" class="error-msg">{{ error }}</div>
 
     <template v-else-if="run">
-      <div class="section">
+      <NbPanel class="section">
         <div class="run-meta">
           <div class="meta-row">
             <span class="meta-label">Status</span>
-            <span :class="['status-badge', statusClass(run.status)]">{{ run.status }}</span>
+            <NbBadge :variant="statusVariant(run.status)">{{ run.status }}</NbBadge>
           </div>
           <div class="meta-row">
             <span class="meta-label">Run ID</span>
@@ -23,9 +23,9 @@
             <span class="meta-value">{{ formatDate(run.updatedAt) }}</span>
           </div>
         </div>
-      </div>
+      </NbPanel>
 
-      <div class="section">
+      <NbPanel class="section">
         <h3>Stats</h3>
         <div class="stats-grid">
           <div class="stat-card created">
@@ -45,16 +45,16 @@
             <div class="stat-label">Errors</div>
           </div>
         </div>
-      </div>
+      </NbPanel>
 
-      <div v-if="errorsList.length > 0" class="section">
+      <NbPanel v-if="errorsList.length > 0" class="section">
         <h3>Errors</h3>
         <ul class="errors-list">
           <li v-for="(e, i) in errorsList" :key="i" class="error-item">
             {{ e }}
           </li>
         </ul>
-      </div>
+      </NbPanel>
     </template>
   </div>
 </template>
@@ -113,10 +113,10 @@ onMounted(async () => {
   }
 })
 
-function statusClass(status: string) {
-  if (status === 'DONE' || status === 'COMPLETED') return 'status-done'
-  if (status === 'FAILED') return 'status-failed'
-  return 'status-pending'
+function statusVariant(status: string): 'green' | 'red' | 'orange' {
+  if (status === 'DONE' || status === 'COMPLETED') return 'green'
+  if (status === 'FAILED') return 'red'
+  return 'orange'
 }
 
 function formatDate(ts: string) {
@@ -142,19 +142,12 @@ function formatDate(ts: string) {
   }
 }
 
-.loading {
-  color: var(--nb-c-text-subtle);
-  padding: 2rem 0;
-}
 .error-msg {
   color: var(--nb-c-status-error);
   padding: 1rem 0;
 }
 
 .section {
-  background: var(--nb-c-layer-1);
-  border: 1px solid var(--nb-c-border);
-  border-radius: 8px;
   padding: 1.25rem 1.5rem;
   margin-bottom: 1.25rem;
   h3 {
@@ -190,29 +183,6 @@ function formatDate(ts: string) {
 .meta-value {
   font-size: 0.88rem;
   color: var(--nb-c-text);
-}
-
-.status-badge {
-  display: inline-block;
-  padding: 0.2rem 0.6rem;
-  border-radius: 999px;
-  font-size: 0.78rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-
-  &.status-done {
-    background: var(--nb-c-success-surface);
-    color: var(--nb-c-on-success-surface);
-  }
-  &.status-failed {
-    background: var(--nb-c-danger-surface);
-    color: var(--nb-c-on-danger-surface);
-  }
-  &.status-pending {
-    background: var(--nb-c-warning-surface);
-    color: var(--nb-c-on-warning-surface);
-  }
 }
 
 .stats-grid {

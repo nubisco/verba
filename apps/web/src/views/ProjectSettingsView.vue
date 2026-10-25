@@ -46,7 +46,7 @@
     <div class="settings-pane">
       <!-- ── General ── -->
       <template v-if="section === 'general'">
-        <div class="section">
+        <NbPanel class="section">
           <h3>{{ t('projects.settings.title') }}</h3>
           <div class="settings-info-row">
             <ProjectLogoUpload
@@ -77,21 +77,29 @@
               </NbButton>
             </template>
           </NbForm>
-        </div>
+        </NbPanel>
       </template>
 
       <!-- ── Locales ── -->
       <template v-else-if="section === 'locales'">
-        <div class="section">
+        <NbPanel class="section">
           <h3>{{ t('projects.locales.title') }}</h3>
           <div v-if="store.locales.length > 0" class="simple-list">
             <div v-for="l in store.locales" :key="l.id" class="simple-row">
               <LocaleBadge :code="l.code" />
               <span class="simple-label">{{ l.name }}</span>
-              <span :class="['enabled-badge', l.isEnabled ? 'enabled' : 'disabled']">
+              <NbBadge :variant="l.isEnabled ? 'green' : 'grey'">
                 {{ l.isEnabled ? 'enabled' : 'disabled' }}
-              </span>
-              <NbButton variant="danger" class="icon-btn" title="Remove locale" @click="removeLocale(l)">✕</NbButton>
+              </NbBadge>
+              <NbButton
+                variant="danger"
+                outlined
+                size="sm"
+                icon="x"
+                title="Remove locale"
+                aria-label="Remove locale"
+                @click="removeLocale(l)"
+              />
             </div>
           </div>
           <div v-else class="empty-note">No locales</div>
@@ -113,23 +121,31 @@
               @input="onLocaleCodeInput"
             />
             <NbTextInput v-model="newLocaleName" placeholder="Name (e.g. English)" class="locale-name-input" />
-            <NbButton type="submit" :disabled="localeAdding" class="btn-add">
+            <NbButton type="submit" variant="secondary" :disabled="localeAdding">
               {{ localeAdding ? t('common.loading') : t('projects.locales.add') }}
             </NbButton>
           </form>
           <p v-if="localeError" class="field-error">{{ localeError }}</p>
-        </div>
+        </NbPanel>
       </template>
 
       <!-- ── Namespaces ── -->
       <template v-else-if="section === 'namespaces'">
-        <div class="section">
+        <NbPanel class="section">
           <h3>{{ t('projects.namespaces.title') }}</h3>
           <div v-if="store.namespaces.length > 0" class="simple-list">
             <div v-for="ns in store.namespaces" :key="ns.id" class="simple-row">
-              <span class="ns-tag">{{ ns.slug }}</span>
+              <NbBadge variant="primary">{{ ns.slug }}</NbBadge>
               <span class="simple-label">{{ ns.name }}</span>
-              <NbButton variant="danger" class="icon-btn" title="Remove" @click="removeNamespace(ns)">✕</NbButton>
+              <NbButton
+                variant="danger"
+                outlined
+                size="sm"
+                icon="x"
+                title="Remove"
+                aria-label="Remove namespace"
+                @click="removeNamespace(ns)"
+              />
             </div>
           </div>
           <div v-else class="empty-note">{{ t('projects.namespaces.empty') }}</div>
@@ -149,12 +165,12 @@
               </NbButton>
             </template>
           </NbForm>
-        </div>
+        </NbPanel>
       </template>
 
       <!-- ── Members ── -->
       <template v-else-if="section === 'members'">
-        <div class="section">
+        <NbPanel class="section">
           <h3>{{ t('projects.members.title') }}</h3>
           <div v-if="store.members.length > 0" class="simple-list">
             <div v-for="m in store.members" :key="m.userId" class="member-row-wrap">
@@ -165,10 +181,23 @@
                   :options="roleOptions"
                   @update:model-value="updateMemberRole(m.userId, $event as string)"
                 />
-                <NbButton class="icon-btn" :title="t('projects.members.editLocales')" @click="startEditLocales(m)">
-                  🌐
-                </NbButton>
-                <NbButton variant="danger" class="icon-btn" title="Remove" @click="removeMember(m.userId)">✕</NbButton>
+                <NbButton
+                  variant="ghost"
+                  size="sm"
+                  icon="globe"
+                  :title="t('projects.members.editLocales')"
+                  :aria-label="t('projects.members.editLocales')"
+                  @click="startEditLocales(m)"
+                />
+                <NbButton
+                  variant="danger"
+                  outlined
+                  size="sm"
+                  icon="x"
+                  title="Remove"
+                  aria-label="Remove member"
+                  @click="removeMember(m.userId)"
+                />
               </div>
               <div v-if="m.assignedLocales && m.assignedLocales.length > 0" class="assigned-locales-summary">
                 Locales:
@@ -178,8 +207,10 @@
                 <LocaleMultiSelect v-model="editingLocaleIds" :options="store.locales" value-field="id" />
                 <div class="locale-assignment-hint">{{ t('projects.members.leaveUnchecked') }}</div>
                 <div class="locale-assignment-actions">
-                  <NbButton class="btn-add" @click="saveLocaleAssignment(m.userId)">{{ t('common.save') }}</NbButton>
-                  <NbButton class="btn-cancel" @click="cancelEditLocales">{{ t('common.cancel') }}</NbButton>
+                  <NbButton variant="secondary" @click="saveLocaleAssignment(m.userId)">{{
+                    t('common.save')
+                  }}</NbButton>
+                  <NbButton variant="ghost" @click="cancelEditLocales">{{ t('common.cancel') }}</NbButton>
                 </div>
               </div>
             </div>
@@ -193,12 +224,12 @@
               class="inline-input"
             />
             <NbSelect v-model="newMemberRole" :options="roleOptions" />
-            <NbButton type="submit" :disabled="memberAdding" class="btn-add">
+            <NbButton type="submit" variant="secondary" :disabled="memberAdding">
               {{ memberAdding ? t('common.loading') : t('common.add') }}
             </NbButton>
           </form>
           <p v-if="memberError" class="field-error">{{ memberError }}</p>
-        </div>
+        </NbPanel>
       </template>
 
       <!-- ── AI ── -->
@@ -211,7 +242,7 @@
 
       <!-- ── Danger Zone ── -->
       <template v-else-if="section === 'danger' && store.isAdmin">
-        <div class="section danger-zone">
+        <NbPanel class="section danger-zone">
           <h3>Danger Zone</h3>
           <p class="danger-description">
             Permanently delete this project and all its keys, translations, and history.
@@ -251,7 +282,7 @@
               </NbButton>
             </div>
           </div>
-        </div>
+        </NbPanel>
       </template>
     </div>
   </div>
@@ -670,9 +701,6 @@ async function confirmDelete() {
 }
 
 .section {
-  background: var(--nb-c-layer-1);
-  border: 1px solid var(--nb-c-border);
-  border-radius: 8px;
   padding: 1.25rem 1.5rem;
   margin-bottom: 1.25rem;
   h3 {
@@ -778,30 +806,6 @@ async function confirmDelete() {
   gap: 0.5rem;
 }
 
-.ns-tag {
-  font-size: 0.78rem;
-  background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
-  color: var(--nb-c-primary);
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-  font-weight: 600;
-}
-
-.enabled-badge {
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 0.1rem 0.4rem;
-  border-radius: 999px;
-  &.enabled {
-    background: var(--nb-c-success-surface);
-    color: var(--nb-c-on-success-surface);
-  }
-  &.disabled {
-    background: var(--nb-c-neutral-surface);
-    color: var(--nb-c-on-neutral-surface);
-  }
-}
-
 .add-locale-form {
   display: flex;
   gap: 0.5rem;
@@ -828,50 +832,6 @@ async function confirmDelete() {
   .inline-input {
     flex: 1;
     min-width: 160px;
-  }
-}
-
-.icon-btn {
-  background: none;
-  border: 1px solid var(--nb-c-border);
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.75rem;
-  padding: 0.15rem 0.35rem;
-  line-height: 1;
-  &:hover {
-    background: var(--nb-c-surface-hover);
-  }
-}
-
-.btn-add {
-  padding: 0.45rem 0.9rem;
-  background: var(--nb-c-secondary);
-  color: var(--nb-c-secondary-a11y);
-  border: none;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  cursor: pointer;
-  white-space: nowrap;
-  &:hover:not(:disabled) {
-    background: var(--nb-c-secondary-hover);
-  }
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-}
-
-.btn-cancel {
-  padding: 0.45rem 0.9rem;
-  background: var(--nb-c-layer-1);
-  color: var(--nb-c-text-muted);
-  border: 1px solid var(--nb-c-border);
-  border-radius: 4px;
-  font-size: 0.9rem;
-  cursor: pointer;
-  &:hover {
-    background: var(--nb-c-surface-hover);
   }
 }
 

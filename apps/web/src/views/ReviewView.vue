@@ -11,21 +11,18 @@
       <NbSkeleton v-for="n in 5" :key="n" variant="block" :height="110" radius="md" />
     </div>
 
-    <div v-else-if="items.length === 0" class="empty-state">
-      <div class="empty-icon">✅</div>
-      <p>{{ t('review.empty') }}</p>
-    </div>
+    <NbEmptyState v-else-if="items.length === 0" icon="check-circle" :title="t('review.empty')" bordered />
 
     <div v-else class="review-list">
-      <div v-for="item in items" :key="item.id" class="review-card">
+      <NbPanel v-for="item in items" :key="item.id" class="review-card">
         <div class="review-meta">
-          <span class="locale-badge">{{ item.locale?.code ?? item.localeId }}</span>
+          <NbBadge variant="primary">{{ item.locale?.code ?? item.localeId }}</NbBadge>
           <RouterLink :to="`/keys/${projectId}/${item.key?.id ?? item.keyId}`" class="key-link">
             {{ item.key?.fullKey ?? item.key?.name ?? item.keyId }}
           </RouterLink>
-          <span v-if="item.assignedTo" class="assignee-badge">
-            👤 {{ item.assignedTo.name?.trim() || item.assignedTo.email }}
-          </span>
+          <NbBadge v-if="item.assignedTo" variant="green" icon="user">
+            {{ item.assignedTo.name?.trim() || item.assignedTo.email }}
+          </NbBadge>
         </div>
 
         <div class="translation-text">{{ item.text || '(empty)' }}</div>
@@ -70,7 +67,7 @@
             {{ showCommentFor === item.id ? t('common.cancel') : t('review.addComment') }}
           </NbButton>
         </div>
-      </div>
+      </NbPanel>
     </div>
   </div>
 </template>
@@ -208,9 +205,6 @@ onMounted(load)
 }
 
 .review-card {
-  background: var(--nb-c-layer-1);
-  border: 1px solid var(--nb-c-border);
-  border-radius: 8px;
   padding: 1rem 1.25rem;
 }
 
@@ -220,23 +214,6 @@ onMounted(load)
   gap: 0.6rem;
   margin-bottom: 0.6rem;
   flex-wrap: wrap;
-}
-
-.locale-badge {
-  font-size: 0.75rem;
-  background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
-  color: var(--nb-c-primary);
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-  font-weight: 700;
-}
-
-.assignee-badge {
-  font-size: 0.75rem;
-  background: var(--nb-c-success-surface);
-  color: var(--nb-c-on-success-surface);
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
 }
 
 .key-link {
@@ -269,23 +246,6 @@ onMounted(load)
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 3rem;
-  color: var(--nb-c-text-subtle);
-  background: var(--nb-c-layer-1);
-  border-radius: 8px;
-  border: 1px dashed var(--nb-c-border);
-  .empty-icon {
-    font-size: 2.5rem;
-    margin-bottom: 0.5rem;
-  }
-  p {
-    margin: 0;
-    font-size: 0.95rem;
-  }
 }
 
 .skeleton-list {

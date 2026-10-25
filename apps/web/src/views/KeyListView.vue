@@ -6,7 +6,14 @@
         <NbButton variant="secondary" @click="selectedKeyId = null">
           {{ t('common.back') }}
         </NbButton>
-        <NbButton class="inspector-close-btn" title="Close" @click="selectedKeyId = null">✕</NbButton>
+        <NbButton
+          variant="ghost"
+          size="sm"
+          icon="x"
+          :title="t('common.close')"
+          :aria-label="t('common.close')"
+          @click="selectedKeyId = null"
+        />
       </NbGrid>
       <KeyDetailPanel
         :key="selectedKeyId"
@@ -48,26 +55,23 @@
       </NbGrid>
     </Teleport>
     <!-- Create Key form -->
-    <div v-if="showCreate" class="create-form card">
+    <NbPanel v-if="showCreate" class="create-form">
       <h3>{{ t('keys.create.title') }}</h3>
       <div class="form-row">
-        <div class="field">
-          <label>{{ t('keys.create.name') }}</label>
-          <NbTextInput
-            v-model="newKeyName"
-            :placeholder="t('keys.create.namePlaceholder')"
-            @keydown.enter.prevent="createKey"
-          />
-        </div>
-        <div class="field">
-          <label>{{ t('keys.create.namespace') }}</label>
-          <NbSelect v-model="newKeyNs" :options="nsSelectOptions" />
-        </div>
+        <NbTextInput
+          v-model="newKeyName"
+          :label="t('keys.create.name')"
+          :placeholder="t('keys.create.namePlaceholder')"
+          @keydown.enter.prevent="createKey"
+        />
+        <NbSelect v-model="newKeyNs" :label="t('keys.create.namespace')" :options="nsSelectOptions" />
       </div>
-      <div class="field">
-        <label>{{ t('keys.create.description') }}</label>
-        <NbTextInput v-model="newKeyDesc" :placeholder="t('keys.create.descriptionPlaceholder')" />
-      </div>
+      <NbTextInput
+        v-model="newKeyDesc"
+        class="field"
+        :label="t('keys.create.description')"
+        :placeholder="t('keys.create.descriptionPlaceholder')"
+      />
       <div class="form-actions">
         <NbButton variant="primary" :disabled="creating" @click="createKey">
           {{ creating ? t('keys.create.submitting') : t('keys.create.submit') }}
@@ -79,78 +83,59 @@
         <RouterLink :to="`/projects/${projectId}`">{{ t('keys.list.goToSettings') }}</RouterLink>
         to add one.
       </p>
-    </div>
+    </NbPanel>
 
     <!-- Namespace tabs -->
-    <div v-if="namespaces.length > 0" class="ns-tabs">
-      <NbButton class="ns-tab" :class="{ active: filterNamespace === '' }" @click="selectNamespace('')">
-        {{ t('common.all') }}
-      </NbButton>
-      <NbButton
-        v-for="ns in namespaces"
-        :key="ns.id"
-        class="ns-tab"
-        :class="{ active: filterNamespace === ns.id }"
-        @click="selectNamespace(ns.id)"
-      >
-        {{ ns.slug }}
-      </NbButton>
-    </div>
+    <NbTabs
+      v-if="namespaces.length > 0"
+      :model-value="filterNamespace || ALL_NAMESPACES"
+      :items="nsTabs"
+      :aria-label="t('keys.create.namespace')"
+      class="ns-tabs"
+      @update:model-value="selectNamespace($event === ALL_NAMESPACES ? '' : $event)"
+    />
 
     <!-- Search moved to topbar -->
 
-    <div v-if="loading" class="skeleton-list">
-      <NbSkeleton
-        v-for="n in 8"
-        :key="n"
-        variant="block"
-        :height="44"
-        radius="xs"
-        :label="n === 1 ? 'Loading keys' : undefined"
-      />
-    </div>
-
-    <div v-else-if="keys.length === 0" class="empty-state">
-      <p>{{ search ? t('keys.list.noMatch') : t('keys.list.empty') }}</p>
-      <NbButton v-if="!search" variant="primary" @click="showCreate = true">
-        {{ t('keys.list.createFirst') }}
-      </NbButton>
-    </div>
-
-    <div v-else class="table-container">
-      <table class="keys-table">
-        <thead>
-          <tr>
-            <th>Key</th>
-            <th>Namespace</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="key in keys"
-            :key="key.id"
-            class="key-row"
-            :class="{ selected: selectedKeyId === key.id }"
-            @click="selectedKeyId = key.id"
-          >
-            <td class="key-name">
-              {{ key.fullKey ?? key.name }}
-              <span v-if="key.description" class="key-desc">{{ key.description }}</span>
-            </td>
-            <td>
-              <span class="ns-tag">{{ nsLabel(key.namespaceId) }}</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Pagination -->
-    <div v-if="total > limit" class="pagination">
-      <NbButton :disabled="page <= 1" @click="prevPage">← Prev</NbButton>
-      <span class="page-info">{{ pageInfo }}</span>
-      <NbButton :disabled="page >= totalPages" @click="nextPage">Next →</NbButton>
-    </div>
+    <NbDataTable
+      :columns="keyColumns"
+      :rows="keys"
+      row-key="id"
+      selectable="single"
+      :selected="selectedKeyId ? [selectedKeyId] : []"
+      :loading="loading"
+      :skeleton-rows="8"
+      aria-label="Translation keys"
+      stack-on-phone
+      class="keys-table"
+      @row-click="(row: Key) => (selectedKeyId = row.id)"
+      @update:selected="(ids: (string | number)[]) => (selectedKeyId = ids.length ? String(ids[0]) : null)"
+    >
+      <template #cell-name="{ row }">
+        <span class="key-name">
+          {{ row.fullKey ?? row.name }}
+          <span v-if="row.description" class="key-desc">{{ row.description }}</span>
+        </span>
+      </template>
+      <template #cell-namespace="{ row }">
+        <NbBadge variant="primary">{{ nsLabel(row.namespaceId) }}</NbBadge>
+      </template>
+      <template #empty>
+        <NbEmptyState
+          :kind="search ? 'no-results' : 'empty'"
+          :title="search ? t('keys.list.noMatch') : t('keys.list.empty')"
+        >
+          <template v-if="!search" #actions>
+            <NbButton variant="primary" @click="showCreate = true">
+              {{ t('keys.list.createFirst') }}
+            </NbButton>
+          </template>
+        </NbEmptyState>
+      </template>
+      <template v-if="total > limit" #footer>
+        <NbPagination :page="page" :page-size="limit" :total="total" @update:page="goToPage" />
+      </template>
+    </NbDataTable>
   </NbGrid>
 </template>
 
@@ -161,7 +146,7 @@ import { apiFetch } from '../api'
 import { useI18n } from 'vue-i18n'
 import { useLayoutSlots } from '../composables/useLayoutSlots'
 import KeyDetailPanel from '../components/KeyDetailPanel.vue'
-import { NbTextInput, NbSelect, usePhoneLayout, type ISelectOption } from '@nubisco/ui'
+import { NbTextInput, NbSelect, usePhoneLayout, type IDataTableColumn, type ISelectOption } from '@nubisco/ui'
 
 const route = useRoute()
 const router = useRouter()
@@ -217,11 +202,17 @@ function onSearchInput(val: string) {
 }
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / limit)))
-const pageInfo = computed(() => {
-  const start = (page.value - 1) * limit + 1
-  const end = Math.min(page.value * limit, total.value)
-  return total.value === 0 ? 'No results' : `${start}-${end} of ${total.value}`
-})
+
+const ALL_NAMESPACES = '__all__'
+const nsTabs = computed(() => [
+  { id: ALL_NAMESPACES, label: t('common.all') },
+  ...namespaces.value.map((ns) => ({ id: ns.id, label: ns.slug })),
+])
+
+const keyColumns: IDataTableColumn<Key>[] = [
+  { key: 'name', header: 'Key', primary: true },
+  { key: 'namespace', header: 'Namespace', width: '200px' },
+]
 
 function nsLabel(id: string) {
   return namespaces.value.find((n) => n.id === id)?.slug ?? id
@@ -300,17 +291,9 @@ function selectNamespace(id: string) {
   fetchKeys()
 }
 
-function prevPage() {
-  if (page.value > 1) {
-    page.value--
-    fetchKeys()
-  }
-}
-function nextPage() {
-  if (page.value < totalPages.value) {
-    page.value++
-    fetchKeys()
-  }
+function goToPage(next: number) {
+  page.value = Math.min(Math.max(1, next), totalPages.value)
+  fetchKeys()
 }
 
 onMounted(async () => {
@@ -364,26 +347,8 @@ onUnmounted(() => closeInspector())
   flex-shrink: 0;
 }
 
-.inspector-close-btn {
-  background: none;
-  border: 1px solid var(--nb-c-border);
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.85rem;
-  padding: 0.2rem 0.45rem;
-  color: var(--nb-c-text-muted);
-  line-height: 1;
-  &:hover {
-    background: var(--nb-c-surface-hover);
-  }
-}
-
-.card {
-  background: var(--nb-c-layer-1);
-  border: 1px solid var(--nb-c-border);
-  border-radius: 8px;
+.create-form {
   padding: 1.25rem 1.5rem;
-  margin-bottom: 1.25rem;
   h3 {
     margin: 0 0 1rem;
     font-size: 0.9rem;
@@ -391,9 +356,6 @@ onUnmounted(() => closeInspector())
     letter-spacing: 0.05em;
     color: var(--nb-c-text-muted);
   }
-}
-
-.create-form {
   .form-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -401,15 +363,7 @@ onUnmounted(() => closeInspector())
     margin-bottom: 0.75rem;
   }
   .field {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
     margin-bottom: 0.75rem;
-    label {
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: var(--nb-c-text-muted);
-    }
   }
   .form-actions {
     display: flex;
@@ -431,91 +385,6 @@ onUnmounted(() => closeInspector())
   }
 }
 
-/* Namespace tabs */
-.ns-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-bottom: 0.75rem;
-}
-
-.ns-tab {
-  padding: 0.3rem 0.85rem;
-  border-radius: 999px;
-  border: 1px solid var(--nb-c-border);
-  background: var(--nb-c-layer-1);
-  font-size: 0.8rem;
-  font-weight: 500;
-  cursor: pointer;
-  color: var(--nb-c-text-muted);
-  transition: all 0.12s;
-  &:hover {
-    background: var(--nb-c-surface-hover);
-    border-color: var(--nb-c-layer-border-3);
-  }
-  &.active {
-    background: var(--nb-c-text);
-    color: var(--nb-c-text-a11y);
-    border-color: var(--nb-c-text);
-  }
-}
-
-.ns-tag {
-  font-size: 0.78rem;
-  background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
-  color: var(--nb-c-primary);
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-  font-weight: 600;
-}
-
-/* Table container with sticky header */
-.table-container {
-  overflow-y: auto;
-  border: 1px solid var(--nb-c-border);
-  border-radius: 8px;
-  background: var(--nb-c-layer-1);
-}
-
-.keys-table {
-  width: 100%;
-  border-collapse: collapse;
-
-  th,
-  td {
-    padding: 0.75rem 1rem;
-    text-align: left;
-    font-size: 0.875rem;
-  }
-  th {
-    background: var(--nb-c-layer-2);
-    font-weight: 600;
-    color: var(--nb-c-text-muted);
-    text-transform: uppercase;
-    font-size: 0.72rem;
-    letter-spacing: 0.05em;
-    border-bottom: 1px solid var(--nb-c-border);
-    position: sticky;
-    top: 0;
-    z-index: 2;
-  }
-  tr + tr td {
-    border-top: 1px solid var(--nb-c-border);
-  }
-
-  .key-row {
-    cursor: pointer;
-    transition: background 0.12s;
-    &:hover td {
-      background: color-mix(in srgb, var(--nb-c-primary) 6%, transparent);
-    }
-    &.selected td {
-      background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
-      border-left: 3px solid var(--nb-c-primary);
-    }
-  }
-}
-
 .key-name {
   font-family: var(--nb-font-family-mono);
   font-size: 0.85rem;
@@ -527,54 +396,5 @@ onUnmounted(() => closeInspector())
     margin-top: 0.15rem;
     font-style: italic;
   }
-}
-
-.link {
-  color: var(--nb-c-text);
-  font-size: 0.85rem;
-  text-decoration: none;
-  font-weight: 500;
-  &:hover {
-    text-decoration: underline;
-  }
-}
-
-.pagination {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-top: 1rem;
-  font-size: 0.875rem;
-  button {
-    padding: 0.4rem 0.85rem;
-    border: 1px solid var(--nb-c-border);
-    border-radius: 4px;
-    background: var(--nb-c-layer-1);
-    cursor: pointer;
-    &:hover:not(:disabled) {
-      background: var(--nb-c-surface-hover);
-    }
-    &:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
-  }
-  .page-info {
-    color: var(--nb-c-text-subtle);
-  }
-}
-
-.skeleton-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-.empty-state {
-  padding: 2.5rem;
-  text-align: center;
-  color: var(--nb-c-text-subtle);
-  background: var(--nb-c-layer-1);
-  border-radius: 8px;
-  border: 1px dashed var(--nb-c-border);
 }
 </style>

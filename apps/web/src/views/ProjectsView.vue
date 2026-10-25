@@ -11,29 +11,37 @@
   </Teleport>
 
   <div>
-    <div v-if="showForm" class="inline-form">
+    <NbPanel v-if="showForm" class="inline-form">
       <h3>{{ t('projects.create.newProject') }}</h3>
       <div class="field">
-        <label>{{ t('common.name') }}</label>
-        <NbTextInput v-model="newName" :placeholder="t('projects.create.namePlaceholder')" @input="autoSlug" />
+        <NbTextInput
+          v-model="newName"
+          :label="t('common.name')"
+          :placeholder="t('projects.create.namePlaceholder')"
+          @input="autoSlug"
+        />
       </div>
       <div class="field">
-        <label>{{ t('common.slug') }}</label>
-        <NbTextInput v-model="newSlug" :placeholder="t('projects.create.slugPlaceholder')" />
+        <NbTextInput v-model="newSlug" :label="t('common.slug')" :placeholder="t('projects.create.slugPlaceholder')" />
       </div>
       <p v-if="formError" class="error">{{ formError }}</p>
       <NbButton variant="primary" @click="createProject">
         {{ t('common.create') }}
       </NbButton>
-    </div>
+    </NbPanel>
 
     <div v-if="loading" class="skeleton-list">
-      <div v-for="n in 3" :key="n" class="skeleton-card" />
+      <NbSkeleton
+        v-for="n in 3"
+        :key="n"
+        variant="block"
+        :height="80"
+        radius="md"
+        :label="n === 1 ? t('common.loading') : undefined"
+      />
     </div>
 
-    <div v-else-if="projects.length === 0" class="empty-state">
-      <p>{{ t('projects.list.empty') }}</p>
-    </div>
+    <NbEmptyState v-else-if="projects.length === 0" :title="t('projects.list.empty')" bordered />
 
     <div v-else class="projects-grid">
       <RouterLink v-for="project in projects" :key="project.id" :to="`/projects/${project.id}`" class="project-card">
@@ -116,9 +124,6 @@ async function createProject() {
 }
 
 .inline-form {
-  background: var(--nb-c-layer-1);
-  border: 1px solid var(--nb-c-border);
-  border-radius: 8px;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
   max-width: 400px;
@@ -131,16 +136,6 @@ async function createProject() {
 
 .field {
   margin-bottom: 0.85rem;
-
-  label {
-    display: block;
-    font-size: 0.8rem;
-    font-weight: 600;
-    margin-bottom: 0.3rem;
-    color: var(--nb-c-text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
 }
 
 .error {
@@ -208,36 +203,5 @@ async function createProject() {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 1rem;
-}
-
-.skeleton-card {
-  height: 80px;
-  background: linear-gradient(
-    90deg,
-    var(--nb-c-surface-hover) 25%,
-    var(--nb-c-layer-2) 50%,
-    var(--nb-c-surface-hover) 75%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.4s infinite;
-  border-radius: 8px;
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
-}
-
-.empty-state {
-  padding: 3rem;
-  text-align: center;
-  color: var(--nb-c-text-subtle);
-  background: var(--nb-c-layer-1);
-  border-radius: 8px;
-  border: 1px dashed var(--nb-c-border);
 }
 </style>

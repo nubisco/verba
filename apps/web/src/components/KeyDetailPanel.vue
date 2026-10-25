@@ -19,43 +19,36 @@
           </NbButton>
         </div>
         <div class="meta">
-          <span class="ns-badge">{{ nsSlug }}</span>
+          <NbBadge variant="primary">{{ nsSlug }}</NbBadge>
           <span v-if="keyData.description" class="description">{{ keyData.description }}</span>
         </div>
       </div>
 
-      <div class="translations-section">
+      <NbPanel class="translations-section">
         <h3>{{ t('keys.detail.translations') }}</h3>
         <div v-if="locales.length === 0" class="empty-note">
           {{ t('keys.detail.noLocales') }}
         </div>
         <template v-else>
-          <div v-if="!compact" class="layout-toggle">
-            <NbButton
-              :class="['toggle-btn', { active: layoutMode === 'stacked' }]"
-              :title="t('keys.detail.layout.stacked')"
-              @click="layoutMode = 'stacked'"
-            >
-              ≡
-            </NbButton>
-            <NbButton
-              :class="['toggle-btn', { active: layoutMode === 'side-by-side' }]"
-              :title="t('keys.detail.layout.sideBySide')"
-              @click="layoutMode = 'side-by-side'"
-            >
-              ⊞
-            </NbButton>
-          </div>
+          <NbTabs
+            v-if="!compact"
+            v-model="layoutModel"
+            :items="layoutTabs"
+            variant="contained"
+            size="sm"
+            :aria-label="t('keys.detail.translations')"
+            class="layout-toggle"
+          />
 
           <!-- Locale tabs: only shown when user has specific assignments -->
-          <div v-if="otherLocales.length > 0" class="locale-tabs">
-            <NbButton :class="['locale-tab', { active: localeTab === 'mine' }]" @click="localeTab = 'mine'">
-              {{ t('keys.tabs.myLanguages', { count: myLocales.length }) }}
-            </NbButton>
-            <NbButton :class="['locale-tab', { active: localeTab === 'others' }]" @click="localeTab = 'others'">
-              {{ t('keys.tabs.otherLanguages', { count: otherLocales.length }) }}
-            </NbButton>
-          </div>
+          <NbTabs
+            v-if="otherLocales.length > 0"
+            v-model="localeTabModel"
+            :items="localeTabs"
+            size="sm"
+            :aria-label="t('keys.detail.translations')"
+            class="locale-tabs"
+          />
 
           <!-- Read-only view of other locales -->
           <div v-if="localeTab === 'others' && otherLocales.length > 0" class="locale-rows other-locales">
@@ -132,7 +125,13 @@
                 <span class="ai-suggestion-label"><NbAiLabel static size="sm" /> Suggestion:</span>
                 <span class="ai-suggestion-text">{{ aiSuggestion.get(locale.id) }}</span>
                 <NbButton variant="primary" @click="useAiSuggestion(locale.id)">Use this</NbButton>
-                <NbButton @click="aiSuggestion.set(locale.id, '')">✕</NbButton>
+                <NbButton
+                  variant="ghost"
+                  size="sm"
+                  icon="x"
+                  :aria-label="t('common.close')"
+                  @click="aiSuggestion.set(locale.id, '')"
+                />
               </div>
               <div v-if="aiSuggestError.get(locale.id)" class="ai-error">
                 {{ aiSuggestError.get(locale.id) }}
@@ -140,22 +139,21 @@
             </div>
           </div>
         </template>
-      </div>
+      </NbPanel>
 
       <!-- Translation testing panel: appears when translations have variables or plural forms -->
-      <div class="tester-section">
+      <NbPanel class="tester-section">
         <TranslationTester :translations="testerTranslations" :locales="locales" />
-      </div>
+      </NbPanel>
 
-      <div class="comments-section">
-        <div class="section-tabs">
-          <NbButton :class="['tab-btn', { active: activeTab === 'comments' }]" @click="switchTab('comments')">
-            {{ t('keys.detail.comments') }}
-          </NbButton>
-          <NbButton :class="['tab-btn', { active: activeTab === 'history' }]" @click="switchTab('history')">
-            {{ t('keys.detail.history') }}
-          </NbButton>
-        </div>
+      <NbPanel class="comments-section">
+        <NbTabs
+          :model-value="activeTab"
+          :items="sectionTabs"
+          :aria-label="t('keys.detail.comments')"
+          class="section-tabs"
+          @update:model-value="switchTab($event as KeyTab)"
+        />
 
         <template v-if="activeTab === 'comments'">
           <div v-if="!primaryTranslationId" class="empty-note">
@@ -180,12 +178,13 @@
                   </span>
                   <NbButton
                     v-if="c.userId === auth.user?.id || ['MAINTAINER', 'ADMIN'].includes(userRole)"
-                    class="btn-delete-comment"
+                    variant="ghost"
+                    size="xs"
+                    icon="x"
                     title="Delete comment"
+                    aria-label="Delete comment"
                     @click="deleteCommentById(c.id)"
-                  >
-                    ×
-                  </NbButton>
+                  />
                 </div>
                 <p class="comment-text">
                   <template v-for="(seg, i) in parseMentions(c.text)" :key="i">
@@ -193,7 +192,7 @@
                     <template v-else>{{ seg.value }}</template>
                   </template>
                 </p>
-                <NbButton class="btn-reply" @click="replyingTo = c.id">
+                <NbButton variant="ghost" size="xs" class="btn-reply" @click="replyingTo = c.id">
                   {{ t('keys.detail.reply') }}
                 </NbButton>
                 <div v-if="replyingTo === c.id" class="reply-form">
@@ -263,7 +262,7 @@
             </div>
           </div>
         </div>
-      </div>
+      </NbPanel>
     </template>
   </div>
 </template>
@@ -386,6 +385,20 @@ const historyLoaded = ref(false)
 const allKeyNames = ref<string[]>([])
 const keyMapByLocale = ref<Map<string, Record<string, string>>>(new Map())
 const layoutMode = ref<'stacked' | 'side-by-side'>('stacked')
+
+// NbTabs speaks plain strings, these keep the narrower types the template reads.
+const layoutTabs = computed(() => [
+  { id: 'stacked', label: t('keys.detail.layout.stacked') },
+  { id: 'side-by-side', label: t('keys.detail.layout.sideBySide') },
+])
+const layoutModel = computed({
+  get: () => layoutMode.value,
+  set: (v: string) => (layoutMode.value = v === 'side-by-side' ? 'side-by-side' : 'stacked'),
+})
+const sectionTabs = computed(() => [
+  { id: 'comments', label: t('keys.detail.comments') },
+  { id: 'history', label: t('keys.detail.history') },
+])
 
 // AI suggestion state
 const aiSuggesting = ref<Map<string, boolean>>(new Map())
@@ -808,6 +821,14 @@ const myLocales = computed(() =>
 const otherLocales = computed(() =>
   assignedLocaleIds.value.length === 0 ? [] : locales.value.filter((l) => !assignedLocaleIds.value.includes(l.id)),
 )
+const localeTabs = computed(() => [
+  { id: 'mine', label: t('keys.tabs.myLanguages', { count: myLocales.value.length }) },
+  { id: 'others', label: t('keys.tabs.otherLanguages', { count: otherLocales.value.length }) },
+])
+const localeTabModel = computed({
+  get: () => localeTab.value,
+  set: (v: string) => (localeTab.value = v === 'others' ? 'others' : 'mine'),
+})
 
 // Map of localeId → current (edited) text for the testing panel
 const testerTranslations = computed<Map<string, string>>(() => {
@@ -956,15 +977,6 @@ function assignedUserLabel(t: Translation | undefined): string {
   }
 }
 
-.ns-badge {
-  font-size: 0.78rem;
-  background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
-  color: var(--nb-c-primary);
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-  font-weight: 600;
-}
-
 .description {
   font-size: 0.85rem;
   color: var(--nb-c-text-subtle);
@@ -973,9 +985,6 @@ function assignedUserLabel(t: Translation | undefined): string {
 .translations-section,
 .tester-section,
 .comments-section {
-  background: var(--nb-c-layer-1);
-  border: 1px solid var(--nb-c-border);
-  border-radius: 8px;
   padding: 1.25rem 1.5rem;
   margin-bottom: 1.25rem;
 
@@ -1115,19 +1124,6 @@ function assignedUserLabel(t: Translation | undefined): string {
   }
 }
 
-.btn-delete-comment {
-  background: none;
-  border: none;
-  color: var(--nb-c-text-subtle);
-  font-size: 0.9rem;
-  cursor: pointer;
-  line-height: 1;
-  padding: 0 0.15rem;
-  &:hover {
-    color: var(--nb-c-status-error);
-  }
-}
-
 .comment-form {
   display: flex;
   flex-direction: column;
@@ -1177,28 +1173,7 @@ function assignedUserLabel(t: Translation | undefined): string {
 }
 
 .section-tabs {
-  display: flex;
-  gap: 0.5rem;
   margin-bottom: 0.75rem;
-  border-bottom: 2px solid var(--nb-c-border);
-}
-.tab-btn {
-  background: none;
-  border: none;
-  padding: 0.4rem 0.75rem;
-  cursor: pointer;
-  font-size: 0.875rem;
-  color: var(--nb-c-text-subtle);
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
-  &.active {
-    color: var(--nb-c-primary);
-    border-bottom-color: var(--nb-c-primary);
-    font-weight: 600;
-  }
-  &:hover:not(.active) {
-    color: var(--nb-c-text);
-  }
 }
 .comment-reply {
   margin-left: 1.5rem;
@@ -1219,15 +1194,7 @@ function assignedUserLabel(t: Translation | undefined): string {
   font-size: 0.75rem;
 }
 .btn-reply {
-  background: none;
-  border: none;
-  color: var(--nb-c-primary);
-  font-size: 0.75rem;
-  cursor: pointer;
-  padding: 0.1rem 0.3rem;
-  &:hover {
-    text-decoration: underline;
-  }
+  margin-top: 0.25rem;
 }
 .reply-form {
   margin-left: 1.5rem;
@@ -1276,43 +1243,10 @@ function assignedUserLabel(t: Translation | undefined): string {
 }
 
 .layout-toggle {
-  display: flex;
-  gap: 0.25rem;
   margin-bottom: 0.5rem;
 }
-.toggle-btn {
-  padding: 0.2rem 0.5rem;
-  border: 1px solid var(--nb-c-border);
-  background: var(--nb-c-surface-hover);
-  border-radius: 3px;
-  cursor: pointer;
-  font-size: 1rem;
-  color: var(--nb-c-text-subtle);
-  &.active {
-    border-color: var(--nb-c-primary);
-    background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
-    color: var(--nb-c-primary);
-  }
-}
 .locale-tabs {
-  display: flex;
-  gap: 0.5rem;
   margin-bottom: 0.75rem;
-}
-.locale-tab {
-  padding: 0.3rem 0.75rem;
-  border: 1px solid var(--nb-c-border);
-  background: var(--nb-c-surface-hover);
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.8rem;
-  color: var(--nb-c-text-muted);
-  &.active {
-    border-color: var(--nb-c-primary);
-    background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
-    color: var(--nb-c-primary);
-    font-weight: 600;
-  }
 }
 .other-locales .locale-row {
   opacity: 0.8;

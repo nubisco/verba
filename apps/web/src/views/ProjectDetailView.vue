@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div v-if="store.loading" class="skeleton-header" />
+    <NbSkeleton v-if="store.loading" variant="block" :height="120" radius="md" label="Loading project" />
     <template v-else-if="store.project">
       <div class="page-header">
         <div class="header-main">
@@ -12,38 +12,13 @@
         </div>
       </div>
 
-      <div class="tab-bar">
-        <RouterLink
-          :to="`/projects/${projectId}`"
-          class="tab-btn"
-          :class="{ active: route.name === 'project-overview' }"
-          >Overview</RouterLink
-        >
-        <RouterLink
-          :to="`/projects/${projectId}/settings`"
-          class="tab-btn"
-          :class="{ active: route.name === 'project-settings' }"
-          >Settings</RouterLink
-        >
-        <RouterLink
-          :to="`/projects/${projectId}/import`"
-          class="tab-btn"
-          :class="{ active: route.name === 'project-import' }"
-          >Import</RouterLink
-        >
-        <RouterLink
-          :to="`/projects/${projectId}/export`"
-          class="tab-btn"
-          :class="{ active: route.name === 'project-export' }"
-          >Export</RouterLink
-        >
-        <RouterLink
-          :to="`/projects/${projectId}/history`"
-          class="tab-btn"
-          :class="{ active: route.name === 'project-history' }"
-          >History</RouterLink
-        >
-      </div>
+      <NbTabs
+        :model-value="String(route.name)"
+        :items="tabs"
+        aria-label="Project"
+        class="tab-bar"
+        @update:model-value="router.push({ name: $event, params: { id: projectId } })"
+      />
 
       <RouterView />
     </template>
@@ -52,11 +27,21 @@
 
 <script setup lang="ts">
 import { computed, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useProjectStore } from '../stores/project'
 import ProjectAvatar from '../components/ProjectAvatar.vue'
 
 const route = useRoute()
+const router = useRouter()
+
+// Each tab is a child route, so the URL stays the source of truth.
+const tabs = [
+  { id: 'project-overview', label: 'Overview' },
+  { id: 'project-settings', label: 'Settings' },
+  { id: 'project-import', label: 'Import' },
+  { id: 'project-export', label: 'Export' },
+  { id: 'project-history', label: 'History' },
+]
 const projectId = computed(() => route.params.id as string)
 const store = useProjectStore()
 
@@ -94,58 +79,6 @@ watch(
 }
 
 .tab-bar {
-  display: flex;
-  gap: 0;
-  border-bottom: 2px solid var(--nb-c-border);
   margin-bottom: 1.5rem;
-}
-
-.tab-btn {
-  padding: 0.6rem 1.2rem;
-  border: none;
-  background: none;
-  font-size: 0.88rem;
-  font-weight: 500;
-  color: var(--nb-c-text-subtle);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
-  transition:
-    color 0.15s,
-    border-color 0.15s;
-  white-space: nowrap;
-  text-decoration: none;
-
-  &:hover {
-    color: var(--nb-c-text);
-  }
-
-  &.active {
-    color: var(--nb-c-primary);
-    border-bottom-color: var(--nb-c-primary);
-    font-weight: 600;
-  }
-}
-
-.skeleton-header {
-  height: 120px;
-  background: linear-gradient(
-    90deg,
-    var(--nb-c-surface-hover) 25%,
-    var(--nb-c-layer-2) 50%,
-    var(--nb-c-surface-hover) 75%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.4s infinite;
-  border-radius: 8px;
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
 }
 </style>

@@ -1,39 +1,31 @@
 <template>
   <div class="tab-content">
-    <div class="section history-section">
-      <h3>Project History</h3>
-      <div v-if="historyLoading && historyEntries.length === 0" class="empty-note">Loading…</div>
-      <div v-else-if="historyEntries.length === 0" class="empty-note">No history yet</div>
-      <div v-else class="history-table-wrap">
-        <table class="history-table">
-          <thead>
-            <tr>
-              <th>Action</th>
-              <th>Entity</th>
-              <th>User</th>
-              <th>Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="entry in historyEntries" :key="entry.id">
-              <td>
-                <code class="action-code">{{ entry.action }}</code>
-              </td>
-              <td>
-                <span class="entity-type">{{ entry.entityType }}</span>
-              </td>
-              <td>{{ entry.user ? entry.user.name?.trim() || entry.user.email : 'System' }}</td>
-              <td class="time-cell">{{ formatTime(entry.createdAt) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div v-if="historyHasMore" class="load-more">
-        <NbButton outlined :disabled="historyLoading" @click="loadMore">
-          {{ historyLoading ? 'Loading…' : `Load more (${historyTotal - historyEntries.length} remaining)` }}
-        </NbButton>
-      </div>
-    </div>
+    <NbDataTable
+      title="Project History"
+      :columns="columns"
+      :rows="rows"
+      row-key="id"
+      size="sm"
+      :loading="historyLoading && historyEntries.length === 0"
+      :skeleton-rows="5"
+      empty-message="No history yet"
+      stack-on-phone
+      class="history-table"
+    >
+      <template #cell-action="{ value }">
+        <code class="action-code">{{ value }}</code>
+      </template>
+      <template #cell-entityType="{ value }">
+        <NbBadge variant="primary">{{ value }}</NbBadge>
+      </template>
+      <template v-if="historyHasMore" #footer>
+        <div class="load-more">
+          <NbButton outlined :disabled="historyLoading" @click="loadMore">
+            {{ historyLoading ? 'Loading…' : `Load more (${historyTotal - historyEntries.length} remaining)` }}
+          </NbButton>
+        </div>
+      </template>
+    </NbDataTable>
   </div>
 </template>
 
@@ -42,15 +34,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useProjectStore } from '../stores/project'
 import { apiFetch } from '../api'
-
-interface HistoryEntry {
-  id: string
-  action: string
-  entityType: string
-  entityId: string
-  createdAt: string
-  user: { id: string; email: string; name?: string | null } | null
-}
+import type { IDataTableColumn } from '@nubisco/ui'
+import { historyRows, type HistoryEntry } from '../utils/history'
 
 const route = useRoute()
 const projectId = route.params.id as string
@@ -86,9 +71,13 @@ function loadMore() {
   loadHistory()
 }
 
-function formatTime(ts: string) {
-  return new Date(ts).toLocaleString()
-}
+const columns: IDataTableColumn[] = [
+  { key: 'action', header: 'Action', primary: true },
+  { key: 'entityType', header: 'Entity' },
+  { key: 'user', header: 'User' },
+  { key: 'date', header: 'Date', cellClass: 'time-cell', phoneMeta: true },
+]
+const rows = computed(() => historyRows(historyEntries.value))
 
 onMounted(() => loadHistory(true))
 </script>
@@ -108,60 +97,9 @@ onMounted(() => loadHistory(true))
   }
 }
 
-.section {
-  background: var(--nb-c-layer-1);
-  border: 1px solid var(--nb-c-border);
-  border-radius: 8px;
-  padding: 1.25rem 1.5rem;
-  margin-bottom: 1.25rem;
-  h3 {
-    margin: 0 0 1rem;
-    font-size: 0.9rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--nb-c-text-muted);
-  }
-}
-
-.history-section {
-  padding: 0;
-  overflow: hidden;
-}
-.history-section > h3 {
-  padding: 1.25rem 1.5rem 0;
-  margin-bottom: 0.75rem;
-}
-.history-table-wrap {
-  overflow-y: auto;
-  max-height: 500px;
-}
-.history-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.85rem;
-  th,
-  td {
-    padding: 0.6rem 1.5rem;
-    text-align: left;
-  }
-  th {
-    background: var(--nb-c-layer-2);
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: var(--nb-c-text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    border-bottom: 1px solid var(--nb-c-border);
-    position: sticky;
-    top: 0;
-    z-index: 2;
-  }
-  tr + tr td {
-    border-top: 1px solid var(--nb-c-border);
-  }
-  tr:hover td {
-    background: var(--nb-c-surface-hover);
-  }
+.history-table :deep(.time-cell) {
+  color: var(--nb-c-text-subtle);
+  white-space: nowrap;
 }
 .action-code {
   font-size: 0.8rem;
@@ -170,24 +108,7 @@ onMounted(() => loadHistory(true))
   padding: 0.1rem 0.3rem;
   border-radius: 3px;
 }
-.entity-type {
-  font-size: 0.78rem;
-  background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
-  color: var(--nb-c-primary);
-  padding: 0.1rem 0.4rem;
-  border-radius: 999px;
-  font-weight: 600;
-}
-.time-cell {
-  color: var(--nb-c-text-subtle);
-  font-size: 0.8rem;
-  white-space: nowrap;
-}
 .load-more {
   padding: 1rem 1.5rem;
-}
-.empty-note {
-  color: var(--nb-c-text-subtle);
-  font-size: 0.9rem;
 }
 </style>
