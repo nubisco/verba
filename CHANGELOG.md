@@ -1,3 +1,10 @@
+## [1.19.1](https://github.com/nubisco/verba/compare/v1.19.0...v1.19.1) (2026-10-25)
+
+
+### Bug Fixes
+
+* **web:** the key page loads its own project ([2b040e7](https://github.com/nubisco/verba/commit/2b040e7a002a569d89f1f59312e48eccaec353d5))
+
 # [1.19.0](https://github.com/nubisco/verba/compare/v1.18.0...v1.19.0) (2026-10-25)
 
 
