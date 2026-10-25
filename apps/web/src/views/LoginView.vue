@@ -22,8 +22,7 @@
         <p class="toggle">
           <NbButton
             type="button"
-            variant="ghost"
-            size="sm"
+            variant="link"
             :disabled="loading || auth.loading"
             @click="startSignIn({ prompt: 'select_account' })"
           >
@@ -116,8 +115,7 @@
         <p v-if="mode === 'otp-verify'" class="toggle">
           <NbButton
             type="button"
-            variant="ghost"
-            size="sm"
+            variant="link"
             @click="
               () => {
                 mode = 'otp-request'
@@ -492,8 +490,5 @@ function clearPlatformCallbackQuery() {
   text-align: center;
   font-size: 0.85rem;
   color: var(--nb-c-text-muted);
-  :deep(.nb-button) {
-    text-decoration: underline;
-  }
 }
 </style>

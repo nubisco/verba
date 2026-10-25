@@ -118,9 +118,9 @@
         <div class="project-tasks">
           <!-- A panel, so the task cards inside it step one layer deeper than it. -->
           <NbPanel v-for="group in tasksByProject" :key="group.project.id" class="task-group">
-            <RouterLink :to="`/projects/${group.project.id}`" class="project-name">
+            <NbButton variant="link" :to="`/projects/${group.project.id}`" class="project-name">
               {{ group.project.name }}
-            </RouterLink>
+            </NbButton>
             <NbCardGrid min="220px" gap="sm">
               <NbCard v-for="task in group.tasks" :key="task.id" :to="`/keys/${group.project.id}/${task.key.id}`">
                 <template #title>
@@ -358,18 +358,17 @@ async function createProject() {
   gap: 1.25rem;
 }
 
-.project-name {
-  display: block;
+// The project's name heads its group and opens the project: NbButton's link
+// variant carries the link (colour, underline on hover, focus ring), and only
+// the eyebrow typography is ours.
+.task-group > .project-name {
+  display: flex;
+  width: fit-content;
   font-size: 0.78rem;
   font-weight: 700;
-  color: var(--nb-c-primary);
-  text-decoration: none;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   margin-bottom: 0.75rem;
-  &:hover {
-    text-decoration: underline;
-  }
 }
 
 .task-key {
