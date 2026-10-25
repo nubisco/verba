@@ -152,8 +152,8 @@ importers:
   apps/web:
     dependencies:
       '@nubisco/ui':
-        specifier: ^5.33.0
-        version: 5.33.0(pixi.js@8.19.0)(vue-i18n@11.3.1(vue@3.5.44(typescript@5.9.3)))(vue@3.5.44(typescript@5.9.3))
+        specifier: ^5.35.0
+        version: 5.35.0(pixi.js@8.19.0)(vue-i18n@11.3.1(vue@3.5.44(typescript@5.9.3)))(vue@3.5.44(typescript@5.9.3))
       '@nubisco/verba-shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -1126,8 +1126,8 @@ packages:
   '@nodable/entities@3.1.0':
     resolution: {integrity: sha512-LsS/DjHr+uDM647Gru/cA8+J3a3HfhttwCKLyuoyN7yXTFCxKBtSgMQBvrW9yNPa2/zDRUNuGPaH5QUFoa4arQ==}
 
-  '@nubisco/ui@5.33.0':
-    resolution: {integrity: sha512-fqIlGAFrjpPgY/9c9qcjc0C7PgC/T+O+2Y/pnc4QoN9MnDDPAFGN5lr6EZtJeKhGPYKWLG7C/f8xH8LYUNaWrA==}
+  '@nubisco/ui@5.35.0':
+    resolution: {integrity: sha512-ccyZX0jESwqpbZHLMq1oGsVMIEcbV/bHOKHVjfETYKBUlpv5Fo2hk8FhrXPgUI17TxmqLFGjrHZbp6AL5e6ODQ==}
     engines: {node: '>=20.0.0'}
     peerDependencies:
       pixi.js: ^8.0.0
@@ -6459,7 +6459,7 @@ snapshots:
 
   '@nodable/entities@3.1.0': {}
 
-  '@nubisco/ui@5.33.0(pixi.js@8.19.0)(vue-i18n@11.3.1(vue@3.5.44(typescript@5.9.3)))(vue@3.5.44(typescript@5.9.3))':
+  '@nubisco/ui@5.35.0(pixi.js@8.19.0)(vue-i18n@11.3.1(vue@3.5.44(typescript@5.9.3)))(vue@3.5.44(typescript@5.9.3))':
     dependencies:
       pixi.js: 8.19.0
       vue: 3.5.44(typescript@5.9.3)

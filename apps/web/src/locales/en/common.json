@@ -43,5 +43,6 @@
   "yes": "Yes",
   "no": "No",
   "optional": "optional",
-  "required": "required"
+  "required": "required",
+  "notFound": "Page not found"
 }

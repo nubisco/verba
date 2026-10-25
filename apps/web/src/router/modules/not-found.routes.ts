@@ -6,5 +6,8 @@ export const protectedRoutes: RouteRecordRaw[] = [
     path: ':pathMatch(.*)*',
     name: 'not-found',
     component: NotFoundView,
+    meta: {
+      breadcrumb: [{ type: 'static', label: 'common.notFound' }],
+    },
   },
 ]

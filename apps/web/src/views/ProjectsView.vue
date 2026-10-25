@@ -1,7 +1,6 @@
 <template>
   <Teleport defer to="#verba-topbar">
-    <NbGrid align="center" justify="between" class="page-topbar" grow>
-      <NbBreadcrumbs title="Nubisco" subtitle="Verba">{{ t('projects.list.title') }}</NbBreadcrumbs>
+    <NbGrid align="center" justify="end" class="page-topbar" grow>
       <div class="topbar-actions">
         <NbButton variant="primary" size="sm" @click="showForm = !showForm">
           {{ showForm ? t('common.cancel') : t('projects.create.newProject') }}

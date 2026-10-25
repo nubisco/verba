@@ -1,10 +1,4 @@
 <template>
-  <Teleport defer to="#verba-topbar">
-    <NbGrid align="center" class="page-topbar">
-      <NbBreadcrumbs title="Nubisco" subtitle="Verba">Page not found</NbBreadcrumbs>
-    </NbGrid>
-  </Teleport>
-
   <div class="not-found-view">
     <p class="not-found-code">404</p>
     <h1 class="not-found-title">Page not found</h1>

@@ -1,10 +1,4 @@
 <template>
-  <Teleport v-if="!compact && keyData" defer to="#verba-topbar">
-    <NbGrid align="center" justify="between" class="page-topbar" grow>
-      <NbBreadcrumbs title="Nubisco" subtitle="Verba">{{ keyData.name }}</NbBreadcrumbs>
-    </NbGrid>
-  </Teleport>
-
   <div class="key-detail-panel" :class="{ compact }">
     <NbSkeleton v-if="loading" variant="block" :height="300" radius="md" :label="t('common.loading')" />
     <template v-else-if="keyData">
