@@ -1,5 +1,7 @@
 <template>
-  <div v-if="variables.length > 0 || hasPluralForms" class="translation-tester">
+  <!-- A panel, so it steps one layer from wherever it sits. The header is a
+       labelled strip under a rule, not a fill of its own. -->
+  <NbPanel v-if="variables.length > 0 || hasPluralForms" class="translation-tester">
     <div class="tester-header">
       <span class="tester-title">Test string</span>
       <NbBadge v-if="hasPluralForms" variant="purple" size="sm">plural</NbBadge>
@@ -39,7 +41,7 @@
         </span>
       </div>
     </div>
-  </div>
+  </NbPanel>
   <div v-else>
     <NbMessage>Nothing to test yet</NbMessage>
   </div>
@@ -127,10 +129,10 @@ const activeLocales = computed(() => props.locales.filter((l) => props.translati
 </script>
 
 <style scoped lang="scss">
+// NbPanel paints the frame. Its rows run to the edges, so its padding goes.
 .translation-tester {
   margin-top: 1rem;
-  border: 1px solid var(--nb-c-border);
-  border-radius: 8px;
+  padding: 0;
   overflow: hidden;
   font-size: 13px;
 }
@@ -140,7 +142,6 @@ const activeLocales = computed(() => props.locales.filter((l) => props.translati
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: var(--nb-c-layer-2);
   border-bottom: 1px solid var(--nb-c-border);
   font-weight: 600;
   color: var(--nb-c-text-subtle);

@@ -38,8 +38,10 @@
 
     <div v-else class="board-and-inspector">
       <div class="board-container">
-        <!-- Column headers row -->
-        <div class="board-grid">
+        <!-- Column headers row. The headers, lane headers and cards are the
+             first surfaces on whatever this board sits on, so the grid names
+             the level a surface would paint here rather than a fixed one. -->
+        <NbLayer :level="surfaceLevel" class="board-grid">
           <!-- Status column headers (sticky, span full grid width) -->
           <div
             v-for="status in STATUSES"
@@ -127,7 +129,7 @@
               </div>
             </template>
           </template>
-        </div>
+        </NbLayer>
       </div>
 
       <!-- Inspector panel (single click): keyId lives in the URL path -->
@@ -180,7 +182,7 @@ import { useNotifications } from '../composables/useNotifications'
 import KeyDetailPanel from '../components/KeyDetailPanel.vue'
 import { trackEvent } from '../composables/useAnalytics'
 import { useI18n } from 'vue-i18n'
-import { usePhoneLayout, type ISelectOption } from '@nubisco/ui'
+import { useLayer, usePhoneLayout, type ISelectOption } from '@nubisco/ui'
 import LocaleBadge from '../components/LocaleBadge.vue'
 
 const route = useRoute()
@@ -192,6 +194,8 @@ const inspectorKeyId = computed(() => (route.params.keyId as string | undefined)
 const auth = useAuthStore()
 const { t } = useI18n()
 const { phone } = usePhoneLayout()
+// The level a surface placed on this view would paint: layer 1 on the page ground.
+const { level: surfaceLevel } = useLayer()
 
 interface Translation {
   id: string
@@ -578,7 +582,8 @@ function onCardDblClick(card: Translation) {
   border-left: 1px solid var(--nb-c-border);
   overflow-y: auto;
   flex-shrink: 0;
-  background: var(--nb-c-layer-1);
+  // No fill of its own: it is page ground beside the board, and the key's
+  // panels inside it are the first surfaces on it, as they are on the key page.
 }
 
 .slide-enter-active,
@@ -599,7 +604,7 @@ function onCardDblClick(card: Translation) {
 }
 
 .col-header {
-  background: var(--nb-c-layer-1);
+  background: var(--nb-c-surface);
   border-top: 3px solid var(--nb-c-border);
   border-bottom: 2px solid var(--nb-c-border);
   border-right: 1px solid var(--nb-c-border);
@@ -627,7 +632,7 @@ function onCardDblClick(card: Translation) {
   align-items: center;
   gap: 0.6rem;
   padding: 0.55rem 1rem;
-  background: var(--nb-c-layer-2);
+  background: var(--nb-c-surface);
   border-top: 2px solid var(--nb-c-border);
   border-bottom: 1px solid var(--nb-c-border);
   cursor: pointer;
@@ -661,7 +666,7 @@ function onCardDblClick(card: Translation) {
 }
 
 .card {
-  background: var(--nb-c-layer-1);
+  background: var(--nb-c-surface);
   border: 1px solid var(--nb-c-border);
   border-radius: 5px;
   padding: 0.5rem 0.6rem;

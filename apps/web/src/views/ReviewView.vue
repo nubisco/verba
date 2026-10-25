@@ -25,7 +25,8 @@
           </NbBadge>
         </div>
 
-        <div class="translation-text">{{ item.text || '(empty)' }}</div>
+        <!-- A panel in the review card's panel: one layer deeper than the card. -->
+        <NbPanel class="translation-text">{{ item.text || '(empty)' }}</NbPanel>
 
         <!-- Reviewer comment (optional, shown when expanded) -->
         <div v-if="showCommentFor === item.id" class="review-comment-area">
@@ -232,8 +233,6 @@ onMounted(load)
   color: var(--nb-c-text);
   margin-bottom: 0.75rem;
   padding: 0.5rem 0.75rem;
-  background: var(--nb-c-layer-2);
-  border-radius: 4px;
   min-height: 2rem;
   white-space: pre-wrap;
 }

@@ -116,7 +116,8 @@
       <section v-if="tasksByProject.length > 0" class="section">
         <h3 class="section-title">{{ t('dashboard.myTasks') }}</h3>
         <div class="project-tasks">
-          <div v-for="group in tasksByProject" :key="group.project.id" class="task-group">
+          <!-- A panel, so the task cards inside it step one layer deeper than it. -->
+          <NbPanel v-for="group in tasksByProject" :key="group.project.id" class="task-group">
             <RouterLink :to="`/projects/${group.project.id}`" class="project-name">
               {{ group.project.name }}
             </RouterLink>
@@ -133,7 +134,7 @@
                 </template>
               </NbCard>
             </NbCardGrid>
-          </div>
+          </NbPanel>
         </div>
       </section>
     </template>
@@ -355,13 +356,6 @@ async function createProject() {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-}
-
-.task-group {
-  background: var(--nb-c-layer-1);
-  border: 1px solid var(--nb-c-border);
-  border-radius: 8px;
-  padding: 1rem 1.25rem;
 }
 
 .project-name {

@@ -59,9 +59,9 @@
                   {{ statusLabel(translations.get(locale.id)?.status ?? 'TODO') }}
                 </NbBadge>
               </div>
-              <div class="read-only-translation">
+              <NbPanel class="read-only-translation">
                 {{ translations.get(locale.id)?.text || t('keys.detail.noTranslation') }}
-              </div>
+              </NbPanel>
             </div>
           </div>
 
@@ -94,9 +94,9 @@
               <div class="translation-hint">
                 {{ t('keys.detail.hint') }}
               </div>
-              <div v-if="editText.get(locale.id)" class="translation-preview">
+              <NbPanel v-if="editText.get(locale.id)" class="translation-preview">
                 <TranslationText :text="editText.get(locale.id) ?? ''" :key-map="keyMapByLocale.get(locale.id) ?? {}" />
-              </div>
+              </NbPanel>
               <div v-if="isLocked(translations.get(locale.id))" class="lock-notice">
                 {{
                   t('keys.detail.locked', {
@@ -163,8 +163,9 @@
             <div v-if="comments.length === 0" class="empty-note">
               {{ t('keys.detail.noComments') }}
             </div>
+            <!-- Each comment is a panel, one layer deeper than the section it is in. -->
             <div v-else class="comment-list">
-              <div
+              <NbPanel
                 v-for="c in flatComments"
                 :key="c.id"
                 class="comment"
@@ -213,7 +214,7 @@
                     </NbButton>
                   </div>
                 </div>
-              </div>
+              </NbPanel>
             </div>
             <div class="comment-form">
               <NbTextInput
@@ -1076,9 +1077,6 @@ function assignedUserLabel(t: Translation | undefined): string {
 .translation-preview {
   margin-top: 0.35rem;
   padding: 0.3rem 0.5rem;
-  background: var(--nb-c-layer-2);
-  border-radius: 4px;
-  border: 1px solid var(--nb-c-border);
   font-size: 0.875rem;
 }
 
@@ -1090,8 +1088,6 @@ function assignedUserLabel(t: Translation | undefined): string {
 }
 
 .comment {
-  background: var(--nb-c-layer-2);
-  border-radius: 6px;
   padding: 0.6rem 0.85rem;
 
   .comment-header {
@@ -1140,8 +1136,6 @@ function assignedUserLabel(t: Translation | undefined): string {
   margin-left: 1.5rem;
   margin-top: 0.4rem;
   padding: 0.4rem 0.6rem;
-  background: var(--nb-c-layer-2);
-  border-radius: 4px;
   font-size: 0.8rem;
   p {
     margin: 0.2rem 0 0;
@@ -1216,9 +1210,6 @@ function assignedUserLabel(t: Translation | undefined): string {
   font-size: 0.875rem;
   color: var(--nb-c-text-muted);
   padding: 0.4rem 0.6rem;
-  background: var(--nb-c-layer-2);
-  border: 1px solid var(--nb-c-border);
-  border-radius: 4px;
   min-height: 2.5rem;
   white-space: pre-wrap;
 }

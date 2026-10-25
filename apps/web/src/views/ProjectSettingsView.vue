@@ -203,7 +203,7 @@
                 Locales:
                 {{ m.assignedLocales.map((lid) => store.locales.find((l) => l.id === lid)?.code ?? lid).join(', ') }}
               </div>
-              <div v-if="editingLocalesForUser === m.userId" class="locale-assignment-editor">
+              <NbPanel v-if="editingLocalesForUser === m.userId" class="locale-assignment-editor">
                 <LocaleMultiSelect v-model="editingLocaleIds" :options="store.locales" value-field="id" />
                 <div class="locale-assignment-hint">{{ t('projects.members.leaveUnchecked') }}</div>
                 <div class="locale-assignment-actions">
@@ -212,7 +212,7 @@
                   }}</NbButton>
                   <NbButton variant="ghost" @click="cancelEditLocales">{{ t('common.cancel') }}</NbButton>
                 </div>
-              </div>
+              </NbPanel>
             </div>
           </div>
           <div v-else class="empty-note">{{ t('projects.members.empty') }}</div>
@@ -249,7 +249,8 @@
             <strong>This cannot be undone.</strong>
           </p>
           <NbButton variant="danger" @click="showDeleteConfirm = true">Delete project…</NbButton>
-          <div v-if="showDeleteConfirm" class="delete-confirm-box">
+          <!-- A panel in the danger zone's panel, so it steps a layer deeper. -->
+          <NbPanel v-if="showDeleteConfirm" class="delete-confirm-box">
             <p>
               Type the project slug <code>{{ store.project?.slug }}</code> to confirm:
             </p>
@@ -281,7 +282,7 @@
                 Cancel
               </NbButton>
             </div>
-          </div>
+          </NbPanel>
         </NbPanel>
       </template>
     </div>
@@ -792,9 +793,6 @@ async function confirmDelete() {
 .locale-assignment-editor {
   margin: 0.5rem 0 0.75rem;
   padding: 0.75rem;
-  background: var(--nb-c-layer-2);
-  border: 1px solid var(--nb-c-border);
-  border-radius: 6px;
 }
 .locale-assignment-hint {
   font-size: 0.75rem;
@@ -863,9 +861,7 @@ async function confirmDelete() {
 .delete-confirm-box {
   margin-top: 1rem;
   padding: 1rem;
-  background: var(--nb-c-layer-1);
-  border: 1px solid var(--nb-c-danger-surface-border);
-  border-radius: 6px;
+  border-color: var(--nb-c-danger-surface-border);
   p {
     margin: 0 0 0.6rem;
     font-size: 0.875rem;
