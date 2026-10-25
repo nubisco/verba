@@ -1,13 +1,12 @@
 <template>
   <RouterView />
   <ModalManager ref="modalManagerRef" />
-  <NotificationManager />
+  <NbToaster placement="bottom-end" />
 </template>
 
 <script setup lang="ts">
 import { ref, provide } from 'vue'
 import ModalManager from '@/components/ModalManager.vue'
-import NotificationManager from '@/components/NotificationManager.vue'
 
 const modalManagerRef = ref<InstanceType<typeof ModalManager> | null>(null)
 provide('$modal', modalManagerRef)

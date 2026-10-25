@@ -1,5 +1,4 @@
-import { useNotificationsStore } from '@/stores/notifications'
-import type { TToastVariant, IToastCta } from '@nubisco/ui'
+import { useToast, type TToastVariant, type IToastCta } from '@nubisco/ui'
 
 export interface NotifyOptions {
   title?: string
@@ -7,24 +6,22 @@ export interface NotifyOptions {
   cta?: IToastCta
 }
 
-let _counter = 0
-
-function uid(): string {
-  return `notif-${Date.now()}-${++_counter}`
-}
+// Toasts go through @nubisco/ui's shared queue, which App.vue renders with
+// NbToaster. Verba keeps its own timings: everything but an error closes after
+// four seconds, and an error stays until it is dismissed.
+const DEFAULT_DURATION = 4000
 
 export function useNotifications() {
-  const store = useNotificationsStore()
+  const toast = useToast()
 
-  function notify(variant: TToastVariant, message: string, options?: NotifyOptions) {
-    store.add({
-      id: uid(),
+  function notify(variant: TToastVariant, message: string, options?: NotifyOptions): string {
+    return toast.push({
       variant,
       message,
       title: options?.title,
-      duration: options?.duration ?? 4000,
+      duration: options?.duration ?? DEFAULT_DURATION,
       cta: options?.cta,
-    })
+    }).id
   }
 
   return {
@@ -32,7 +29,7 @@ export function useNotifications() {
     error: (message: string, options?: NotifyOptions) => notify('error', message, { duration: 0, ...options }),
     warning: (message: string, options?: NotifyOptions) => notify('warning', message, options),
     info: (message: string, options?: NotifyOptions) => notify('info', message, options),
-    dismiss: (id: string) => store.remove(id),
-    clear: () => store.clear(),
+    dismiss: (id: string) => toast.dismiss(id),
+    clear: () => toast.dismissAll(),
   }
 }
