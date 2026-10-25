@@ -1,3 +1,15 @@
+# [1.19.0](https://github.com/nubisco/verba/compare/v1.18.0...v1.19.0) (2026-10-25)
+
+
+### Bug Fixes
+
+* **web:** views paint with @nubisco/ui tokens instead of hard-coded colours ([4d8c908](https://github.com/nubisco/verba/commit/4d8c908e9ef4dde779b048dbbf2eee327388e4ff))
+
+
+### Features
+
+* **web:** dark mode, chosen in the user menu's Appearance section ([55f9ebd](https://github.com/nubisco/verba/commit/55f9ebdbb82089c907aca6277e3cde14f58d5fd5))
+
 # [1.18.0](https://github.com/nubisco/verba/compare/v1.17.0...v1.18.0) (2026-10-25)
 
 
