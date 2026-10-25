@@ -1,3 +1,10 @@
+## [1.20.1](https://github.com/nubisco/verba/compare/v1.20.0...v1.20.1) (2026-10-25)
+
+
+### Bug Fixes
+
+* **web:** upgrade @nubisco/ui to 5.32.1, and let surfaces step from where they sit ([5d1f034](https://github.com/nubisco/verba/commit/5d1f034a2a060cfe73502e66ff6d2f73f30b37fa))
+
 # [1.20.0](https://github.com/nubisco/verba/compare/v1.19.1...v1.20.0) (2026-10-25)
 
 
