@@ -121,18 +121,13 @@ body {
 }
 
 // ─── Shared table overflow guard ──────────────────────────────────────────────
-// Prevent any table in any view from overflowing its container
+// Prevent any table in any view from overflowing its container. The header is
+// NbDataTable's: it keeps it sticky and paints it from the layer the table
+// sits on, so nothing here pins a layer on it.
 table {
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-
-  thead {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    background: var(--nb-c-layer-1);
-  }
 
   th,
   td {

@@ -105,7 +105,8 @@
 
     <NbPanel v-if="applyResult" class="section result">
       <h3>{{ t('import.importComplete') }}</h3>
-      <pre>{{ JSON.stringify(applyResult.stats, null, 2) }}</pre>
+      <!-- A well one step above the panel it sits in. -->
+      <NbLayer as="pre" class="result-stats">{{ JSON.stringify(applyResult.stats, null, 2) }}</NbLayer>
       <NbButton
         variant="secondary"
         :to="`/projects/${projectId}/import-runs/${applyResult.importRunId}`"
@@ -411,8 +412,8 @@ async function aiFill() {
   }
 }
 
-pre {
-  background: var(--nb-c-layer-2);
+.result-stats {
+  background: var(--nb-c-surface);
   padding: 1rem;
   border-radius: 4px;
   font-size: 0.85rem;

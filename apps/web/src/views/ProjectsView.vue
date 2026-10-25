@@ -43,17 +43,20 @@
 
     <NbEmptyState v-else-if="projects.length === 0" :title="t('projects.list.empty')" bordered />
 
-    <div v-else class="projects-grid">
-      <RouterLink v-for="project in projects" :key="project.id" :to="`/projects/${project.id}`" class="project-card">
-        <div class="project-card__avatar">
-          {{ project.name.slice(0, 2).toUpperCase() }}
-        </div>
-        <div class="project-card__info">
-          <h3>{{ project.name }}</h3>
-          <span class="slug">{{ project.slug }}</span>
-        </div>
-      </RouterLink>
-    </div>
+    <NbCardGrid v-else min="220px">
+      <NbCard
+        v-for="project in projects"
+        :key="project.id"
+        orientation="horizontal"
+        :to="`/projects/${project.id}`"
+        :title="project.name"
+        :subtitle="project.slug"
+      >
+        <template #icon>
+          <span class="project-avatar" aria-hidden="true">{{ project.name.slice(0, 2).toUpperCase() }}</span>
+        </template>
+      </NbCard>
+    </NbCardGrid>
   </div>
 </template>
 
@@ -144,64 +147,19 @@ async function createProject() {
   margin: 0 0 0.75rem;
 }
 
-.projects-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 1rem;
-}
-
-.project-card {
-  background: var(--nb-c-layer-1);
-  border: 1px solid var(--nb-c-border);
+// NbCardGrid lays the projects out and NbCard paints them from where they sit.
+// The initials tile is the project's mark until it has a picture of its own.
+.project-avatar {
+  width: 44px;
+  height: 44px;
   border-radius: 8px;
-  padding: 1.25rem 1.5rem;
-  text-decoration: none;
-  color: inherit;
-  transition: box-shadow 0.15s;
+  background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
+  color: var(--nb-c-primary);
+  font-size: 1rem;
+  font-weight: 700;
   display: flex;
   align-items: center;
-  gap: 1rem;
-
-  &:hover {
-    box-shadow: 0 2px 12px color-mix(in srgb, var(--nb-c-black) 10%, transparent);
-  }
-
-  &__avatar {
-    width: 44px;
-    height: 44px;
-    border-radius: 8px;
-    background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
-    color: var(--nb-c-primary);
-    font-size: 1rem;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    letter-spacing: 0.05em;
-  }
-
-  &__info {
-    min-width: 0;
-  }
-
-  h3 {
-    margin: 0 0 0.25rem;
-    font-size: 1rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .slug {
-    font-size: 0.8rem;
-    color: var(--nb-c-text-subtle);
-  }
-}
-
-.skeleton-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 1rem;
+  justify-content: center;
+  letter-spacing: 0.05em;
 }
 </style>
