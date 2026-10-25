@@ -101,9 +101,7 @@
                   }}</code>
                   <div class="card-meta">
                     <LocaleBadge :code="card.locale.code" />
-                    <span class="status-badge" :style="{ background: STATUS_COLORS[status] }">
-                      {{ t('common.status.' + status) }}
-                    </span>
+                    <NbBadge size="sm" :variant="STATUS_BADGE[status]">{{ t('common.status.' + status) }}</NbBadge>
                     <span v-if="card.assignedTo" class="avatar-sm" :title="userDisplayLabel(card.assignedTo)">
                       {{ avatarInitials(card.assignedTo) }}
                     </span>
@@ -158,9 +156,7 @@
       </div>
     </Teleport>
 
-    <Teleport to="body">
-      <div v-if="toast" class="toast">{{ toast }}</div>
-    </Teleport>
+    <Teleport to="body"> </Teleport>
   </div>
 </template>
 
@@ -171,6 +167,7 @@ import { useKeyNameStore } from '../stores/keyName'
 import { apiFetch } from '../api'
 import { useAuthStore } from '../stores/auth'
 import { useProjectWs } from '../composables/useProjectWs'
+import { useNotifications } from '../composables/useNotifications'
 import KeyDetailPanel from '../components/KeyDetailPanel.vue'
 import { trackEvent } from '../composables/useAnalytics'
 import { useI18n } from 'vue-i18n'
@@ -205,11 +202,20 @@ interface Member {
 type KanbanData = Record<string, Translation[]>
 
 const STATUSES = ['TODO', 'IN_PROGRESS', 'SUBMITTED', 'APPROVED'] as const
+// Workflow colours come from the @nubisco/ui status tokens so they follow the
+// theme. STATUS_COLORS paints the column rule, and the card pill is an NbBadge
+// with the same variant mapping KeyDetailPanel uses.
 const STATUS_COLORS: Record<string, string> = {
-  TODO: '#94a3b8',
-  IN_PROGRESS: '#3b82f6',
-  SUBMITTED: '#f59e0b',
-  APPROVED: '#22c55e',
+  TODO: 'var(--nb-c-component-plain)',
+  IN_PROGRESS: 'var(--nb-c-info)',
+  SUBMITTED: 'var(--nb-c-warning)',
+  APPROVED: 'var(--nb-c-success)',
+}
+const STATUS_BADGE: Record<string, 'grey' | 'blue' | 'orange' | 'green'> = {
+  TODO: 'grey',
+  IN_PROGRESS: 'blue',
+  SUBMITTED: 'orange',
+  APPROVED: 'green',
 }
 
 const allTranslations = ref<Translation[]>([])
@@ -219,8 +225,7 @@ const loading = ref(true)
 
 const filterUserIds = ref<Set<string>>(new Set())
 const filterNamespaceId = ref<string>('')
-const toast = ref('')
-let toastTimer: ReturnType<typeof setTimeout> | null = null
+const notifications = useNotifications()
 
 const nsSelectOptions = computed<ISelectOption[]>(() => [
   { label: t('board.allNamespaces'), value: '' },
@@ -240,11 +245,7 @@ function getInspectorDrafts() {
 }
 
 function showToast(msg: string) {
-  toast.value = msg
-  if (toastTimer) clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => {
-    toast.value = ''
-  }, 3500)
+  notifications.error(msg)
 }
 
 const userRole = computed(() => {
@@ -558,7 +559,7 @@ function onCardDblClick(card: Translation) {
 }
 
 .loading {
-  color: #888;
+  color: var(--nb-c-text-subtle);
   padding: 2rem;
 }
 
@@ -578,10 +579,10 @@ function onCardDblClick(card: Translation) {
 
 .inspector-panel {
   width: 420px;
-  border-left: 1px solid #e0e0e0;
+  border-left: 1px solid var(--nb-c-border);
   overflow-y: auto;
   flex-shrink: 0;
-  background: #fff;
+  background: var(--nb-c-layer-1);
 }
 
 .slide-enter-active,
@@ -602,10 +603,10 @@ function onCardDblClick(card: Translation) {
 }
 
 .col-header {
-  background: #fff;
-  border-top: 3px solid #ccc;
-  border-bottom: 2px solid #e0e0e0;
-  border-right: 1px solid #e0e0e0;
+  background: var(--nb-c-layer-1);
+  border-top: 3px solid var(--nb-c-border);
+  border-bottom: 2px solid var(--nb-c-border);
+  border-right: 1px solid var(--nb-c-border);
   padding: 0.65rem 0.85rem;
   display: flex;
   align-items: center;
@@ -619,13 +620,13 @@ function onCardDblClick(card: Translation) {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: #444;
+    color: var(--nb-c-text-muted);
   }
 
   .col-count {
     font-size: 0.72rem;
-    background: #f0f0f5;
-    color: #666;
+    background: var(--nb-c-surface-hover);
+    color: var(--nb-c-text-subtle);
     padding: 0.1rem 0.4rem;
     border-radius: 999px;
     font-weight: 600;
@@ -639,14 +640,14 @@ function onCardDblClick(card: Translation) {
   align-items: center;
   gap: 0.6rem;
   padding: 0.55rem 1rem;
-  background: #f4f4f8;
-  border-top: 2px solid #e0e0e0;
-  border-bottom: 1px solid #e0e0e0;
+  background: var(--nb-c-layer-2);
+  border-top: 2px solid var(--nb-c-border);
+  border-bottom: 1px solid var(--nb-c-border);
   cursor: pointer;
   user-select: none;
 
   &:hover {
-    background: #ededf5;
+    background: var(--nb-c-surface-hover);
   }
 }
 
@@ -654,7 +655,7 @@ function onCardDblClick(card: Translation) {
   background: none;
   border: none;
   font-size: 0.65rem;
-  color: #999;
+  color: var(--nb-c-text-subtle);
   cursor: pointer;
   padding: 0;
   line-height: 1;
@@ -664,7 +665,7 @@ function onCardDblClick(card: Translation) {
 .lane-name {
   font-size: 0.85rem;
   font-weight: 600;
-  color: #1a1a2e;
+  color: var(--nb-c-text);
   flex: 1;
 }
 
@@ -675,8 +676,8 @@ function onCardDblClick(card: Translation) {
 
 .lane-count {
   font-size: 0.7rem;
-  background: #e0e0ea;
-  color: #555;
+  background: var(--nb-c-surface-hover);
+  color: var(--nb-c-text-muted);
   padding: 0.05rem 0.35rem;
   border-radius: 999px;
   font-weight: 600;
@@ -687,8 +688,8 @@ function onCardDblClick(card: Translation) {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: #6d28d9;
-  color: #fff;
+  background: var(--nb-c-primary);
+  color: var(--nb-c-primary-a11y);
   font-size: 0.65rem;
   font-weight: 700;
   display: flex;
@@ -698,23 +699,23 @@ function onCardDblClick(card: Translation) {
 }
 
 .cell {
-  background: #fafafa;
-  border-bottom: 1px solid #e0e0e0;
-  border-right: 1px solid #e0e0e0;
+  background: var(--nb-c-bg);
+  border-bottom: 1px solid var(--nb-c-border);
+  border-right: 1px solid var(--nb-c-border);
   padding: 0.4rem;
   min-height: 60px;
   transition: background 0.1s;
 
   &.drag-over {
-    background: #ede9fe;
-    outline: 2px dashed #6d28d9;
+    background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
+    outline: 2px dashed var(--nb-c-primary);
     outline-offset: -2px;
   }
 }
 
 .card {
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--nb-c-layer-1);
+  border: 1px solid var(--nb-c-border);
   border-radius: 5px;
   padding: 0.5rem 0.6rem;
   cursor: pointer;
@@ -723,7 +724,7 @@ function onCardDblClick(card: Translation) {
   transition: box-shadow 0.12s;
 
   &:hover {
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 6px color-mix(in srgb, var(--nb-c-black) 10%, transparent);
   }
   &:active {
     cursor: grabbing;
@@ -733,16 +734,16 @@ function onCardDblClick(card: Translation) {
   }
 
   &.card--selected {
-    border-color: #4f46e5;
+    border-color: var(--nb-c-primary);
     border-width: 2px;
-    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--nb-c-primary) 15%, transparent);
   }
 }
 
 .key-name {
   display: block;
   font-size: 0.75rem;
-  color: #1a1a2e;
+  color: var(--nb-c-text);
   margin-bottom: 0.35rem;
 }
 
@@ -753,20 +754,12 @@ function onCardDblClick(card: Translation) {
   flex-wrap: wrap;
 }
 
-.status-badge {
-  font-size: 0.64rem;
-  color: #fff;
-  padding: 0.1rem 0.4rem;
-  border-radius: 999px;
-  font-weight: 600;
-}
-
 .avatar-sm {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #6d28d9;
-  color: #fff;
+  background: var(--nb-c-primary);
+  color: var(--nb-c-primary-a11y);
   font-size: 0.58rem;
   font-weight: 700;
   display: inline-flex;
@@ -777,7 +770,7 @@ function onCardDblClick(card: Translation) {
 .unassign-btn {
   background: none;
   border: none;
-  color: #aaa;
+  color: var(--nb-c-text-subtle);
   font-size: 0.85rem;
   cursor: pointer;
   padding: 0 0.15rem;
@@ -785,7 +778,7 @@ function onCardDblClick(card: Translation) {
   margin-left: auto;
 
   &:hover {
-    color: #e74c3c;
+    color: var(--nb-c-status-error);
   }
 }
 
@@ -796,7 +789,7 @@ function onCardDblClick(card: Translation) {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--nb-c-scrim);
   z-index: 1000;
   display: flex;
   align-items: center;
@@ -804,13 +797,13 @@ function onCardDblClick(card: Translation) {
 }
 
 .modal-box {
-  background: #fff;
+  background: var(--nb-c-layer-3);
   border-radius: 8px;
   width: 700px;
   max-width: 95vw;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 20px 60px color-mix(in srgb, var(--nb-c-black) 30%, transparent);
 }
 
 .filter-bar {
@@ -833,8 +826,8 @@ function onCardDblClick(card: Translation) {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  border: 2px solid #e0e0e0;
-  background: #f5f5f5;
+  border: 2px solid var(--nb-c-border);
+  background: var(--nb-c-layer-2);
   font-size: 0.7rem;
   font-weight: 700;
   cursor: pointer;
@@ -844,43 +837,16 @@ function onCardDblClick(card: Translation) {
   transition:
     border-color 0.15s,
     background 0.15s;
-  color: #444;
+  color: var(--nb-c-text-muted);
 
   &.active {
-    border-color: #4f46e5;
-    background: #ede9fe;
-    color: #4f46e5;
+    border-color: var(--nb-c-primary);
+    background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
+    color: var(--nb-c-primary);
   }
   &:hover:not(.active) {
-    border-color: #aaa;
-    background: #ececec;
-  }
-}
-</style>
-
-<style>
-.toast {
-  position: fixed;
-  bottom: 1.5rem;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #1a1a2e;
-  color: #fff;
-  padding: 0.65rem 1.25rem;
-  border-radius: 6px;
-  font-size: 0.88rem;
-  z-index: 9999;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-  animation: fadeIn 0.2s ease;
-}
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
+    border-color: var(--nb-c-text-subtle);
+    background: var(--nb-c-surface-hover);
   }
 }
 </style>

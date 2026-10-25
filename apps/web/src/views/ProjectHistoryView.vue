@@ -109,8 +109,8 @@ onMounted(() => loadHistory(true))
 }
 
 .section {
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--nb-c-layer-1);
+  border: 1px solid var(--nb-c-border);
   border-radius: 8px;
   padding: 1.25rem 1.5rem;
   margin-bottom: 1.25rem;
@@ -119,7 +119,7 @@ onMounted(() => loadHistory(true))
     font-size: 0.9rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: #555;
+    color: var(--nb-c-text-muted);
   }
 }
 
@@ -145,65 +145,49 @@ onMounted(() => loadHistory(true))
     text-align: left;
   }
   th {
-    background: #f7f7f9;
+    background: var(--nb-c-layer-2);
     font-size: 0.72rem;
     font-weight: 600;
-    color: #555;
+    color: var(--nb-c-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid var(--nb-c-border);
     position: sticky;
     top: 0;
     z-index: 2;
   }
   tr + tr td {
-    border-top: 1px solid #f5f5f5;
+    border-top: 1px solid var(--nb-c-border);
   }
   tr:hover td {
-    background: #fafafa;
+    background: var(--nb-c-surface-hover);
   }
 }
 .action-code {
   font-size: 0.8rem;
-  color: #5b21b6;
-  background: #ede9fe;
+  color: var(--nb-c-primary);
+  background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
   padding: 0.1rem 0.3rem;
   border-radius: 3px;
 }
 .entity-type {
   font-size: 0.78rem;
-  background: #e0e7ff;
-  color: #3730a3;
+  background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
+  color: var(--nb-c-primary);
   padding: 0.1rem 0.4rem;
   border-radius: 999px;
   font-weight: 600;
 }
 .time-cell {
-  color: #888;
+  color: var(--nb-c-text-subtle);
   font-size: 0.8rem;
   white-space: nowrap;
 }
 .load-more {
   padding: 1rem 1.5rem;
 }
-.btn-outline {
-  padding: 0.45rem 1rem;
-  border: 1px solid #d0d0d0;
-  border-radius: 4px;
-  background: #fff;
-  font-size: 0.875rem;
-  cursor: pointer;
-  color: #555;
-  &:hover:not(:disabled) {
-    background: #f0f0f0;
-  }
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-}
 .empty-note {
-  color: #888;
+  color: var(--nb-c-text-subtle);
   font-size: 0.9rem;
 }
 </style>

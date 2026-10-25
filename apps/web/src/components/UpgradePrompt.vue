@@ -87,18 +87,18 @@ const upgradeUrl = computed(() => {
   gap: 0.75rem;
   padding: 1rem 1.25rem;
   border-radius: 8px;
-  border: 1px solid var(--color-border, #e2e8f0);
-  background: var(--color-surface-alt, #f8fafc);
+  border: 1px solid var(--nb-c-border);
+  background: var(--nb-c-layer-2);
 }
 
 .upgrade-prompt--saas {
-  border-color: var(--color-primary-200, #bfdbfe);
-  background: var(--color-primary-50, #eff6ff);
+  border-color: var(--nb-c-info-surface-border);
+  background: var(--nb-c-info-surface);
 }
 
 .upgrade-prompt--self-hosted {
-  border-color: var(--color-warning-200, #fed7aa);
-  background: var(--color-warning-50, #fff7ed);
+  border-color: var(--nb-c-warning-surface-border);
+  background: var(--nb-c-warning-surface);
 }
 
 .upgrade-prompt__icon {
@@ -117,13 +117,13 @@ const upgradeUrl = computed(() => {
   margin: 0;
   font-weight: 600;
   font-size: 0.9rem;
-  color: var(--color-text-primary, #0f172a);
+  color: var(--nb-c-text);
 }
 
 .upgrade-prompt__message {
   margin: 0;
   font-size: 0.85rem;
-  color: var(--color-text-secondary, #475569);
+  color: var(--nb-c-text-muted);
 }
 
 .upgrade-prompt__cta {
@@ -131,7 +131,7 @@ const upgradeUrl = computed(() => {
   margin-top: 0.5rem;
   font-size: 0.85rem;
   font-weight: 500;
-  color: var(--color-primary, #2563eb);
+  color: var(--nb-c-info);
   text-decoration: none;
 }
 

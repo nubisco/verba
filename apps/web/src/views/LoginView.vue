@@ -434,14 +434,14 @@ function clearPlatformCallbackQuery() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f7f7f9;
+  background: var(--nb-c-bg);
 }
 
 .login-card {
-  background: #fff;
+  background: var(--nb-c-surface);
   padding: 2.5rem 2rem;
   border-radius: 8px;
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 16px color-mix(in srgb, var(--nb-c-black) 10%, transparent);
   width: 100%;
   max-width: 380px;
 
@@ -461,12 +461,12 @@ function clearPlatformCallbackQuery() {
   .auth-logo-name {
     font-size: 1.5rem;
     font-weight: 700;
-    color: #1a1a2e;
+    color: var(--nb-c-text);
     letter-spacing: -0.02em;
   }
 
   .subtitle {
-    color: #666;
+    color: var(--nb-c-text-subtle);
     margin: 0.75rem 0 1.25rem;
     font-size: 0.9rem;
     text-align: center;
@@ -476,7 +476,7 @@ function clearPlatformCallbackQuery() {
 .tabs {
   display: flex;
   gap: 0;
-  border: 1px solid #d0d0d0;
+  border: 1px solid var(--nb-c-border);
   border-radius: 6px;
   overflow: hidden;
   margin-bottom: 0;
@@ -484,22 +484,22 @@ function clearPlatformCallbackQuery() {
   button {
     flex: 1;
     padding: 0.45rem 0.5rem;
-    background: #f7f7f9;
+    background: var(--nb-c-layer-2);
     border: none;
     font-size: 0.82rem;
     cursor: pointer;
-    color: #666;
-    border-right: 1px solid #d0d0d0;
+    color: var(--nb-c-text-subtle);
+    border-right: 1px solid var(--nb-c-border);
     transition: background 0.12s;
     &:last-child {
       border-right: none;
     }
     &:hover {
-      background: #eee;
+      background: var(--nb-c-surface-hover);
     }
     &.active {
-      background: #1a1a2e;
-      color: #fff;
+      background: var(--nb-c-text);
+      color: var(--nb-c-text-a11y);
       font-weight: 600;
     }
   }
@@ -512,17 +512,17 @@ function clearPlatformCallbackQuery() {
     font-size: 0.85rem;
     font-weight: 500;
     margin-bottom: 0.35rem;
-    color: #333;
+    color: var(--nb-c-text-muted);
   }
   .hint {
     font-size: 0.78rem;
-    color: #888;
+    color: var(--nb-c-text-subtle);
     margin: 0.25rem 0 0;
   }
 }
 
 .error {
-  color: #c0392b;
+  color: var(--nb-c-status-error);
   font-size: 0.85rem;
   margin: 0 0 0.75rem;
   text-align: center;
@@ -537,7 +537,7 @@ function clearPlatformCallbackQuery() {
   margin-top: 1.25rem;
   text-align: center;
   font-size: 0.85rem;
-  color: #555;
+  color: var(--nb-c-text-muted);
   :deep(.nb-button) {
     text-decoration: underline;
   }

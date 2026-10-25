@@ -38,7 +38,7 @@
           <code class="task-key">{{ task.key.name }}</code>
           <div class="task-meta">
             <LocaleBadge :code="task.locale.code" />
-            <span class="status-dot" :style="{ background: STATUS_COLORS[task.status] || '#888' }" />
+            <span class="status-dot" :style="{ background: STATUS_COLORS[task.status] || 'var(--nb-c-text-subtle)' }" />
           </div>
         </RouterLink>
       </div>
@@ -75,8 +75,8 @@ const { t } = useI18n()
 const apiBase = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? '/api' : 'http://localhost:4000')
 
 const STATUS_COLORS: Record<string, string> = {
-  IN_PROGRESS: '#3b82f6',
-  SUBMITTED: '#f59e0b',
+  IN_PROGRESS: 'var(--nb-c-info)',
+  SUBMITTED: 'var(--nb-c-warning)',
 }
 
 function exportLocale(localeCode: string) {
@@ -113,8 +113,8 @@ function exportLocale(localeCode: string) {
 }
 
 .stat-card {
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--nb-c-layer-1);
+  border: 1px solid var(--nb-c-border);
   border-radius: 8px;
   padding: 1.25rem 1.75rem;
   min-width: 140px;
@@ -125,27 +125,27 @@ function exportLocale(localeCode: string) {
     font-weight: 700;
     line-height: 1;
     margin-bottom: 0.25rem;
-    color: #1a1a2e;
+    color: var(--nb-c-text);
   }
   .stat-label {
     font-size: 0.8rem;
-    color: #666;
+    color: var(--nb-c-text-subtle);
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
   &.warning .stat-value {
-    color: #e67e22;
+    color: var(--nb-c-status-warning);
   }
   &.clickable:hover {
-    border-color: #5b21b6;
-    box-shadow: 0 2px 8px rgba(91, 33, 182, 0.12);
+    border-color: var(--nb-c-primary);
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
     cursor: pointer;
   }
 }
 
 .section {
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--nb-c-layer-1);
+  border: 1px solid var(--nb-c-border);
   border-radius: 8px;
   padding: 1.25rem 1.5rem;
   margin-bottom: 1.25rem;
@@ -154,7 +154,7 @@ function exportLocale(localeCode: string) {
     font-size: 0.9rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: #555;
+    color: var(--nb-c-text-muted);
   }
 }
 
@@ -168,7 +168,7 @@ function exportLocale(localeCode: string) {
   align-items: center;
   gap: 0.6rem;
   padding: 0.3rem 0;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--nb-c-border);
   &:last-child {
     border-bottom: none;
   }
@@ -176,20 +176,20 @@ function exportLocale(localeCode: string) {
 .ns-count-badge {
   margin-left: auto;
   font-size: 0.75rem;
-  background: #f0f0f0;
-  color: #555;
+  background: var(--nb-c-surface-hover);
+  color: var(--nb-c-text-muted);
   padding: 0.1rem 0.45rem;
   border-radius: 999px;
   font-weight: 600;
 }
 .ns-name {
   font-size: 0.85rem;
-  color: #666;
+  color: var(--nb-c-text-subtle);
 }
 .ns-tag {
   font-size: 0.78rem;
-  background: #e0e7ff;
-  color: #3730a3;
+  background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
+  color: var(--nb-c-primary);
   padding: 0.15rem 0.5rem;
   border-radius: 999px;
   font-weight: 600;
@@ -205,18 +205,18 @@ function exportLocale(localeCode: string) {
   align-items: center;
   justify-content: space-between;
   padding: 0.45rem 0.75rem;
-  background: #f7f7f9;
-  border: 1px solid #e8e8e8;
+  background: var(--nb-c-layer-2);
+  border: 1px solid var(--nb-c-border);
   border-radius: 6px;
   text-decoration: none;
   color: inherit;
   &:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--nb-c-black) 7%, transparent);
   }
 }
 .task-key {
   font-size: 0.82rem;
-  color: #1a1a2e;
+  color: var(--nb-c-text);
 }
 .task-meta {
   display: flex;
@@ -227,7 +227,7 @@ function exportLocale(localeCode: string) {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #888;
+  background: var(--nb-c-text-subtle);
 }
 
 .locale-list {
@@ -241,7 +241,7 @@ function exportLocale(localeCode: string) {
   align-items: center;
   gap: 0.6rem;
   padding: 0.35rem 0;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--nb-c-border);
   &:last-child {
     border-bottom: none;
   }
@@ -277,39 +277,39 @@ function exportLocale(localeCode: string) {
 }
 .locale-name {
   font-size: 0.85rem;
-  color: #666;
+  color: var(--nb-c-text-subtle);
 }
 .progress-bar-wrap {
   height: 8px;
-  background: #eee;
+  background: var(--nb-c-surface-hover);
   border-radius: 4px;
   overflow: hidden;
 }
 .progress-bar-fill {
   height: 100%;
-  background: #27ae60;
+  background: var(--nb-c-success);
   border-radius: 4px;
   transition: width 0.4s;
 }
 .progress-label {
   font-size: 0.8rem;
-  color: #666;
+  color: var(--nb-c-text-subtle);
   text-align: right;
 }
 .icon-btn {
   background: none;
-  border: 1px solid #ddd;
+  border: 1px solid var(--nb-c-border);
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.75rem;
   padding: 0.15rem 0.35rem;
   line-height: 1;
   &:hover {
-    background: #f0f0f0;
+    background: var(--nb-c-surface-hover);
   }
 }
 .empty-note {
-  color: #888;
+  color: var(--nb-c-text-subtle);
   font-size: 0.9rem;
 }
 </style>

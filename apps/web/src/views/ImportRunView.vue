@@ -135,7 +135,7 @@ function formatDate(ts: string) {
 
 .breadcrumb {
   font-size: 0.85rem;
-  color: #1a1a2e;
+  color: var(--nb-c-text);
   text-decoration: none;
   &:hover {
     text-decoration: underline;
@@ -143,17 +143,17 @@ function formatDate(ts: string) {
 }
 
 .loading {
-  color: #888;
+  color: var(--nb-c-text-subtle);
   padding: 2rem 0;
 }
 .error-msg {
-  color: #e74c3c;
+  color: var(--nb-c-status-error);
   padding: 1rem 0;
 }
 
 .section {
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--nb-c-layer-1);
+  border: 1px solid var(--nb-c-border);
   border-radius: 8px;
   padding: 1.25rem 1.5rem;
   margin-bottom: 1.25rem;
@@ -162,7 +162,7 @@ function formatDate(ts: string) {
     font-size: 0.9rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: #555;
+    color: var(--nb-c-text-muted);
   }
 }
 
@@ -181,7 +181,7 @@ function formatDate(ts: string) {
 .meta-label {
   font-size: 0.82rem;
   font-weight: 600;
-  color: #888;
+  color: var(--nb-c-text-subtle);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   min-width: 70px;
@@ -189,7 +189,7 @@ function formatDate(ts: string) {
 
 .meta-value {
   font-size: 0.88rem;
-  color: #333;
+  color: var(--nb-c-text);
 }
 
 .status-badge {
@@ -202,16 +202,16 @@ function formatDate(ts: string) {
   letter-spacing: 0.04em;
 
   &.status-done {
-    background: #d5f5e3;
-    color: #1e8449;
+    background: var(--nb-c-success-surface);
+    color: var(--nb-c-on-success-surface);
   }
   &.status-failed {
-    background: #fde8e8;
-    color: #c0392b;
+    background: var(--nb-c-danger-surface);
+    color: var(--nb-c-on-danger-surface);
   }
   &.status-pending {
-    background: #fef9e7;
-    color: #b7950b;
+    background: var(--nb-c-warning-surface);
+    color: var(--nb-c-on-warning-surface);
   }
 }
 
@@ -240,39 +240,39 @@ function formatDate(ts: string) {
   }
 
   &.created {
-    background: #d5f5e3;
+    background: var(--nb-c-success-surface);
     .stat-value {
-      color: #1e8449;
+      color: var(--nb-c-on-success-surface);
     }
     .stat-label {
-      color: #27ae60;
+      color: var(--nb-c-on-success-surface);
     }
   }
   &.updated {
-    background: #fef9e7;
+    background: var(--nb-c-warning-surface);
     .stat-value {
-      color: #b7950b;
+      color: var(--nb-c-on-warning-surface);
     }
     .stat-label {
-      color: #d4ac0d;
+      color: var(--nb-c-on-warning-surface);
     }
   }
   &.skipped {
-    background: #f0f0f0;
+    background: var(--nb-c-neutral-surface);
     .stat-value {
-      color: #555;
+      color: var(--nb-c-on-neutral-surface);
     }
     .stat-label {
-      color: #888;
+      color: var(--nb-c-on-neutral-surface);
     }
   }
   &.errors {
-    background: #fde8e8;
+    background: var(--nb-c-danger-surface);
     .stat-value {
-      color: #c0392b;
+      color: var(--nb-c-on-danger-surface);
     }
     .stat-label {
-      color: #e74c3c;
+      color: var(--nb-c-on-danger-surface);
     }
   }
 }
@@ -288,10 +288,10 @@ function formatDate(ts: string) {
 
 .error-item {
   padding: 0.4rem 0.75rem;
-  background: #fde8e8;
+  background: var(--nb-c-danger-surface);
   border-radius: 4px;
   font-size: 0.85rem;
-  color: #c0392b;
+  color: var(--nb-c-on-danger-surface);
   font-family: var(--nb-font-family-mono);
 }
 </style>

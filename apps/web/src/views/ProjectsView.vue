@@ -116,8 +116,8 @@ async function createProject() {
 }
 
 .inline-form {
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--nb-c-layer-1);
+  border: 1px solid var(--nb-c-border);
   border-radius: 8px;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
@@ -137,14 +137,14 @@ async function createProject() {
     font-size: 0.8rem;
     font-weight: 600;
     margin-bottom: 0.3rem;
-    color: #555;
+    color: var(--nb-c-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.04em;
   }
 }
 
 .error {
-  color: #c0392b;
+  color: var(--nb-c-status-error);
   font-size: 0.85rem;
   margin: 0 0 0.75rem;
 }
@@ -156,8 +156,8 @@ async function createProject() {
 }
 
 .project-card {
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--nb-c-layer-1);
+  border: 1px solid var(--nb-c-border);
   border-radius: 8px;
   padding: 1.25rem 1.5rem;
   text-decoration: none;
@@ -168,15 +168,15 @@ async function createProject() {
   gap: 1rem;
 
   &:hover {
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 12px color-mix(in srgb, var(--nb-c-black) 10%, transparent);
   }
 
   &__avatar {
     width: 44px;
     height: 44px;
     border-radius: 8px;
-    background: #ede9fe;
-    color: #4f46e5;
+    background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
+    color: var(--nb-c-primary);
     font-size: 1rem;
     font-weight: 700;
     display: flex;
@@ -200,7 +200,7 @@ async function createProject() {
 
   .slug {
     font-size: 0.8rem;
-    color: #888;
+    color: var(--nb-c-text-subtle);
   }
 }
 
@@ -212,7 +212,12 @@ async function createProject() {
 
 .skeleton-card {
   height: 80px;
-  background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
+  background: linear-gradient(
+    90deg,
+    var(--nb-c-surface-hover) 25%,
+    var(--nb-c-layer-2) 50%,
+    var(--nb-c-surface-hover) 75%
+  );
   background-size: 200% 100%;
   animation: shimmer 1.4s infinite;
   border-radius: 8px;
@@ -230,9 +235,9 @@ async function createProject() {
 .empty-state {
   padding: 3rem;
   text-align: center;
-  color: #888;
-  background: #fff;
+  color: var(--nb-c-text-subtle);
+  background: var(--nb-c-layer-1);
   border-radius: 8px;
-  border: 1px dashed #d0d0d0;
+  border: 1px dashed var(--nb-c-border);
 }
 </style>

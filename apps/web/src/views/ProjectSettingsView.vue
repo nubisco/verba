@@ -619,40 +619,12 @@ async function confirmDelete() {
 .settings-sidenav {
   width: 172px;
   flex-shrink: 0;
-  border-right: 1px solid #f0f0f8;
+  border-right: 1px solid var(--nb-c-border);
   padding: 1rem 0.5rem;
   display: flex;
   flex-direction: column;
   gap: 2px;
   align-self: stretch;
-}
-
-.settings-nav-item {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  width: 100%;
-  padding: 0.48rem 0.7rem;
-  border: none;
-  background: transparent;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  color: #4b5563;
-  cursor: pointer;
-  text-align: left;
-  font-weight: 500;
-  transition:
-    background 0.1s,
-    color 0.1s;
-  &:hover {
-    background: #f5f3ff;
-    color: #1a1a2e;
-  }
-  &.active {
-    background: #ede9fe;
-    color: #5b21b6;
-    font-weight: 600;
-  }
 }
 
 .snav-spacer {
@@ -679,7 +651,7 @@ async function confirmDelete() {
     flex-direction: row;
     overflow-x: auto;
     border-right: none;
-    border-bottom: 1px solid #f0f0f8;
+    border-bottom: 1px solid var(--nb-c-border);
     padding: 0.5rem 0;
     gap: 0.25rem;
 
@@ -698,8 +670,8 @@ async function confirmDelete() {
 }
 
 .section {
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--nb-c-layer-1);
+  border: 1px solid var(--nb-c-border);
   border-radius: 8px;
   padding: 1.25rem 1.5rem;
   margin-bottom: 1.25rem;
@@ -708,7 +680,7 @@ async function confirmDelete() {
     font-size: 0.9rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: #555;
+    color: var(--nb-c-text-muted);
   }
 }
 
@@ -728,7 +700,7 @@ async function confirmDelete() {
 .info-label {
   font-size: 0.78rem;
   font-weight: 600;
-  color: #888;
+  color: var(--nb-c-text-subtle);
   text-transform: uppercase;
   margin-right: 0.5rem;
 }
@@ -739,7 +711,7 @@ async function confirmDelete() {
   gap: 0.75rem;
   label {
     font-size: 0.85rem;
-    color: #555;
+    color: var(--nb-c-text-muted);
     font-weight: 600;
   }
 }
@@ -763,14 +735,14 @@ async function confirmDelete() {
   align-items: center;
   gap: 0.6rem;
   padding: 0.3rem 0;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--nb-c-border);
   &:last-child {
     border-bottom: none;
   }
 }
 .simple-label {
   font-size: 0.85rem;
-  color: #666;
+  color: var(--nb-c-text-subtle);
   flex: 1;
 }
 .member-email {
@@ -778,7 +750,7 @@ async function confirmDelete() {
   flex: 1;
 }
 .member-row-wrap {
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--nb-c-border);
   padding: 0.3rem 0;
   &:last-child {
     border-bottom: none;
@@ -786,19 +758,19 @@ async function confirmDelete() {
 }
 .assigned-locales-summary {
   font-size: 0.75rem;
-  color: #888;
+  color: var(--nb-c-text-subtle);
   margin: 0.1rem 0 0.3rem;
 }
 .locale-assignment-editor {
   margin: 0.5rem 0 0.75rem;
   padding: 0.75rem;
-  background: #f7f7f9;
-  border: 1px solid #e0e0e0;
+  background: var(--nb-c-layer-2);
+  border: 1px solid var(--nb-c-border);
   border-radius: 6px;
 }
 .locale-assignment-hint {
   font-size: 0.75rem;
-  color: #aaa;
+  color: var(--nb-c-text-subtle);
   margin-bottom: 0.5rem;
 }
 .locale-assignment-actions {
@@ -808,8 +780,8 @@ async function confirmDelete() {
 
 .ns-tag {
   font-size: 0.78rem;
-  background: #e0e7ff;
-  color: #3730a3;
+  background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
+  color: var(--nb-c-primary);
   padding: 0.15rem 0.5rem;
   border-radius: 999px;
   font-weight: 600;
@@ -821,12 +793,12 @@ async function confirmDelete() {
   padding: 0.1rem 0.4rem;
   border-radius: 999px;
   &.enabled {
-    background: #d5f5e3;
-    color: #1e8449;
+    background: var(--nb-c-success-surface);
+    color: var(--nb-c-on-success-surface);
   }
   &.disabled {
-    background: #f0f0f0;
-    color: #888;
+    background: var(--nb-c-neutral-surface);
+    color: var(--nb-c-on-neutral-surface);
   }
 }
 
@@ -861,28 +833,28 @@ async function confirmDelete() {
 
 .icon-btn {
   background: none;
-  border: 1px solid #ddd;
+  border: 1px solid var(--nb-c-border);
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.75rem;
   padding: 0.15rem 0.35rem;
   line-height: 1;
   &:hover {
-    background: #f0f0f0;
+    background: var(--nb-c-surface-hover);
   }
 }
 
 .btn-add {
   padding: 0.45rem 0.9rem;
-  background: #1a1a2e;
-  color: #fff;
+  background: var(--nb-c-secondary);
+  color: var(--nb-c-secondary-a11y);
   border: none;
   border-radius: 4px;
   font-size: 0.9rem;
   cursor: pointer;
   white-space: nowrap;
   &:hover:not(:disabled) {
-    background: #2a2a4e;
+    background: var(--nb-c-secondary-hover);
   }
   &:disabled {
     opacity: 0.6;
@@ -892,38 +864,38 @@ async function confirmDelete() {
 
 .btn-cancel {
   padding: 0.45rem 0.9rem;
-  background: #fff;
-  color: #555;
-  border: 1px solid #d0d0d0;
+  background: var(--nb-c-layer-1);
+  color: var(--nb-c-text-muted);
+  border: 1px solid var(--nb-c-border);
   border-radius: 4px;
   font-size: 0.9rem;
   cursor: pointer;
   &:hover {
-    background: #f0f0f0;
+    background: var(--nb-c-surface-hover);
   }
 }
 
 .field-error {
-  color: #c0392b;
+  color: var(--nb-c-status-error);
   font-size: 0.82rem;
   margin: 0.35rem 0 0;
 }
 .empty-note {
-  color: #888;
+  color: var(--nb-c-text-subtle);
   font-size: 0.9rem;
 }
 
 .danger-zone {
-  border: 1px solid #fca5a5;
+  border: 1px solid var(--nb-c-danger-surface-border);
   border-radius: 8px;
-  background: #fff8f8;
+  background: var(--nb-c-danger-surface);
   h3 {
-    color: #dc2626;
+    color: var(--nb-c-status-error);
   }
 }
 .danger-description {
   font-size: 0.88rem;
-  color: #6b7280;
+  color: var(--nb-c-text-subtle);
   margin: 0 0 0.85rem;
   line-height: 1.5;
 }
@@ -931,13 +903,13 @@ async function confirmDelete() {
 .delete-confirm-box {
   margin-top: 1rem;
   padding: 1rem;
-  background: #fff;
-  border: 1px solid #fca5a5;
+  background: var(--nb-c-layer-1);
+  border: 1px solid var(--nb-c-danger-surface-border);
   border-radius: 6px;
   p {
     margin: 0 0 0.6rem;
     font-size: 0.875rem;
-    color: #374151;
+    color: var(--nb-c-text-muted);
   }
 }
 .delete-confirm-input {

@@ -128,7 +128,7 @@ const activeLocales = computed(() => props.locales.filter((l) => props.translati
 <style scoped lang="scss">
 .translation-tester {
   margin-top: 1rem;
-  border: 1px solid var(--color-border, #e0e0e0);
+  border: 1px solid var(--nb-c-border);
   border-radius: 8px;
   overflow: hidden;
   font-size: 13px;
@@ -139,15 +139,15 @@ const activeLocales = computed(() => props.locales.filter((l) => props.translati
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: var(--color-surface-2, #f7f7f8);
-  border-bottom: 1px solid var(--color-border, #e0e0e0);
+  background: var(--nb-c-layer-2);
+  border-bottom: 1px solid var(--nb-c-border);
   font-weight: 600;
-  color: var(--color-text-secondary, #666);
+  color: var(--nb-c-text-subtle);
 }
 
 .tester-pill {
-  background: #e9e3ff;
-  color: #6e3fcf;
+  background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
+  color: var(--nb-c-primary);
   border-radius: 999px;
   padding: 1px 7px;
   font-size: 11px;
@@ -159,7 +159,7 @@ const activeLocales = computed(() => props.locales.filter((l) => props.translati
   display: flex;
   flex-direction: column;
   gap: 6px;
-  border-bottom: 1px solid var(--color-border, #e0e0e0);
+  border-bottom: 1px solid var(--nb-c-border);
 }
 
 .var-row {
@@ -171,11 +171,11 @@ const activeLocales = computed(() => props.locales.filter((l) => props.translati
 .var-label {
   width: 100px;
   flex-shrink: 0;
-  color: var(--color-text-secondary, #777);
+  color: var(--nb-c-text-subtle);
 
   code {
     font-size: 12px;
-    background: #f0f0f0;
+    background: var(--nb-c-surface-hover);
     padding: 1px 5px;
     border-radius: 3px;
   }
@@ -208,7 +208,7 @@ const activeLocales = computed(() => props.locales.filter((l) => props.translati
 }
 
 .result-text {
-  color: var(--color-text, #111);
+  color: var(--nb-c-text);
   word-break: break-word;
 }
 
@@ -222,7 +222,7 @@ const activeLocales = computed(() => props.locales.filter((l) => props.translati
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
-  color: #888;
+  color: var(--nb-c-text-subtle);
   width: 50px;
   flex-shrink: 0;
 }

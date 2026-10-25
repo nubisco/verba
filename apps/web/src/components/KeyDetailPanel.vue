@@ -6,7 +6,7 @@
   </Teleport>
 
   <div class="key-detail-panel" :class="{ compact }">
-    <div v-if="loading" class="skeleton-block" />
+    <NbSkeleton v-if="loading" variant="block" :height="300" radius="md" :label="t('common.loading')" />
     <template v-else-if="keyData">
       <div class="page-header">
         <template v-if="false"><!-- breadcrumb moved to topbar --></template>
@@ -929,7 +929,7 @@ function assignedUserLabel(t: Translation | undefined): string {
 
     code {
       font-size: 1.1rem;
-      background: #f0f0f0;
+      background: var(--nb-c-surface-hover);
       padding: 0.15rem 0.5rem;
       border-radius: 4px;
     }
@@ -944,7 +944,7 @@ function assignedUserLabel(t: Translation | undefined): string {
 
 .breadcrumb {
   font-size: 0.85rem;
-  color: #1a1a2e;
+  color: var(--nb-c-text);
   text-decoration: none;
   background: none;
   border: none;
@@ -958,8 +958,8 @@ function assignedUserLabel(t: Translation | undefined): string {
 
 .ns-badge {
   font-size: 0.78rem;
-  background: #e0e7ff;
-  color: #3730a3;
+  background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
+  color: var(--nb-c-primary);
   padding: 0.15rem 0.5rem;
   border-radius: 999px;
   font-weight: 600;
@@ -967,14 +967,14 @@ function assignedUserLabel(t: Translation | undefined): string {
 
 .description {
   font-size: 0.85rem;
-  color: #666;
+  color: var(--nb-c-text-subtle);
 }
 
 .translations-section,
 .tester-section,
 .comments-section {
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--nb-c-layer-1);
+  border: 1px solid var(--nb-c-border);
   border-radius: 8px;
   padding: 1.25rem 1.5rem;
   margin-bottom: 1.25rem;
@@ -984,7 +984,7 @@ function assignedUserLabel(t: Translation | undefined): string {
     font-size: 0.9rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: #555;
+    color: var(--nb-c-text-muted);
   }
 }
 
@@ -1003,7 +1003,7 @@ function assignedUserLabel(t: Translation | undefined): string {
 
 .locale-row {
   padding-bottom: 1.25rem;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--nb-c-border);
 
   &:last-child {
     border-bottom: none;
@@ -1035,27 +1035,27 @@ function assignedUserLabel(t: Translation | undefined): string {
 }
 
 .btn-start {
-  background: #2980b9;
-  color: #fff;
+  background: var(--nb-c-info);
+  color: var(--nb-c-info-a11y);
   &:hover {
-    background: #1a6fa8;
+    background: var(--nb-c-info-hover);
   }
 }
 
 .save-error {
-  color: #c0392b;
+  color: var(--nb-c-status-error);
   font-size: 0.8rem;
 }
 
 .autosave-indicator {
   font-size: 0.78rem;
-  color: #888;
+  color: var(--nb-c-text-subtle);
   font-style: italic;
 }
 
 .lock-notice {
   font-size: 0.78rem;
-  color: #888;
+  color: var(--nb-c-text-subtle);
   margin-top: 0.25rem;
   display: flex;
   align-items: center;
@@ -1064,11 +1064,11 @@ function assignedUserLabel(t: Translation | undefined): string {
 
 .translation-hint {
   font-size: 0.75rem;
-  color: #999;
+  color: var(--nb-c-text-subtle);
   margin-top: 0.3rem;
 
   code {
-    background: #f0f0f0;
+    background: var(--nb-c-surface-hover);
     padding: 0.05rem 0.3rem;
     border-radius: 3px;
     font-size: 0.85em;
@@ -1078,9 +1078,9 @@ function assignedUserLabel(t: Translation | undefined): string {
 .translation-preview {
   margin-top: 0.35rem;
   padding: 0.3rem 0.5rem;
-  background: #f7f7f9;
+  background: var(--nb-c-layer-2);
   border-radius: 4px;
-  border: 1px solid #e8e8e8;
+  border: 1px solid var(--nb-c-border);
   font-size: 0.875rem;
 }
 
@@ -1092,7 +1092,7 @@ function assignedUserLabel(t: Translation | undefined): string {
 }
 
 .comment {
-  background: #f7f7f9;
+  background: var(--nb-c-layer-2);
   border-radius: 6px;
   padding: 0.6rem 0.85rem;
 
@@ -1105,7 +1105,7 @@ function assignedUserLabel(t: Translation | undefined): string {
 
   .comment-meta {
     font-size: 0.75rem;
-    color: #999;
+    color: var(--nb-c-text-subtle);
     display: block;
   }
 
@@ -1118,13 +1118,13 @@ function assignedUserLabel(t: Translation | undefined): string {
 .btn-delete-comment {
   background: none;
   border: none;
-  color: #aaa;
+  color: var(--nb-c-text-subtle);
   font-size: 0.9rem;
   cursor: pointer;
   line-height: 1;
   padding: 0 0.15rem;
   &:hover {
-    color: #e74c3c;
+    color: var(--nb-c-status-error);
   }
 }
 
@@ -1139,10 +1139,10 @@ function assignedUserLabel(t: Translation | undefined): string {
   bottom: calc(100% + 4px);
   left: 0;
   right: 0;
-  background: #fff;
-  border: 1px solid #d0d0d0;
+  background: var(--nb-c-layer-3);
+  border: 1px solid var(--nb-c-border);
   border-radius: 6px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--nb-c-black) 12%, transparent);
   z-index: 50;
   max-height: 200px;
   overflow-y: auto;
@@ -1158,46 +1158,29 @@ function assignedUserLabel(t: Translation | undefined): string {
 
   &:hover,
   &.active {
-    background: #f0eeff;
+    background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
   }
 }
 
 .mention-name {
   font-weight: 600;
-  color: #1a1a2e;
+  color: var(--nb-c-text);
 }
 .mention-email {
-  color: #999;
+  color: var(--nb-c-text-subtle);
   font-size: 0.75rem;
 }
 
 .empty-note {
-  color: #888;
+  color: var(--nb-c-text-subtle);
   font-size: 0.875rem;
-}
-
-.skeleton-block {
-  height: 300px;
-  background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.4s infinite;
-  border-radius: 8px;
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
 }
 
 .section-tabs {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 0.75rem;
-  border-bottom: 2px solid #e0e0e0;
+  border-bottom: 2px solid var(--nb-c-border);
 }
 .tab-btn {
   background: none;
@@ -1205,23 +1188,23 @@ function assignedUserLabel(t: Translation | undefined): string {
   padding: 0.4rem 0.75rem;
   cursor: pointer;
   font-size: 0.875rem;
-  color: #666;
+  color: var(--nb-c-text-subtle);
   border-bottom: 2px solid transparent;
   margin-bottom: -2px;
   &.active {
-    color: #4f46e5;
-    border-bottom-color: #4f46e5;
+    color: var(--nb-c-primary);
+    border-bottom-color: var(--nb-c-primary);
     font-weight: 600;
   }
   &:hover:not(.active) {
-    color: #333;
+    color: var(--nb-c-text);
   }
 }
 .comment-reply {
   margin-left: 1.5rem;
   margin-top: 0.4rem;
   padding: 0.4rem 0.6rem;
-  background: #f5f5f5;
+  background: var(--nb-c-layer-2);
   border-radius: 4px;
   font-size: 0.8rem;
   p {
@@ -1232,13 +1215,13 @@ function assignedUserLabel(t: Translation | undefined): string {
   font-weight: 600;
 }
 .comment-time {
-  color: #999;
+  color: var(--nb-c-text-subtle);
   font-size: 0.75rem;
 }
 .btn-reply {
   background: none;
   border: none;
-  color: #4f46e5;
+  color: var(--nb-c-primary);
   font-size: 0.75rem;
   cursor: pointer;
   padding: 0.1rem 0.3rem;
@@ -1259,7 +1242,7 @@ function assignedUserLabel(t: Translation | undefined): string {
   padding: 0.25rem 0;
 }
 .history-empty {
-  color: #999;
+  color: var(--nb-c-text-subtle);
   font-size: 0.85rem;
   text-align: center;
   padding: 1rem 0;
@@ -1276,18 +1259,18 @@ function assignedUserLabel(t: Translation | undefined): string {
   align-items: baseline;
   font-size: 0.8rem;
   padding: 0.35rem 0;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--nb-c-border);
 }
 .history-actor {
   font-weight: 600;
-  color: #1a1a2e;
+  color: var(--nb-c-text);
   white-space: nowrap;
 }
 .history-action {
-  color: #444;
+  color: var(--nb-c-text-muted);
 }
 .history-time {
-  color: #999;
+  color: var(--nb-c-text-subtle);
   white-space: nowrap;
   font-size: 0.75rem;
 }
@@ -1299,16 +1282,16 @@ function assignedUserLabel(t: Translation | undefined): string {
 }
 .toggle-btn {
   padding: 0.2rem 0.5rem;
-  border: 1px solid #d0d0d0;
-  background: #f5f5f5;
+  border: 1px solid var(--nb-c-border);
+  background: var(--nb-c-surface-hover);
   border-radius: 3px;
   cursor: pointer;
   font-size: 1rem;
-  color: #666;
+  color: var(--nb-c-text-subtle);
   &.active {
-    border-color: #4f46e5;
-    background: #ede9fe;
-    color: #4f46e5;
+    border-color: var(--nb-c-primary);
+    background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
+    color: var(--nb-c-primary);
   }
 }
 .locale-tabs {
@@ -1318,16 +1301,16 @@ function assignedUserLabel(t: Translation | undefined): string {
 }
 .locale-tab {
   padding: 0.3rem 0.75rem;
-  border: 1px solid #e0e0e0;
-  background: #f5f5f5;
+  border: 1px solid var(--nb-c-border);
+  background: var(--nb-c-surface-hover);
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.8rem;
-  color: #555;
+  color: var(--nb-c-text-muted);
   &.active {
-    border-color: #4f46e5;
-    background: #ede9fe;
-    color: #4f46e5;
+    border-color: var(--nb-c-primary);
+    background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
+    color: var(--nb-c-primary);
     font-weight: 600;
   }
 }
@@ -1336,10 +1319,10 @@ function assignedUserLabel(t: Translation | undefined): string {
 }
 .read-only-translation {
   font-size: 0.875rem;
-  color: #555;
+  color: var(--nb-c-text-muted);
   padding: 0.4rem 0.6rem;
-  background: #f8f8f8;
-  border: 1px solid #e8e8e8;
+  background: var(--nb-c-layer-2);
+  border: 1px solid var(--nb-c-border);
   border-radius: 4px;
   min-height: 2.5rem;
   white-space: pre-wrap;
@@ -1348,14 +1331,14 @@ function assignedUserLabel(t: Translation | undefined): string {
 /* AI suggestion styles */
 .btn-ai {
   padding: 0.35rem 0.75rem;
-  background: #f5f0ff;
-  color: #5b21b6;
-  border: 1px solid #c4b5fd;
+  background: color-mix(in srgb, var(--nb-c-primary) 6%, transparent);
+  color: var(--nb-c-primary);
+  border: 1px solid color-mix(in srgb, var(--nb-c-primary) 35%, transparent);
   border-radius: 4px;
   font-size: 0.8rem;
   cursor: pointer;
   &:hover:not(:disabled) {
-    background: #ede9fe;
+    background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
   }
   &:disabled {
     opacity: 0.5;
@@ -1368,8 +1351,8 @@ function assignedUserLabel(t: Translation | undefined): string {
   align-items: flex-start;
   gap: 0.6rem;
   padding: 0.6rem 0.75rem;
-  background: #f5f0ff;
-  border: 1px solid #c4b5fd;
+  background: color-mix(in srgb, var(--nb-c-primary) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--nb-c-primary) 35%, transparent);
   border-radius: 6px;
   margin-top: 0.4rem;
   flex-wrap: wrap;
@@ -1378,20 +1361,20 @@ function assignedUserLabel(t: Translation | undefined): string {
 .ai-suggestion-label {
   font-size: 0.75rem;
   font-weight: 700;
-  color: #5b21b6;
+  color: var(--nb-c-primary);
   flex-shrink: 0;
 }
 
 .ai-suggestion-text {
   font-size: 0.875rem;
-  color: #1a1a2e;
+  color: var(--nb-c-text);
   flex: 1;
   min-width: 0;
 }
 
 .ai-error {
   font-size: 0.78rem;
-  color: #c0392b;
+  color: var(--nb-c-status-error);
   margin-top: 0.25rem;
 }
 </style>
@@ -1400,8 +1383,8 @@ function assignedUserLabel(t: Translation | undefined): string {
 /* Global: mention pill rendered via v-html */
 .mention {
   display: inline-block;
-  background: #e0e7ff;
-  color: #3730a3;
+  background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
+  color: var(--nb-c-primary);
   border-radius: 999px;
   padding: 0.05rem 0.45rem;
   font-size: 0.82em;

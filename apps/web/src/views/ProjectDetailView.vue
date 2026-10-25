@@ -78,7 +78,7 @@ watch(
   }
   .slug {
     font-size: 0.8rem;
-    color: #888;
+    color: var(--nb-c-text-subtle);
   }
 }
 
@@ -96,7 +96,7 @@ watch(
 .tab-bar {
   display: flex;
   gap: 0;
-  border-bottom: 2px solid #e0e0e0;
+  border-bottom: 2px solid var(--nb-c-border);
   margin-bottom: 1.5rem;
 }
 
@@ -106,7 +106,7 @@ watch(
   background: none;
   font-size: 0.88rem;
   font-weight: 500;
-  color: #666;
+  color: var(--nb-c-text-subtle);
   cursor: pointer;
   border-bottom: 2px solid transparent;
   margin-bottom: -2px;
@@ -117,19 +117,24 @@ watch(
   text-decoration: none;
 
   &:hover {
-    color: #1a1a2e;
+    color: var(--nb-c-text);
   }
 
   &.active {
-    color: #5b21b6;
-    border-bottom-color: #5b21b6;
+    color: var(--nb-c-primary);
+    border-bottom-color: var(--nb-c-primary);
     font-weight: 600;
   }
 }
 
 .skeleton-header {
   height: 120px;
-  background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
+  background: linear-gradient(
+    90deg,
+    var(--nb-c-surface-hover) 25%,
+    var(--nb-c-layer-2) 50%,
+    var(--nb-c-surface-hover) 75%
+  );
   background-size: 200% 100%;
   animation: shimmer 1.4s infinite;
   border-radius: 8px;

@@ -63,21 +63,21 @@ function parse(text: string): Segment[] {
 }
 
 .chip-placeholder {
-  background: #dbeafe;
-  color: #1d4ed8;
-  border: 1px solid #93c5fd;
+  background: var(--nb-c-info-surface);
+  color: var(--nb-c-on-info-surface);
+  border: 1px solid var(--nb-c-info-surface-border);
 }
 
 .chip-keyref {
-  background: #ede9fe;
-  color: #6d28d9;
-  border: 1px solid #c4b5fd;
+  background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
+  color: var(--nb-c-primary);
+  border: 1px solid color-mix(in srgb, var(--nb-c-primary) 35%, transparent);
 }
 
 .keyref-resolved {
-  background: #d1fae5;
-  color: #065f46;
-  border: 1px solid #6ee7b7;
+  background: var(--nb-c-success-surface);
+  color: var(--nb-c-on-success-surface);
+  border: 1px solid var(--nb-c-success-surface-border);
   border-radius: 4px;
   padding: 0 4px;
   font-size: 0.85em;
@@ -86,9 +86,9 @@ function parse(text: string): Segment[] {
 }
 
 .keyref-warning {
-  background: #fef3c7;
-  color: #92400e;
-  border: 1px solid #fcd34d;
+  background: var(--nb-c-warning-surface);
+  color: var(--nb-c-on-warning-surface);
+  border: 1px solid var(--nb-c-warning-surface-border);
   border-radius: 4px;
   padding: 0 4px;
   font-size: 0.85em;
@@ -97,14 +97,14 @@ function parse(text: string): Segment[] {
 }
 
 .keyref-error {
-  background: #fee2e2;
-  color: #991b1b;
-  border: 1px solid #fca5a5;
+  background: var(--nb-c-danger-surface);
+  color: var(--nb-c-on-danger-surface);
+  border: 1px solid var(--nb-c-danger-surface-border);
   border-radius: 4px;
   padding: 0 4px;
   font-size: 0.85em;
   font-family: var(--nb-font-family-mono);
   cursor: help;
-  text-decoration: underline wavy #ef4444;
+  text-decoration: underline wavy var(--nb-c-status-error);
 }
 </style>

@@ -9,7 +9,7 @@
     <p class="not-found-code">404</p>
     <h1 class="not-found-title">Page not found</h1>
     <p class="not-found-message">The page you're looking for doesn't exist or has been moved.</p>
-    <RouterLink to="/dashboard" class="not-found-back">Go to dashboard</RouterLink>
+    <NbButton variant="secondary" to="/dashboard">Go to dashboard</NbButton>
   </div>
 </template>
 
@@ -32,7 +32,7 @@ defineOptions({ name: 'NotFoundView' })
 .not-found-code {
   font-size: 5rem;
   font-weight: 800;
-  color: #e8e8f0;
+  color: var(--nb-c-surface-hover);
   line-height: 1;
   margin: 0;
 }
@@ -40,28 +40,13 @@ defineOptions({ name: 'NotFoundView' })
 .not-found-title {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #1a1a2e;
+  color: var(--nb-c-text);
   margin: 0;
 }
 
 .not-found-message {
   font-size: 0.95rem;
-  color: #6b7280;
+  color: var(--nb-c-text-subtle);
   margin: 0.25rem 0 1rem;
-}
-
-.not-found-back {
-  display: inline-block;
-  padding: 0.5rem 1.25rem;
-  background: #1a1a2e;
-  color: #fff;
-  border-radius: 6px;
-  text-decoration: none;
-  font-size: 0.9rem;
-  font-weight: 500;
-
-  &:hover {
-    background: #2a2a4e;
-  }
 }
 </style>

@@ -125,9 +125,9 @@
                 <code class="task-key">{{ task.key.name }}</code>
                 <div class="task-meta">
                   <LocaleBadge :code="task.locale.code" />
-                  <span class="status-badge" :style="{ background: STATUS_COLORS[task.status] }">
+                  <NbBadge size="sm" :variant="STATUS_VARIANTS[task.status] ?? 'grey'">
                     {{ STATUS_LABELS[task.status as keyof typeof STATUS_LABELS] }}
-                  </span>
+                  </NbBadge>
                 </div>
               </RouterLink>
             </div>
@@ -229,9 +229,9 @@ const STATUS_LABELS = computed(() => ({
   IN_PROGRESS: t('common.status.IN_PROGRESS'),
   SUBMITTED: t('common.status.SUBMITTED'),
 }))
-const STATUS_COLORS: Record<string, string> = {
-  IN_PROGRESS: '#3b82f6',
-  SUBMITTED: '#f59e0b',
+const STATUS_VARIANTS: Record<string, 'blue' | 'orange'> = {
+  IN_PROGRESS: 'blue',
+  SUBMITTED: 'orange',
 }
 
 const tasksByProject = computed(() => {
@@ -307,7 +307,7 @@ async function createProject() {
 }
 
 .loading {
-  color: #888;
+  color: var(--nb-c-text-subtle);
   padding: 2rem 0;
 }
 
@@ -325,15 +325,15 @@ async function createProject() {
 .section-title {
   font-size: 1rem;
   font-weight: 700;
-  color: #333;
+  color: var(--nb-c-text);
   margin: 0;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .inline-form {
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--nb-c-layer-1);
+  border: 1px solid var(--nb-c-border);
   border-radius: 8px;
   padding: 1.25rem;
   margin-bottom: 1rem;
@@ -346,24 +346,24 @@ async function createProject() {
       font-size: 0.78rem;
       font-weight: 600;
       margin-bottom: 0.3rem;
-      color: #555;
+      color: var(--nb-c-text-muted);
     }
   }
 }
 
 .error {
-  color: #c0392b;
+  color: var(--nb-c-status-error);
   font-size: 0.85rem;
   margin: 0 0 0.75rem;
 }
 
 .empty-state {
-  background: #fff;
-  border: 1px dashed #d0d0d0;
+  background: var(--nb-c-layer-1);
+  border: 1px dashed var(--nb-c-border);
   border-radius: 8px;
   padding: 2rem;
   text-align: center;
-  color: #888;
+  color: var(--nb-c-text-subtle);
   font-size: 0.9rem;
   p {
     margin: 0;
@@ -377,8 +377,8 @@ async function createProject() {
 }
 
 .project-card {
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--nb-c-layer-1);
+  border: 1px solid var(--nb-c-border);
   border-radius: 8px;
   padding: 1rem 1.25rem;
   text-decoration: none;
@@ -388,15 +388,15 @@ async function createProject() {
   align-items: center;
   gap: 0.85rem;
   &:hover {
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.09);
+    box-shadow: 0 2px 12px color-mix(in srgb, var(--nb-c-black) 9%, transparent);
   }
 
   &__avatar {
     width: 40px;
     height: 40px;
     border-radius: 8px;
-    background: #ede9fe;
-    color: #4f46e5;
+    background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
+    color: var(--nb-c-primary);
     font-size: 0.95rem;
     font-weight: 700;
     display: flex;
@@ -416,7 +416,7 @@ async function createProject() {
   }
   .slug {
     font-size: 0.75rem;
-    color: #888;
+    color: var(--nb-c-text-subtle);
   }
 }
 
@@ -427,8 +427,8 @@ async function createProject() {
 }
 
 .task-group {
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--nb-c-layer-1);
+  border: 1px solid var(--nb-c-border);
   border-radius: 8px;
   padding: 1rem 1.25rem;
 }
@@ -437,7 +437,7 @@ async function createProject() {
   display: block;
   font-size: 0.78rem;
   font-weight: 700;
-  color: #5b21b6;
+  color: var(--nb-c-primary);
   text-decoration: none;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -458,20 +458,20 @@ async function createProject() {
   align-items: center;
   justify-content: space-between;
   padding: 0.5rem 0.75rem;
-  background: #f7f7f9;
-  border: 1px solid #e8e8e8;
+  background: var(--nb-c-layer-2);
+  border: 1px solid var(--nb-c-border);
   border-radius: 6px;
   text-decoration: none;
   color: inherit;
   transition: box-shadow 0.15s;
   &:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--nb-c-black) 8%, transparent);
   }
 }
 
 .task-key {
   font-size: 0.82rem;
-  color: #1a1a2e;
+  color: var(--nb-c-text);
   word-break: break-all;
 }
 
@@ -481,13 +481,5 @@ async function createProject() {
   gap: 0.4rem;
   flex-shrink: 0;
   margin-left: 0.75rem;
-}
-
-.status-badge {
-  font-size: 0.7rem;
-  color: #fff;
-  padding: 0.1rem 0.45rem;
-  border-radius: 999px;
-  font-weight: 600;
 }
 </style>

@@ -36,7 +36,7 @@ onMounted(async () => {
   }
 
   .tagline {
-    color: #666;
+    color: var(--nb-c-text-subtle);
     margin-bottom: 1.5rem;
   }
 
@@ -47,16 +47,16 @@ onMounted(async () => {
     font-size: 0.9rem;
 
     &.checking {
-      background: #f0f0f0;
-      color: #555;
+      background: var(--nb-c-neutral-surface);
+      color: var(--nb-c-on-neutral-surface);
     }
     &.ok {
-      background: #d4edda;
-      color: #155724;
+      background: var(--nb-c-success-surface);
+      color: var(--nb-c-on-success-surface);
     }
     &.error {
-      background: #f8d7da;
-      color: #721c24;
+      background: var(--nb-c-danger-surface);
+      color: var(--nb-c-on-danger-surface);
     }
   }
 }

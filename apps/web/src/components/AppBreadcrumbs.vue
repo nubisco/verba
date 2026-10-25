@@ -64,9 +64,9 @@ const { crumbs } = useBreadcrumbs()
 .bc-key {
   font-family: var(--nb-font-family-mono);
   font-size: 0.8em;
-  background: rgba(124, 58, 237, 0.08);
-  color: #7c3aed;
-  border: 1px solid rgba(124, 58, 237, 0.2);
+  background: color-mix(in srgb, var(--nb-c-primary) 8%, transparent);
+  color: var(--nb-c-primary);
+  border: 1px solid color-mix(in srgb, var(--nb-c-primary) 20%, transparent);
   border-radius: 4px;
   padding: 1px 6px;
   white-space: nowrap;

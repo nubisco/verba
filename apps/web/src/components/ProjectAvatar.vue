@@ -31,7 +31,7 @@ const displayText = computed(() => {
   align-items: center;
   justify-content: center;
   border-radius: 6px;
-  background: rgba(124, 58, 237, 0.15);
+  background: color-mix(in srgb, var(--nb-c-primary) 15%, transparent);
   overflow: hidden;
   flex-shrink: 0;
 
@@ -55,7 +55,7 @@ const displayText = computed(() => {
   &__text {
     font-family: var(--nb-font-family-sans, sans-serif);
     font-weight: 700;
-    color: rgba(167, 139, 250, 1);
+    color: var(--nb-c-primary);
     letter-spacing: 0.03em;
     line-height: 1;
 

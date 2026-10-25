@@ -39,7 +39,7 @@
           @input="onSearchInput(($event.target as HTMLInputElement).value)"
         >
           <template #leading>
-            <NbIcon name="magnifying-glass" :size="16" color="#6b7280" style="margin-left: 12px" />
+            <NbIcon name="magnifying-glass" :size="16" color="var(--nb-c-text-subtle)" style="margin-left: 12px" />
           </template>
         </NbTextInput>
         <NbButton variant="primary" @click="showCreate = !showCreate">
@@ -100,7 +100,14 @@
     <!-- Search moved to topbar -->
 
     <div v-if="loading" class="skeleton-list">
-      <div v-for="n in 8" :key="n" class="skeleton-row" />
+      <NbSkeleton
+        v-for="n in 8"
+        :key="n"
+        variant="block"
+        :height="44"
+        radius="xs"
+        :label="n === 1 ? 'Loading keys' : undefined"
+      />
     </div>
 
     <div v-else-if="keys.length === 0" class="empty-state">
@@ -353,27 +360,27 @@ onUnmounted(() => closeInspector())
   display: flex;
   justify-content: flex-end;
   padding: 0.4rem 0.6rem;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--nb-c-border);
   flex-shrink: 0;
 }
 
 .inspector-close-btn {
   background: none;
-  border: 1px solid #d0d0d0;
+  border: 1px solid var(--nb-c-border);
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.85rem;
   padding: 0.2rem 0.45rem;
-  color: #555;
+  color: var(--nb-c-text-muted);
   line-height: 1;
   &:hover {
-    background: #f0f0f0;
+    background: var(--nb-c-surface-hover);
   }
 }
 
 .card {
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--nb-c-layer-1);
+  border: 1px solid var(--nb-c-border);
   border-radius: 8px;
   padding: 1.25rem 1.5rem;
   margin-bottom: 1.25rem;
@@ -382,7 +389,7 @@ onUnmounted(() => closeInspector())
     font-size: 0.9rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: #555;
+    color: var(--nb-c-text-muted);
   }
 }
 
@@ -401,7 +408,7 @@ onUnmounted(() => closeInspector())
     label {
       font-size: 0.8rem;
       font-weight: 600;
-      color: #555;
+      color: var(--nb-c-text-muted);
     }
   }
   .form-actions {
@@ -412,15 +419,15 @@ onUnmounted(() => closeInspector())
 }
 
 .field-error {
-  color: #c0392b;
+  color: var(--nb-c-status-error);
   font-size: 0.82rem;
 }
 .warn-note {
   font-size: 0.82rem;
-  color: #b96a00;
+  color: var(--nb-c-status-warning);
   margin-top: 0.75rem;
   a {
-    color: #1a1a2e;
+    color: var(--nb-c-text);
   }
 }
 
@@ -435,28 +442,28 @@ onUnmounted(() => closeInspector())
 .ns-tab {
   padding: 0.3rem 0.85rem;
   border-radius: 999px;
-  border: 1px solid #d0d0d0;
-  background: #fff;
+  border: 1px solid var(--nb-c-border);
+  background: var(--nb-c-layer-1);
   font-size: 0.8rem;
   font-weight: 500;
   cursor: pointer;
-  color: #555;
+  color: var(--nb-c-text-muted);
   transition: all 0.12s;
   &:hover {
-    background: #f0f0f5;
-    border-color: #aaa;
+    background: var(--nb-c-surface-hover);
+    border-color: var(--nb-c-layer-border-3);
   }
   &.active {
-    background: #1a1a2e;
-    color: #fff;
-    border-color: #1a1a2e;
+    background: var(--nb-c-text);
+    color: var(--nb-c-text-a11y);
+    border-color: var(--nb-c-text);
   }
 }
 
 .ns-tag {
   font-size: 0.78rem;
-  background: #e0e7ff;
-  color: #3730a3;
+  background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
+  color: var(--nb-c-primary);
   padding: 0.15rem 0.5rem;
   border-radius: 999px;
   font-weight: 600;
@@ -465,9 +472,9 @@ onUnmounted(() => closeInspector())
 /* Table container with sticky header */
 .table-container {
   overflow-y: auto;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--nb-c-border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--nb-c-layer-1);
 }
 
 .keys-table {
@@ -481,30 +488,30 @@ onUnmounted(() => closeInspector())
     font-size: 0.875rem;
   }
   th {
-    background: #f7f7f9;
+    background: var(--nb-c-layer-2);
     font-weight: 600;
-    color: #555;
+    color: var(--nb-c-text-muted);
     text-transform: uppercase;
     font-size: 0.72rem;
     letter-spacing: 0.05em;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid var(--nb-c-border);
     position: sticky;
     top: 0;
     z-index: 2;
   }
   tr + tr td {
-    border-top: 1px solid #f0f0f0;
+    border-top: 1px solid var(--nb-c-border);
   }
 
   .key-row {
     cursor: pointer;
     transition: background 0.12s;
     &:hover td {
-      background: #f5f5ff;
+      background: color-mix(in srgb, var(--nb-c-primary) 6%, transparent);
     }
     &.selected td {
-      background: #ede9fe;
-      border-left: 3px solid #5b21b6;
+      background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
+      border-left: 3px solid var(--nb-c-primary);
     }
   }
 }
@@ -516,14 +523,14 @@ onUnmounted(() => closeInspector())
     display: block;
     font-family: inherit;
     font-size: 0.78rem;
-    color: #888;
+    color: var(--nb-c-text-subtle);
     margin-top: 0.15rem;
     font-style: italic;
   }
 }
 
 .link {
-  color: #1a1a2e;
+  color: var(--nb-c-text);
   font-size: 0.85rem;
   text-decoration: none;
   font-weight: 500;
@@ -540,12 +547,12 @@ onUnmounted(() => closeInspector())
   font-size: 0.875rem;
   button {
     padding: 0.4rem 0.85rem;
-    border: 1px solid #d0d0d0;
+    border: 1px solid var(--nb-c-border);
     border-radius: 4px;
-    background: #fff;
+    background: var(--nb-c-layer-1);
     cursor: pointer;
     &:hover:not(:disabled) {
-      background: #f0f0f0;
+      background: var(--nb-c-surface-hover);
     }
     &:disabled {
       opacity: 0.4;
@@ -553,7 +560,7 @@ onUnmounted(() => closeInspector())
     }
   }
   .page-info {
-    color: #666;
+    color: var(--nb-c-text-subtle);
   }
 }
 
@@ -562,28 +569,12 @@ onUnmounted(() => closeInspector())
   flex-direction: column;
   gap: 0.5rem;
 }
-.skeleton-row {
-  height: 44px;
-  background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.4s infinite;
-  border-radius: 4px;
-}
-@keyframes shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
-}
-
 .empty-state {
   padding: 2.5rem;
   text-align: center;
-  color: #888;
-  background: #fff;
+  color: var(--nb-c-text-subtle);
+  background: var(--nb-c-layer-1);
   border-radius: 8px;
-  border: 1px dashed #d0d0d0;
+  border: 1px dashed var(--nb-c-border);
 }
 </style>

@@ -28,7 +28,7 @@ body {
     BlinkMacSystemFont,
     'Segoe UI',
     sans-serif;
-  color: #1a1a1a;
+  color: var(--nb-c-text);
 }
 
 // ─── page-topbar: shared topbar row injected by views via Teleport ────────────
@@ -41,28 +41,28 @@ body {
     font-size: 0.875rem;
 
     a {
-      color: #6b7280;
+      color: var(--nb-c-text-subtle);
       text-decoration: none;
       font-weight: 500;
 
       &:hover {
-        color: #1a1a2e;
+        color: var(--nb-c-text);
       }
     }
 
     .sep {
-      color: #d1d5db;
+      color: var(--nb-c-border);
     }
 
     .current {
       font-weight: 600;
-      color: #1a1a2e;
+      color: var(--nb-c-text);
     }
   }
 
   .topbar-meta {
     font-size: 0.75rem;
-    color: #9ca3af;
+    color: var(--nb-c-text-subtle);
     white-space: nowrap;
   }
 
@@ -104,13 +104,13 @@ body {
     margin: 0 0 0.15rem;
     font-size: 1.3rem;
     font-weight: 700;
-    color: #1a1a2e;
+    color: var(--nb-c-text);
     line-height: 1.2;
   }
 
   .page-header-meta {
     font-size: 0.78rem;
-    color: #9ca3af;
+    color: var(--nb-c-text-subtle);
   }
 
   .page-header-actions {
@@ -132,7 +132,7 @@ table {
     position: sticky;
     top: 0;
     z-index: 1;
-    background: #fff;
+    background: var(--nb-c-layer-1);
   }
 
   th,

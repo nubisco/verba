@@ -34,7 +34,7 @@ withDefaults(
   font-family: var(--nb-font-family-mono);
   font-size: 0.8rem;
   font-weight: 600;
-  color: #4f46e5;
+  color: var(--nb-c-primary);
   white-space: nowrap;
 }
 

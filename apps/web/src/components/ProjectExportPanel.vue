@@ -147,8 +147,8 @@ async function doExport() {
 }
 
 .section {
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--nb-c-layer-1);
+  border: 1px solid var(--nb-c-border);
   border-radius: 8px;
   padding: 1.25rem 1.5rem;
   margin-bottom: 1.25rem;
@@ -157,7 +157,7 @@ async function doExport() {
     font-size: 0.95rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: #555;
+    color: var(--nb-c-text-muted);
   }
 }
 
@@ -181,7 +181,7 @@ async function doExport() {
   margin-bottom: 0.75rem;
   label {
     font-size: 0.85rem;
-    color: #555;
+    color: var(--nb-c-text-muted);
     font-weight: 600;
   }
 }
@@ -192,7 +192,7 @@ async function doExport() {
 }
 
 .error {
-  color: #e74c3c;
+  color: var(--nb-c-status-error);
   margin: 0.5rem 0;
   font-size: 0.9rem;
 }
@@ -210,7 +210,7 @@ async function doExport() {
   width: 100%;
   padding-left: 1.4rem;
   font-size: 0.78rem;
-  color: #888;
+  color: var(--nb-c-text-subtle);
   font-weight: 400;
 }
 </style>

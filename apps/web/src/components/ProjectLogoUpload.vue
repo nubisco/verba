@@ -135,7 +135,7 @@ function resizeToDataUrl(blob: Blob, size: number): Promise<string> {
   height: 56px;
   border-radius: 8px;
   border: none;
-  background: rgba(124, 58, 237, 0.15);
+  background: color-mix(in srgb, var(--nb-c-primary) 15%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -158,7 +158,7 @@ function resizeToDataUrl(blob: Blob, size: number): Promise<string> {
   font-family: var(--nb-font-family-sans, sans-serif);
   font-size: 20px;
   font-weight: 700;
-  color: rgba(167, 139, 250, 1);
+  color: var(--nb-c-primary);
   letter-spacing: 0.03em;
   line-height: 1;
   user-select: none;
@@ -173,11 +173,11 @@ function resizeToDataUrl(blob: Blob, size: number): Promise<string> {
 .project-logo-upload__overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+  background: var(--nb-c-scrim-strong);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--nb-c-white);
   opacity: 0;
   transition: opacity 0.15s;
 }

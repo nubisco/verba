@@ -254,8 +254,8 @@ const platformEnabled = computed(() => instanceConfig.auth.platformEnabled)
 }
 
 .card {
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--nb-c-layer-1);
+  border: 1px solid var(--nb-c-border);
   border-radius: 8px;
   padding: 1.5rem;
   margin-bottom: 1.25rem;
@@ -264,23 +264,23 @@ const platformEnabled = computed(() => instanceConfig.auth.platformEnabled)
     font-size: 0.85rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: #555;
+    color: var(--nb-c-text-muted);
   }
 }
 
 .section-divider {
   font-size: 0.8rem;
   font-weight: 600;
-  color: #888;
+  color: var(--nb-c-text-subtle);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   margin: 1.25rem 0 0.25rem;
   padding-top: 1.25rem;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--nb-c-border);
 }
 .section-hint {
   font-size: 0.8rem;
-  color: #aaa;
+  color: var(--nb-c-text-subtle);
   margin: 0 0 0.75rem;
 }
 
@@ -292,7 +292,7 @@ const platformEnabled = computed(() => instanceConfig.auth.platformEnabled)
   label {
     font-size: 0.8rem;
     font-weight: 600;
-    color: #555;
+    color: var(--nb-c-text-muted);
   }
 }
 
@@ -302,14 +302,14 @@ const platformEnabled = computed(() => instanceConfig.auth.platformEnabled)
   font-size: 0.85rem;
   margin-bottom: 0.75rem;
   &.alert-error {
-    background: #fdecea;
-    color: #c0392b;
-    border: 1px solid #f5c6c6;
+    background: var(--nb-c-danger-surface);
+    color: var(--nb-c-on-danger-surface);
+    border: 1px solid var(--nb-c-danger-surface-border);
   }
   &.alert-success {
-    background: #e8f8f0;
-    color: #1a7a42;
-    border: 1px solid #b3e6cc;
+    background: var(--nb-c-success-surface);
+    color: var(--nb-c-on-success-surface);
+    border: 1px solid var(--nb-c-success-surface-border);
   }
 }
 
@@ -327,7 +327,7 @@ const platformEnabled = computed(() => instanceConfig.auth.platformEnabled)
   dt {
     font-size: 0.8rem;
     font-weight: 600;
-    color: #888;
+    color: var(--nb-c-text-subtle);
     align-self: center;
   }
   dd {
@@ -337,16 +337,16 @@ const platformEnabled = computed(() => instanceConfig.auth.platformEnabled)
 }
 
 .danger-card {
-  border-color: #f5c6c6;
+  border-color: var(--nb-c-danger-surface-border);
   h3 {
-    color: #c0392b;
+    color: var(--nb-c-status-error);
   }
 }
 
 .open-mode-toggle {
   display: flex;
   gap: 0;
-  border: 1px solid #d0d0d0;
+  border: 1px solid var(--nb-c-border);
   border-radius: 5px;
   overflow: hidden;
   width: fit-content;
@@ -355,19 +355,19 @@ const platformEnabled = computed(() => instanceConfig.auth.platformEnabled)
 .mode-btn {
   padding: 0.4rem 1rem;
   border: none;
-  background: #f5f5f5;
-  color: #555;
+  background: var(--nb-c-layer-2);
+  color: var(--nb-c-text-muted);
   cursor: pointer;
   font-size: 0.85rem;
   &:not(:last-child) {
-    border-right: 1px solid #d0d0d0;
+    border-right: 1px solid var(--nb-c-border);
   }
   &.active {
-    background: #1a1a2e;
-    color: #fff;
+    background: var(--nb-c-text);
+    color: var(--nb-c-text-a11y);
   }
   &:hover:not(.active) {
-    background: #e8e8e8;
+    background: var(--nb-c-surface-hover);
   }
 }
 </style>

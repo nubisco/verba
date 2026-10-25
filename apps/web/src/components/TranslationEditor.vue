@@ -161,12 +161,12 @@ function handleKeydown(e: KeyboardEvent) {
 
 <style lang="scss" scoped>
 :deep(.hl-placeholder) {
-  color: #2563eb;
+  color: var(--nb-c-info);
   font-weight: 600;
 }
 
 :deep(.hl-keyref) {
-  color: #7c3aed;
+  color: var(--nb-c-primary);
   font-style: italic;
 }
 
@@ -175,10 +175,10 @@ function handleKeydown(e: KeyboardEvent) {
   bottom: calc(100% + 4px);
   left: 0;
   z-index: 100;
-  background: #fff;
-  border: 1px solid #d0d0d0;
+  background: var(--nb-c-layer-3);
+  border: 1px solid var(--nb-c-border);
   border-radius: 4px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--nb-c-black) 10%, transparent);
   max-height: 200px;
   overflow-y: auto;
   min-width: 200px;
@@ -194,11 +194,11 @@ function handleKeydown(e: KeyboardEvent) {
   border: none;
   background: none;
   cursor: pointer;
-  color: #7c3aed;
+  color: var(--nb-c-primary);
 
   &.is-active,
   &:hover {
-    background: #ede9fe;
+    background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
   }
 }
 </style>

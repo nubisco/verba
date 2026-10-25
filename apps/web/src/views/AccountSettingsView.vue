@@ -335,7 +335,7 @@ onMounted(async () => {
 .settings-sidenav {
   width: 200px;
   flex-shrink: 0;
-  border-right: 1px solid var(--nb-c-border-subtle, #f0f0f8);
+  border-right: 1px solid var(--nb-c-border);
   padding: 1rem 0.5rem;
   display: flex;
   flex-direction: column;
@@ -398,7 +398,7 @@ onMounted(async () => {
 
 .field-error {
   margin: 0;
-  color: var(--nb-c-text-error, #c0392b);
+  color: var(--nb-c-status-error);
   font-size: var(--nb-type-body-sm-size);
 }
 
@@ -415,7 +415,7 @@ onMounted(async () => {
     flex-direction: row;
     overflow-x: auto;
     border-right: none;
-    border-bottom: 1px solid var(--nb-c-border-subtle, #f0f0f8);
+    border-bottom: 1px solid var(--nb-c-border);
     padding: 0.5rem 0;
     gap: 0.25rem;
 

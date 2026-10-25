@@ -8,7 +8,7 @@
 
   <div>
     <div v-if="loading" class="skeleton-list">
-      <div v-for="n in 5" :key="n" class="skeleton-row" />
+      <NbSkeleton v-for="n in 5" :key="n" variant="block" :height="110" radius="md" />
     </div>
 
     <div v-else-if="items.length === 0" class="empty-state">
@@ -187,14 +187,14 @@ onMounted(load)
   }
   .subtitle {
     margin: 0;
-    color: #888;
+    color: var(--nb-c-text-subtle);
     font-size: 0.875rem;
   }
 }
 
 .breadcrumb {
   font-size: 0.85rem;
-  color: #1a1a2e;
+  color: var(--nb-c-text);
   text-decoration: none;
   &:hover {
     text-decoration: underline;
@@ -208,8 +208,8 @@ onMounted(load)
 }
 
 .review-card {
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--nb-c-layer-1);
+  border: 1px solid var(--nb-c-border);
   border-radius: 8px;
   padding: 1rem 1.25rem;
 }
@@ -224,8 +224,8 @@ onMounted(load)
 
 .locale-badge {
   font-size: 0.75rem;
-  background: #e0e7ff;
-  color: #3730a3;
+  background: color-mix(in srgb, var(--nb-c-primary) 12%, transparent);
+  color: var(--nb-c-primary);
   padding: 0.15rem 0.5rem;
   border-radius: 999px;
   font-weight: 700;
@@ -233,8 +233,8 @@ onMounted(load)
 
 .assignee-badge {
   font-size: 0.75rem;
-  background: #f0fdf4;
-  color: #166534;
+  background: var(--nb-c-success-surface);
+  color: var(--nb-c-on-success-surface);
   padding: 0.15rem 0.5rem;
   border-radius: 999px;
 }
@@ -242,7 +242,7 @@ onMounted(load)
 .key-link {
   font-family: var(--nb-font-family-mono);
   font-size: 0.85rem;
-  color: #1a1a2e;
+  color: var(--nb-c-text);
   text-decoration: none;
   font-weight: 600;
   &:hover {
@@ -252,10 +252,10 @@ onMounted(load)
 
 .translation-text {
   font-size: 0.95rem;
-  color: #222;
+  color: var(--nb-c-text);
   margin-bottom: 0.75rem;
   padding: 0.5rem 0.75rem;
-  background: #f7f7f9;
+  background: var(--nb-c-layer-2);
   border-radius: 4px;
   min-height: 2rem;
   white-space: pre-wrap;
@@ -274,10 +274,10 @@ onMounted(load)
 .empty-state {
   text-align: center;
   padding: 3rem;
-  color: #666;
-  background: #fff;
+  color: var(--nb-c-text-subtle);
+  background: var(--nb-c-layer-1);
   border-radius: 8px;
-  border: 1px dashed #d0d0d0;
+  border: 1px dashed var(--nb-c-border);
   .empty-icon {
     font-size: 2.5rem;
     margin-bottom: 0.5rem;
@@ -292,20 +292,5 @@ onMounted(load)
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-}
-.skeleton-row {
-  height: 110px;
-  background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.4s infinite;
-  border-radius: 8px;
-}
-@keyframes shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
 }
 </style>
