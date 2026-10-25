@@ -162,6 +162,7 @@
         :project-id="projectId"
         :key-id="modalKeyId"
         :compact="true"
+        hide-title
         @deleted="modalKeyId = null"
       />
     </NbModal>

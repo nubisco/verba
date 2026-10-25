@@ -11,10 +11,10 @@
       <div class="page-header">
         <template v-if="false"><!-- breadcrumb moved to topbar --></template>
         <div class="header-row">
-          <h2>
+          <h2 v-if="!hideTitle">
             <code>{{ keyData.name }}</code>
           </h2>
-          <NbButton v-if="userRole === 'ADMIN'" variant="danger" @click="deleteKey">
+          <NbButton v-if="userRole === 'ADMIN'" class="delete-key" variant="danger" @click="deleteKey">
             {{ t('keys.detail.deleteKey') }}
           </NbButton>
         </div>
@@ -289,6 +289,8 @@ const props = defineProps<{
   projectId: string
   keyId: string
   compact?: boolean
+  /** The container already shows the key name (a modal title), so do not repeat it. */
+  hideTitle?: boolean
   initialDrafts?: Record<string, string> // localeId → draft text
   aiEnabled?: boolean
 }>()
@@ -924,6 +926,11 @@ function assignedUserLabel(t: Translation | undefined): string {
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
+  }
+
+  // Stays on the right when the title is left to the modal around the panel.
+  .delete-key {
+    margin-left: auto;
   }
 
   h2 {
