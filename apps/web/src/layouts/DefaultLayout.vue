@@ -81,7 +81,11 @@
 
       <!-- `identity` follows the rail: a labelled row with the picture, name
            and email expanded, the round avatar collapsed. Personal settings
-           (language) live in this menu. -->
+           (language) live in this menu. An operator gets the role badge, a
+           warning ring on the avatar and a role row in the panel. The
+           "Powered by Nubisco Platform" footer shows only when Platform signs
+           people in. Theme stays off (no show-theme) until the views move to
+           the ui tokens, see main.ts. -->
       <NbUserMenu
         v-if="auth.user"
         :user="menuUser"
@@ -89,6 +93,8 @@
         :accounts-unknown="accountsUnknown"
         :show-account-actions="platformEnabled"
         :show-profile="platformEnabled"
+        :brand="platformEnabled ? 'footer' : 'none'"
+        :role-badge="isOperator ? t('nav.operatorBadge') : undefined"
         trigger="identity"
         @open="loadAccounts()"
         @switch="switchTo"
@@ -215,6 +221,11 @@ watch(
 // Owners and admins of the current account, and instance operators (who see
 // its plan there).
 const showAccountSettings = computed(() => accountsStore.canManage || Boolean(auth.user?.isGlobalAdmin))
+
+// Elevated powers on this instance: an operator named in VERBA_OPERATORS, or a
+// Platform admin of this app (both may create accounts). The user menu marks
+// them so they remember they can do more here than usual.
+const isOperator = computed(() => Boolean(auth.user?.isGlobalAdmin || auth.user?.canCreateAccounts))
 
 onMounted(async () => {
   if (!auth.user) await auth.fetchMe()

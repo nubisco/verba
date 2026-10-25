@@ -17,5 +17,6 @@
   "offlineIndicator": "OFFLINE",
   "projectFallback": "Select a project",
   "allProjects": "All Projects",
-  "accountSettings": "Settings"
+  "accountSettings": "Settings",
+  "operatorBadge": "Operator"
 }
