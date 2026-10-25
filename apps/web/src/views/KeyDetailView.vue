@@ -1,5 +1,5 @@
 <template>
-  <KeyDetailPanel :key-id="keyId" :project-id="keyId" />
+  <KeyDetailPanel :key-id="keyId" :project-id="projectId" />
 </template>
 
 <script setup lang="ts">
@@ -8,7 +8,6 @@ import { useRoute } from 'vue-router'
 import KeyDetailPanel from '../components/KeyDetailPanel.vue'
 const route = useRoute()
 
-const keyId = computed((): string => {
-  return route.params.keyId as string
-})
+const projectId = computed((): string => route.params.id as string)
+const keyId = computed((): string => route.params.keyId as string)
 </script>
