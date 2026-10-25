@@ -93,6 +93,7 @@
         :accounts-unknown="accountsUnknown"
         :show-account-actions="platformEnabled"
         :show-profile="platformEnabled"
+        show-theme
         :brand="platformEnabled ? 'footer' : 'none'"
         :role-badge="isOperator ? t('nav.operatorBadge') : undefined"
         trigger="identity"
