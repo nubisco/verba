@@ -1,3 +1,10 @@
+# [1.21.0](https://github.com/nubisco/verba/compare/v1.20.3...v1.21.0) (2026-10-25)
+
+
+### Features
+
+* **web:** every parent crumb links, through NbBreadcrumbs items ([f6db2d0](https://github.com/nubisco/verba/commit/f6db2d06cea52a11bdb68f111642e4729adce97f))
+
 ## [1.20.3](https://github.com/nubisco/verba/compare/v1.20.2...v1.20.3) (2026-10-25)
 
 
