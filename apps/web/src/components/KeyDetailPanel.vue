@@ -3,7 +3,6 @@
     <NbSkeleton v-if="loading" variant="block" :height="300" radius="md" :label="t('common.loading')" />
     <template v-else-if="keyData">
       <div class="page-header">
-        <template v-if="false"><!-- breadcrumb moved to topbar --></template>
         <div class="header-row">
           <h2 v-if="!hideTitle">
             <code>{{ keyData.name }}</code>
@@ -944,20 +943,6 @@ function assignedUserLabel(t: Translation | undefined): string {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-  }
-}
-
-.breadcrumb {
-  font-size: 0.85rem;
-  color: var(--nb-c-text);
-  text-decoration: none;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-
-  &:hover {
-    text-decoration: underline;
   }
 }
 

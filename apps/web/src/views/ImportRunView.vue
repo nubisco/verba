@@ -123,15 +123,6 @@ function formatDate(ts: string) {
   }
 }
 
-.breadcrumb {
-  font-size: 0.85rem;
-  color: var(--nb-c-text);
-  text-decoration: none;
-  &:hover {
-    text-decoration: underline;
-  }
-}
-
 .error-msg {
   color: var(--nb-c-status-error);
   padding: 1rem 0;

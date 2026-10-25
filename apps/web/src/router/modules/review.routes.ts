@@ -14,7 +14,7 @@ export const protectedRoutes: RouteRecordRaw[] = [
         order: 3,
         routeName: 'review',
       },
-      breadcrumb: [{ type: 'project' }, { type: 'static', label: 'nav.review' }],
+      breadcrumb: [{ type: 'account' }, { type: 'project' }, { type: 'static', label: 'nav.review' }],
     },
   },
 ]

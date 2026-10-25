@@ -80,7 +80,7 @@
       </div>
       <p v-if="namespaces.length === 0" class="warn-note">
         {{ t('keys.list.noNamespacesWarning') }}
-        <RouterLink :to="`/projects/${projectId}`">{{ t('keys.list.goToSettings') }}</RouterLink>
+        <NbButton variant="link" :to="`/projects/${projectId}`">{{ t('keys.list.goToSettings') }}</NbButton>
         to add one.
       </p>
     </NbPanel>

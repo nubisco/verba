@@ -16,6 +16,6 @@ export const route: RouteRecordRaw = {
       order: 99,
       routeName: 'project-settings',
     },
-    breadcrumb: [{ type: 'project' }, { type: 'static', label: 'nav.settings' }],
+    breadcrumb: [{ type: 'account' }, { type: 'project' }, { type: 'static', label: 'nav.settings' }],
   },
 }

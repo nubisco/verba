@@ -7,8 +7,9 @@ export const route: RouteRecordRaw = {
   component: ImportRunView,
   meta: {
     breadcrumb: [
+      { type: 'account' },
       { type: 'project' },
-      { type: 'static', label: 'nav.import' },
+      { type: 'static', label: 'nav.import', to: 'project-import' },
       { type: 'static', label: 'nav.importRun' },
     ],
   },

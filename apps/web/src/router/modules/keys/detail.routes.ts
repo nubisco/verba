@@ -6,6 +6,11 @@ export const route: RouteRecordRaw = {
   name: 'key-detail',
   component: KeyDetailView,
   meta: {
-    breadcrumb: [{ type: 'project' }, { type: 'static', label: 'nav.keys' }, { type: 'key', code: true }],
+    breadcrumb: [
+      { type: 'account' },
+      { type: 'project' },
+      { type: 'static', label: 'nav.keys', to: 'key-list' },
+      { type: 'key' },
+    ],
   },
 }

@@ -3,14 +3,22 @@ import { type RouteRecordRaw } from 'vue-router'
 /**
  * One segment in a breadcrumb trail.
  *
- * - `static` : translated string, e.g. "History"
- * - `project`: current project's display name, resolved from useProjectStore
- * - `key`    : key name, resolved lazily from useKeyNameStore; set code:true for <code> styling
+ * - `static` : translated string, e.g. "History". With `to` (a route name) it
+ *   links there when it is a parent, carrying the current project id.
+ * - `account`: the name of the account the project belongs to, linking to
+ *   Home, where projects are grouped by account
+ * - `project`: current project's display name, resolved from useProjectStore,
+ *   linking to the project's dashboard
+ * - `key`    : key name, resolved lazily from useKeyNameStore
+ *
+ * Every crumb but the last links (NbBreadcrumbs `items`). The last is the
+ * page you are on and is never a link.
  */
 export type BreadcrumbSegment =
-  | { type: 'static'; label: string }
+  | { type: 'static'; label: string; to?: string }
+  | { type: 'account' }
   | { type: 'project' }
-  | { type: 'key'; code?: boolean }
+  | { type: 'key' }
 
 export type NavSection = 'global' | 'project' | 'bottom'
 

@@ -33,32 +33,6 @@ body {
 // ─── page-topbar: shared topbar row injected by views via Teleport ────────────
 // Views do: <Teleport to="#verba-topbar"><div class="page-topbar">...</div></Teleport>
 .page-topbar {
-  .topbar-breadcrumb {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    font-size: 0.875rem;
-
-    a {
-      color: var(--nb-c-text-subtle);
-      text-decoration: none;
-      font-weight: 500;
-
-      &:hover {
-        color: var(--nb-c-text);
-      }
-    }
-
-    .sep {
-      color: var(--nb-c-border);
-    }
-
-    .current {
-      font-weight: 600;
-      color: var(--nb-c-text);
-    }
-  }
-
   .topbar-meta {
     font-size: 0.75rem;
     color: var(--nb-c-text-subtle);

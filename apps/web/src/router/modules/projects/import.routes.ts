@@ -6,6 +6,6 @@ export const route: RouteRecordRaw = {
   name: 'project-import',
   component: ImportView,
   meta: {
-    breadcrumb: [{ type: 'project' }, { type: 'static', label: 'nav.import' }],
+    breadcrumb: [{ type: 'account' }, { type: 'project' }, { type: 'static', label: 'nav.import' }],
   },
 }

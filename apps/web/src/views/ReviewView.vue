@@ -17,9 +17,9 @@
       <NbPanel v-for="item in items" :key="item.id" class="review-card">
         <div class="review-meta">
           <NbBadge variant="primary">{{ item.locale?.code ?? item.localeId }}</NbBadge>
-          <RouterLink :to="`/keys/${projectId}/${item.key?.id ?? item.keyId}`" class="key-link">
+          <NbButton variant="link" class="key-link" :to="`/keys/${projectId}/${item.key?.id ?? item.keyId}`">
             {{ item.key?.fullKey ?? item.key?.name ?? item.keyId }}
-          </RouterLink>
+          </NbButton>
           <NbBadge v-if="item.assignedTo" variant="green" icon="user">
             {{ item.assignedTo.name?.trim() || item.assignedTo.email }}
           </NbBadge>
@@ -190,15 +190,6 @@ onMounted(load)
   }
 }
 
-.breadcrumb {
-  font-size: 0.85rem;
-  color: var(--nb-c-text);
-  text-decoration: none;
-  &:hover {
-    text-decoration: underline;
-  }
-}
-
 .review-list {
   display: flex;
   flex-direction: column;
@@ -217,15 +208,13 @@ onMounted(load)
   flex-wrap: wrap;
 }
 
+// NbButton's link variant underlines on hover and focus. The key keeps the
+// text colour and the mono face every key in Verba is set in.
 .key-link {
+  --nb-button-link-color: currentColor;
   font-family: var(--nb-font-family-mono);
   font-size: 0.85rem;
-  color: var(--nb-c-text);
-  text-decoration: none;
   font-weight: 600;
-  &:hover {
-    text-decoration: underline;
-  }
 }
 
 .translation-text {

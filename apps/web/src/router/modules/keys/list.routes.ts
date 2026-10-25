@@ -14,6 +14,6 @@ export const route: RouteRecordRaw = {
       routeName: 'key-list',
       activeFor: ['key-detail'],
     },
-    breadcrumb: [{ type: 'project' }, { type: 'static', label: 'nav.keys' }],
+    breadcrumb: [{ type: 'account' }, { type: 'project' }, { type: 'static', label: 'nav.keys' }],
   },
 }

@@ -15,7 +15,7 @@ export const protectedRoutes: RouteRecordRaw[] = [
         routeName: 'board',
         activeFor: ['board-key'],
       },
-      breadcrumb: [{ type: 'project' }, { type: 'static', label: 'nav.board' }],
+      breadcrumb: [{ type: 'account' }, { type: 'project' }, { type: 'static', label: 'nav.board' }],
     },
   },
   {
@@ -26,7 +26,12 @@ export const protectedRoutes: RouteRecordRaw[] = [
     name: 'board-key',
     component: BoardView,
     meta: {
-      breadcrumb: [{ type: 'project' }, { type: 'static', label: 'nav.board' }, { type: 'key', code: true }],
+      breadcrumb: [
+        { type: 'account' },
+        { type: 'project' },
+        { type: 'static', label: 'nav.board', to: 'board' },
+        { type: 'key' },
+      ],
     },
   },
 ]

@@ -9,7 +9,7 @@ export const protectedRoutes: RouteRecordRaw[] = [
     name: 'account-settings',
     component: AccountSettingsView,
     meta: {
-      breadcrumb: [{ type: 'static', label: 'nav.accountSettings' }],
+      breadcrumb: [{ type: 'account' }, { type: 'static', label: 'nav.accountSettings' }],
     },
   },
   // Old addresses keep working. The Organizations page sat behind

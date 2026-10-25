@@ -6,6 +6,6 @@ export const route: RouteRecordRaw = {
   name: 'project-history',
   component: ProjectHistoryView,
   meta: {
-    breadcrumb: [{ type: 'project' }, { type: 'static', label: 'nav.history' }],
+    breadcrumb: [{ type: 'account' }, { type: 'project' }, { type: 'static', label: 'nav.history' }],
   },
 }
