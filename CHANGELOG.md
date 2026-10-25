@@ -1,3 +1,15 @@
+# [1.20.0](https://github.com/nubisco/verba/compare/v1.19.1...v1.20.0) (2026-10-25)
+
+
+### Bug Fixes
+
+* **web:** the board's key modal names the key once ([5587ed9](https://github.com/nubisco/verba/commit/5587ed9468b4803fd741bda3907f14c3964b3dd0))
+
+
+### Features
+
+* **web:** adopt @nubisco/ui 5.32 cards, stat tiles and suggestion lists ([25ae969](https://github.com/nubisco/verba/commit/25ae969c1c76b1a85e79ab46589e87f9a2430f65))
+
 ## [1.19.1](https://github.com/nubisco/verba/compare/v1.19.0...v1.19.1) (2026-10-25)
 
 
