@@ -1,3 +1,11 @@
+## [1.20.3](https://github.com/nubisco/verba/compare/v1.20.2...v1.20.3) (2026-10-25)
+
+
+### Bug Fixes
+
+* **web:** links that are buttons use NbButton's link variant ([afdeb7c](https://github.com/nubisco/verba/commit/afdeb7c393e82292e10df5a860eb5af1f146e0e9))
+* **web:** one trail in the topbar, and upgrade @nubisco/ui to 5.35.0 ([8a5cbf3](https://github.com/nubisco/verba/commit/8a5cbf35c0654d1e8ac902f247dc338f115421e9))
+
 ## [1.20.2](https://github.com/nubisco/verba/compare/v1.20.1...v1.20.2) (2026-10-25)
 
 
