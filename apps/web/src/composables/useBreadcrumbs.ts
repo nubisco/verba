@@ -16,7 +16,9 @@ import { useAccountsStore } from '../stores/accounts'
  *
  * Dynamic segments:
  *  - `account` → the current account's name from useAccountsStore, which
- *                follows the open project. Left out until it is known.
+ *                follows the open project. Shown only to a person with more
+ *                than one account: with one, there is nothing to tell apart
+ *                and the crumb is noise. Left out until it is known.
  *  - `project` → reads project name from useProjectStore (must be loaded by DefaultLayout)
  *  - `key`     → lazily fetched by useKeyNameStore; shows raw keyId until resolved
  *
@@ -52,6 +54,7 @@ export function useBreadcrumbs() {
         return [{ label: t(seg.label), to }]
       }
       if (seg.type === 'account') {
+        if (accountsStore.accounts.length < 2) return []
         const name = accountsStore.current?.name
         return name ? [{ label: name, to: { name: 'dashboard' } }] : []
       }
