@@ -1,3 +1,10 @@
+# [1.22.0](https://github.com/nubisco/verba/compare/v1.21.0...v1.22.0) (2026-10-26)
+
+
+### Features
+
+* **web:** the account crumb only for a person with several accounts, on @nubisco/ui 5.36.1 ([47c4cbb](https://github.com/nubisco/verba/commit/47c4cbb0a6df0a30c7b6e2406f4641f2f414fc94))
+
 # [1.21.0](https://github.com/nubisco/verba/compare/v1.20.3...v1.21.0) (2026-10-25)
 
 
