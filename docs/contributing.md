@@ -1,6 +1,8 @@
-# Contributing
-
-Contributions are welcome! This guide covers everything you need to know as a contributor or developer.
+---
+layout: nubisco
+title: 'Contributing'
+intro: 'Contributions are welcome! This guide covers everything you need to know as a contributor or developer.'
+---
 
 ## Development Setup
 

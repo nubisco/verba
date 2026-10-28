@@ -1,6 +1,8 @@
-# Open-Core Model
-
-Verba uses an open-core licensing model. The project ships as a single repository containing both the free Community Edition and the optional commercial Enterprise Edition.
+---
+layout: nubisco
+title: 'Open-Core Model'
+intro: 'Verba uses an open-core licensing model. The project ships as a single repository containing both the free Community Edition and the optional commercial Enterprise Edition.'
+---
 
 ## Community Edition (CE)
 

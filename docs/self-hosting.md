@@ -1,6 +1,8 @@
-# Self-Hosting
-
-Verba is designed to be self-hosted on your own infrastructure using Docker Compose.
+---
+layout: nubisco
+title: 'Self-Hosting'
+intro: 'Verba is designed to be self-hosted on your own infrastructure using Docker Compose.'
+---
 
 ## Quick Start (Docker Compose)
 

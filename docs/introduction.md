@@ -1,6 +1,8 @@
-# Introduction
-
-Verba is an open-source, self-hostable i18n collaboration engine built for development teams that want structured, auditable translations without heavy SaaS tooling.
+---
+layout: nubisco
+title: 'Introduction'
+intro: 'Verba is an open-source, self-hostable i18n collaboration engine built for development teams that want structured, auditable translations without heavy SaaS tooling.'
+---
 
 You can run Verba two ways:
 

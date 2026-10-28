@@ -19,3 +19,8 @@ allowBuilds:
   # Only compiles from source when npm_config_build_from_source=true. The
   # prebuilt binary comes from an optional dependency.
   '@parcel/watcher': false
+
+# Our own releases install immediately: the release-age check exists to
+# distrust strangers' fresh publishes, and we are not strangers to ourselves.
+minimumReleaseAgeExclude:
+  - '@nubisco/*'

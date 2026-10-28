@@ -1,6 +1,8 @@
-# Import & Export
-
-Verba provides structured pipelines for bringing existing translations in and for exporting production-ready translations out.
+---
+layout: nubisco
+title: 'Import & Export'
+intro: 'Verba provides structured pipelines for bringing existing translations in and for exporting production-ready translations out.'
+---
 
 ---
 

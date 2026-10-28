@@ -1,6 +1,8 @@
-# Architecture
-
-This page describes Verba's internal architecture for contributors and developers building on top of it.
+---
+layout: nubisco
+title: 'Architecture'
+intro: "This page describes Verba's internal architecture for contributors and developers building on top of it."
+---
 
 ## High-Level Overview
 

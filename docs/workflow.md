@@ -1,6 +1,8 @@
-# User Workflow Guide
-
-This guide covers the day-to-day translation workflow for all roles, from creating keys to approving and exporting translations.
+---
+layout: nubisco
+title: 'User Workflow Guide'
+intro: 'This guide covers the day-to-day translation workflow for all roles, from creating keys to approving and exporting translations.'
+---
 
 ## Roles at a Glance
 

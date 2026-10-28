@@ -1,6 +1,8 @@
-# Core Concepts
-
-Understanding Verba's data model and workflow makes the rest of the application immediately familiar. This glossary explains every core concept and how they relate to each other.
+---
+layout: nubisco
+title: 'Core Concepts'
+intro: "Understanding Verba's data model and workflow makes the rest of the application immediately familiar. This glossary explains every core concept and how they relate to each other."
+---
 
 ---
 
