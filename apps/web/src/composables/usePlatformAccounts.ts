@@ -5,7 +5,8 @@ import { useInstanceConfigStore } from '../stores/instanceConfig'
 import { startPlatformSso } from './usePlatformIdentities'
 
 // Feeds NbUserMenu with the browser's signed-in platform identities, straight
-// from the platform's own session (multi-account guide). Cross-origin with
+// from the platform's own session (multi-account guide). Asked of the auth
+// host, never the issuer: the session cookie lives there. Cross-origin with
 // credentials: when the call fails (e.g. CORS not allowed for this origin),
 // `accountsUnknown` flips on and the menu falls back to a generic
 // "Switch account" action instead of an inline list.
@@ -34,14 +35,14 @@ export function usePlatformAccounts() {
   }
 
   async function load(): Promise<void> {
-    const issuer = instanceConfig.auth.platformIssuer
-    if (!instanceConfig.auth.platformEnabled || !issuer) {
+    const authOrigin = instanceConfig.auth.platformAuthOrigin
+    if (!instanceConfig.auth.platformEnabled || !authOrigin) {
       accounts.value = []
       accountsUnknown.value = true
       return
     }
     try {
-      const res = await fetch(new URL('/api/auth/identities', issuer), { credentials: 'include' })
+      const res = await fetch(new URL('/api/auth/identities', authOrigin), { credentials: 'include' })
       if (!res.ok) throw new Error(`identities request failed: ${res.status}`)
       const data = (await res.json()) as { identities?: PlatformSessionIdentity[] }
       accounts.value = (data.identities ?? []).map((i) => ({
@@ -71,9 +72,9 @@ export function usePlatformAccounts() {
   }
 
   async function remove(account: IUserMenuAccount): Promise<void> {
-    const issuer = instanceConfig.auth.platformIssuer
-    if (!issuer) return
-    await fetch(new URL('/api/auth/identities/remove', issuer), {
+    const authOrigin = instanceConfig.auth.platformAuthOrigin
+    if (!authOrigin) return
+    await fetch(new URL('/api/auth/identities/remove', authOrigin), {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },

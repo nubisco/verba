@@ -4,6 +4,12 @@ export interface AuthConfig {
   localPasswordEnabled: boolean
   platformEnabled: boolean
   platformIssuer: string | null
+  /**
+   * Where the browser talks to the platform: sign-in, the account switcher's
+   * identities calls. Accord keeps the issuer as an identifier in tokens and
+   * holds browser sessions on its auth host. Defaults to the issuer.
+   */
+  platformAuthOrigin: string | null
   platformAppId: string | null
 }
 
@@ -27,6 +33,8 @@ export function getAuthConfig(): AuthConfig {
   const localOtpEnabled = process.env.DISABLE_LOCAL_OTP !== 'true'
   const platformIssuer = process.env.PLATFORM_ISSUER ?? null
   const platformAppId = process.env.PLATFORM_APP_ID ?? null
+  // `||`, not `??`: compose passes an unset variable through as ''.
+  const platformAuthOrigin = process.env.PLATFORM_AUTH_ORIGIN?.replace(/\/$/, '') || platformIssuer
   // Both, not just the issuer. The app id is the slug the platform knows this
   // deployment by, and it is not guessable: ours is registered as
   // `nubisco-verba`, while the frontend used to fall back to `verba` when the
@@ -43,6 +51,7 @@ export function getAuthConfig(): AuthConfig {
       localPasswordEnabled,
       platformEnabled,
       platformIssuer,
+      platformAuthOrigin,
       platformAppId,
     }
   }
@@ -53,6 +62,7 @@ export function getAuthConfig(): AuthConfig {
     localPasswordEnabled,
     platformEnabled,
     platformIssuer,
+    platformAuthOrigin,
     platformAppId,
   }
 }

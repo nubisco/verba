@@ -284,6 +284,18 @@ describe('configuration from the environment', () => {
     expect(config?.label).toBe('Nubisco Platform')
   })
 
+  // Accord keeps the issuer as an identifier and holds browser sessions on
+  // its auth host, so the browser starts there while tokens keep the issuer.
+  it('starts a handover on the auth host when one is set', () => {
+    const config = handoverConfigFromEnv({
+      PLATFORM_ISSUER: ISSUER,
+      PLATFORM_APP_ID: 'nubisco-verba',
+      PLATFORM_AUTH_ORIGIN: 'https://auth.example.com/',
+    } as NodeJS.ProcessEnv)
+    expect(config?.authorizeUrl).toBe('https://auth.example.com/api/auth/sso')
+    expect(config?.issuer).toBe(ISSUER)
+  })
+
   it('builds a handover authorize URL carrying the app id, state and login hint', () => {
     const config = handoverConfigFromEnv({
       PLATFORM_ISSUER: ISSUER,

@@ -40,7 +40,10 @@ export function handoverConfigFromEnv(env: NodeJS.ProcessEnv = process.env): Han
   return {
     issuer,
     appId,
-    authorizeUrl: env.PLATFORM_AUTHORIZE_URL ?? `${issuer}/api/auth/sso`,
+    // The browser starts on the auth host, where its platform session lives.
+    // The issuer stays what tokens are checked against.
+    authorizeUrl:
+      env.PLATFORM_AUTHORIZE_URL ?? `${env.PLATFORM_AUTH_ORIGIN?.replace(/\/$/, '') || issuer}/api/auth/sso`,
     autoProvision: env.PLATFORM_AUTO_PROVISION !== 'false',
     label: env.PLATFORM_LABEL ?? 'Nubisco Platform',
   }

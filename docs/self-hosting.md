@@ -128,6 +128,7 @@ Configure the API via environment variables in `apps/api/.env`:
 | `DISABLE_LOCAL_OTP`     | `false`                     | Disable local OTP login                                            |
 | `PLATFORM_ISSUER`       | _(unset)_                   | Nubisco Platform issuer URL. Required with `PLATFORM_APP_ID`       |
 | `PLATFORM_APP_ID`       | _(unset)_                   | The app slug this deployment is registered under on Platform       |
+| `PLATFORM_AUTH_ORIGIN`  | `PLATFORM_ISSUER`           | Platform's auth host, for sign-in and the account switcher         |
 | `OIDC_ISSUER`           | _(unset)_                   | OpenID Connect issuer URL. Required with `OIDC_CLIENT_ID`          |
 | `OIDC_CLIENT_ID`        | _(unset)_                   | The client id your identity provider issued for Verba              |
 | `OIDC_CLIENT_SECRET`    | _(unset)_                   | The client secret, for a confidential client                       |

@@ -372,14 +372,15 @@ function startSignIn(options: { loginHint?: string; prompt?: 'login' | 'select_a
 }
 
 function startPlatformLogin(options: { loginHint?: string; prompt?: 'login' | 'select_account' } = {}) {
-  const issuer = instanceConfig.auth.platformIssuer
+  // The auth host, not the issuer: the browser's platform session lives there.
+  const authOrigin = instanceConfig.auth.platformAuthOrigin
   const appId = instanceConfig.auth.platformAppId
   // No fallback. This used to default to 'verba' when PLATFORM_APP_ID was
   // unset, which is the slug no platform app actually has: ours is registered
   // as 'nubisco-verba', so every sign-in bounced off `unknown_app` and the
   // user saw a redirect that came straight back. A missing app id is a
   // configuration fault, and saying so beats guessing wrong in silence.
-  if (!issuer || !appId) {
+  if (!authOrigin || !appId) {
     error.value = 'Platform sign-in is not fully configured on this instance'
     return
   }
@@ -390,7 +391,7 @@ function startPlatformLogin(options: { loginHint?: string; prompt?: 'login' | 's
   sessionStorage.setItem(PLATFORM_STATE_KEY, state)
   sessionStorage.setItem(PLATFORM_REDIRECT_KEY, redirectTarget.value)
 
-  const ssoUrl = new URL('/api/auth/sso', issuer)
+  const ssoUrl = new URL('/api/auth/sso', authOrigin)
   ssoUrl.searchParams.set('app_id', appId)
   ssoUrl.searchParams.set('redirect_uri', callbackUrl.toString())
   ssoUrl.searchParams.set('state', state)

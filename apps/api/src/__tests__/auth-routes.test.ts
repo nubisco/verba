@@ -66,6 +66,7 @@ describe('auth and setup routes', () => {
     DISABLE_LOCAL_OTP: process.env.DISABLE_LOCAL_OTP,
     PLATFORM_ISSUER: process.env.PLATFORM_ISSUER,
     PLATFORM_APP_ID: process.env.PLATFORM_APP_ID,
+    PLATFORM_AUTH_ORIGIN: process.env.PLATFORM_AUTH_ORIGIN,
     JWT_SECRET: process.env.JWT_SECRET,
     VERBA_OPERATORS: process.env.VERBA_OPERATORS,
   }
@@ -78,6 +79,7 @@ describe('auth and setup routes', () => {
     delete process.env.DISABLE_LOCAL_OTP
     delete process.env.PLATFORM_ISSUER
     delete process.env.PLATFORM_APP_ID
+    delete process.env.PLATFORM_AUTH_ORIGIN
 
     vi.mocked(prisma.user.count).mockResolvedValue(0)
     vi.mocked(authService.register).mockResolvedValue({
@@ -105,6 +107,8 @@ describe('auth and setup routes', () => {
     process.env.DISABLE_LOCAL_OTP = originalEnv.DISABLE_LOCAL_OTP
     process.env.PLATFORM_ISSUER = originalEnv.PLATFORM_ISSUER
     process.env.PLATFORM_APP_ID = originalEnv.PLATFORM_APP_ID
+    if (originalEnv.PLATFORM_AUTH_ORIGIN === undefined) delete process.env.PLATFORM_AUTH_ORIGIN
+    else process.env.PLATFORM_AUTH_ORIGIN = originalEnv.PLATFORM_AUTH_ORIGIN
     process.env.JWT_SECRET = originalEnv.JWT_SECRET
     process.env.VERBA_OPERATORS = originalEnv.VERBA_OPERATORS
   })
@@ -144,9 +148,40 @@ describe('auth and setup routes', () => {
         localPasswordEnabled: true,
         platformEnabled: true,
         platformIssuer: 'https://platform.example.com',
+        platformAuthOrigin: 'https://platform.example.com',
         platformAppId: 'nubisco-verba',
       },
     })
+  })
+
+  // Accord holds browser sessions on its auth host and keeps the issuer as an
+  // identifier, so the browser's calls go to one and tokens name the other.
+  it('reports the auth host apart from the issuer when one is set', async () => {
+    process.env.PLATFORM_ISSUER = 'https://platform.example.com'
+    process.env.PLATFORM_APP_ID = 'nubisco-verba'
+    process.env.PLATFORM_AUTH_ORIGIN = 'https://auth.example.com/'
+
+    const app = buildApp()
+    const res = await app.inject({ method: 'GET', url: '/config' })
+    await app.close()
+
+    expect(res.json().auth).toMatchObject({
+      platformIssuer: 'https://platform.example.com',
+      platformAuthOrigin: 'https://auth.example.com',
+    })
+  })
+
+  // Compose passes an unset variable through as an empty string.
+  it('falls back to the issuer when the auth host is empty', async () => {
+    process.env.PLATFORM_ISSUER = 'https://platform.example.com'
+    process.env.PLATFORM_APP_ID = 'nubisco-verba'
+    process.env.PLATFORM_AUTH_ORIGIN = ''
+
+    const app = buildApp()
+    const res = await app.inject({ method: 'GET', url: '/config' })
+    await app.close()
+
+    expect(res.json().auth.platformAuthOrigin).toBe('https://platform.example.com')
   })
 
   // Regression: the frontend used to fall back to app_id 'verba' when

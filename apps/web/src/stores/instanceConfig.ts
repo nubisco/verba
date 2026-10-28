@@ -22,6 +22,9 @@ interface InstanceAuthConfig {
   localPasswordEnabled: boolean
   platformEnabled: boolean
   platformIssuer: string | null
+  /** Accord's auth host, where the browser's platform session lives. Not the
+   *  issuer, which is only an identifier in tokens. */
+  platformAuthOrigin: string | null
   platformAppId: string | null
   sso: InstanceSsoConfig
 }
@@ -30,7 +33,12 @@ interface InstanceConfig {
   features: InstanceFeatures
   // `sso` is optional on the wire: an API that predates server-side federated
   // sign-in omits the block, and the store fills in the disabled default.
-  auth: Omit<InstanceAuthConfig, 'sso'> & { sso?: InstanceSsoConfig }
+  // `platformAuthOrigin` is optional too: an API that predates it omits it,
+  // and the store falls back to the issuer.
+  auth: Omit<InstanceAuthConfig, 'sso' | 'platformAuthOrigin'> & {
+    sso?: InstanceSsoConfig
+    platformAuthOrigin?: string | null
+  }
 }
 
 export const useInstanceConfigStore = defineStore('instanceConfig', () => {
@@ -41,6 +49,7 @@ export const useInstanceConfigStore = defineStore('instanceConfig', () => {
     localPasswordEnabled: false,
     platformEnabled: false,
     platformIssuer: null,
+    platformAuthOrigin: null,
     platformAppId: null,
     sso: { enabled: false, mode: null, label: null },
   })
@@ -52,7 +61,11 @@ export const useInstanceConfigStore = defineStore('instanceConfig', () => {
       features.value = config.features
       // An older API that predates server-side SSO omits the block entirely,
       // so default it rather than letting every read of it throw.
-      auth.value = { ...config.auth, sso: config.auth.sso ?? { enabled: false, mode: null, label: null } }
+      auth.value = {
+        ...config.auth,
+        platformAuthOrigin: config.auth.platformAuthOrigin || config.auth.platformIssuer,
+        sso: config.auth.sso ?? { enabled: false, mode: null, label: null },
+      }
     } catch {
       // Fail silently: all feature flags default to false (off)
     } finally {

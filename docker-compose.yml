@@ -49,6 +49,8 @@ services:
       ENABLE_LOCAL_PASSWORD: ${ENABLE_LOCAL_PASSWORD:-false}
       PLATFORM_ISSUER: ${PLATFORM_ISSUER:-}
       PLATFORM_APP_ID: ${PLATFORM_APP_ID:-}
+      # Platform's auth host (https://auth.nubisco.io for Nubisco's). Unset, the issuer.
+      PLATFORM_AUTH_ORIGIN: ${PLATFORM_AUTH_ORIGIN:-}
       # Opt-in: needs /api/auth/sso/callback registered on Platform first.
       PLATFORM_SERVER_FLOW: ${PLATFORM_SERVER_FLOW:-}
       # Standards-based OIDC against any provider (EE; needs LICENSE_KEY).

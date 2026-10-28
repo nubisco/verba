@@ -23,14 +23,14 @@ const PLATFORM_REDIRECT_KEY = 'verba.platform.sso.redirect'
 
 function buildSsoUrl(opts: { loginHint?: string; prompt?: 'login' | 'select_account'; redirect?: string }): string {
   const instanceConfig = useInstanceConfigStore()
-  const issuer = instanceConfig.auth.platformIssuer
+  const authOrigin = instanceConfig.auth.platformAuthOrigin
   const appId = instanceConfig.auth.platformAppId || 'verba'
-  if (!issuer) throw new Error('Platform issuer not configured')
+  if (!authOrigin) throw new Error('Platform issuer not configured')
   const state = crypto.randomUUID()
   sessionStorage.setItem(PLATFORM_STATE_KEY, state)
   sessionStorage.setItem(PLATFORM_REDIRECT_KEY, opts.redirect ?? window.location.pathname)
   const callbackUrl = new URL(`${window.location.origin}${import.meta.env.BASE_URL}login`)
-  const url = new URL('/api/auth/sso', issuer)
+  const url = new URL('/api/auth/sso', authOrigin)
   url.searchParams.set('app_id', appId)
   url.searchParams.set('redirect_uri', callbackUrl.toString())
   url.searchParams.set('state', state)
@@ -96,9 +96,9 @@ export function usePlatformIdentities() {
     // next hint-less authorize. Cross-origin; requires platform CORS
     // credentials for this origin, so failures are ignored.
     const instanceConfig = useInstanceConfigStore()
-    const issuer = instanceConfig.auth.platformIssuer
-    if (issuer) {
-      await fetch(new URL('/api/auth/identities/remove', issuer), {
+    const authOrigin = instanceConfig.auth.platformAuthOrigin
+    if (authOrigin) {
+      await fetch(new URL('/api/auth/identities/remove', authOrigin), {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
