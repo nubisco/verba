@@ -16,7 +16,13 @@ jobs:
   release:
     name: Semantic Release
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    # Only a push to master in this repository releases, which is what starts the deploy chain.
+    # A pull request from a fork branch that happens to be called master must not.
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'master' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
 
     steps:
       - uses: actions/checkout@v7
