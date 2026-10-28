@@ -1,3 +1,10 @@
+## [1.22.1](https://github.com/nubisco/verba/compare/v1.22.0...v1.22.1) (2026-10-28)
+
+
+### Bug Fixes
+
+* **auth:** talk to Accord's auth host for sign-in and the account switcher ([ec38e16](https://github.com/nubisco/verba/commit/ec38e16f5880d5990a15423c105e94f69f73858b))
+
 # [1.22.0](https://github.com/nubisco/verba/compare/v1.21.0...v1.22.0) (2026-10-26)
 
 
