@@ -6,6 +6,7 @@ import { Status, Role } from '../types.js'
 import { live } from '../live.js'
 import type { UpsertTranslationInput, TranslationQueryInput } from '../schemas/translation.schema.js'
 import { serializeKeyRecord } from './key-identity.service.js'
+import { projectCatalog } from './key-index.service.js'
 
 function notFound(): never {
   throw Object.assign(new Error('Translation not found'), { statusCode: 404 })
@@ -90,7 +91,6 @@ export async function upsertTranslation(
           type: 'translation.updated',
           translationId: result.id,
           keyId,
-          text: data.text,
           status: result.status,
         })
       }
@@ -106,7 +106,6 @@ export async function upsertTranslation(
       type: 'translation.updated',
       translationId: created.id,
       keyId,
-      text: data.text,
       status: created.status,
     })
   }
@@ -169,21 +168,40 @@ export async function getTranslation(projectId: string, id: string) {
 }
 
 export async function listTranslationsForKanban(projectId: string) {
-  const translations = await prisma.translation.findMany({
-    where: { key: { projectId }, deletedAt: null },
-    include: {
-      key: {
-        select: {
-          id: true,
-          name: true,
-          namespaceId: true,
-          namespace: { select: { id: true, slug: true } },
+  // The whole project, so flat reads joined in memory rather than includes,
+  // which on D1 cost a query per 100 rows (key-index.service.ts).
+  const [found, catalog] = await Promise.all([
+    prisma.translation.findMany({ where: { key: { projectId }, deletedAt: null } }),
+    projectCatalog(projectId),
+  ])
+  const userIds = [...new Set(found.flatMap((t) => [t.updatedById, t.assignedToId]).filter((id): id is string => !!id))]
+  const users = new Map<string, { id: string; email: string; name: string | null }>()
+  for (let i = 0; i < userIds.length; i += 90) {
+    const batch = await prisma.user.findMany({
+      where: { id: { in: userIds.slice(i, i + 90) } },
+      select: { id: true, email: true, name: true },
+    })
+    for (const u of batch) users.set(u.id, u)
+  }
+  const translations = found.flatMap((t) => {
+    const key = catalog.keys.get(t.keyId)
+    if (!key) return []
+    const updater = t.updatedById ? users.get(t.updatedById) : undefined
+    const assignee = t.assignedToId ? users.get(t.assignedToId) : undefined
+    return [
+      {
+        ...t,
+        key: {
+          id: key.id,
+          name: key.name,
+          namespaceId: key.namespaceId,
+          namespace: key.namespaceSlug ? { id: key.namespaceId, slug: key.namespaceSlug } : null,
         },
+        locale: { code: catalog.localeCode.get(t.localeId) ?? '' },
+        updatedBy: updater ? { id: updater.id, email: updater.email } : null,
+        assignedTo: assignee ?? null,
       },
-      locale: { select: { code: true } },
-      updatedBy: { select: { id: true, email: true } },
-      assignedTo: { select: { id: true, email: true, name: true } },
-    },
+    ]
   })
   const grouped: Record<string, typeof translations> = {
     TODO: [],

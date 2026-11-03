@@ -10,7 +10,7 @@ vi.mock('../prisma.js', () => ({
     project: { count: vi.fn(), findUnique: vi.fn(), create: vi.fn() },
     accountMember: { count: vi.fn(), findUnique: vi.fn(), create: vi.fn() },
     key: { count: vi.fn(), findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn() },
-    namespace: { findUnique: vi.fn(), findFirst: vi.fn() },
+    namespace: { findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn() },
     locale: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn() },
     membership: { count: vi.fn() },
     user: { findUnique: vi.fn() },
@@ -26,8 +26,8 @@ import { assertWithinLimit, newKeyCount, planLimitMessage } from '../services/pl
 import { createProject } from '../services/project.service.js'
 import { addMember } from '../services/account.service.js'
 import { createKey } from '../services/key.service.js'
-import { applyImport } from '../services/import.service.js'
-import { importXliff } from '../services/xliff.service.js'
+import { prepareTabularImport } from '../services/import.service.js'
+import { prepareXliffImport } from '../services/xliff.service.js'
 import { createLocale } from '../services/locale.service.js'
 
 const PRO = { projects: 10, members: 25, keys: 15000 }
@@ -39,6 +39,11 @@ beforeEach(() => {
   vi.mocked(prisma.accountMember.count).mockResolvedValue(4)
   vi.mocked(prisma.key.count).mockResolvedValue(100)
   vi.mocked(prisma.project.findUnique).mockResolvedValue({ accountId: 'acc1' } as never)
+  // The project's namespaces, read with its keys (key-index.service.ts).
+  vi.mocked(prisma.namespace.findMany).mockResolvedValue([
+    { id: 'ns-default', slug: 'default' },
+    { id: 'ns-web', slug: 'web' },
+  ] as never)
 })
 
 afterEach(() => vi.unstubAllEnvs())
@@ -157,14 +162,14 @@ describe('the create paths', () => {
   it('refuses an import before it writes anything, counting only the keys it would create', async () => {
     vi.mocked(prisma.key.count).mockResolvedValue(99)
     // a.one already exists in the default namespace: an update, not a new key.
-    vi.mocked(prisma.key.findMany).mockResolvedValue([{ name: 'a.one', namespace: { slug: 'default' } }] as never)
+    vi.mocked(prisma.key.findMany).mockResolvedValue([{ id: 'k1', name: 'a.one', namespaceId: 'ns-default' }] as never)
     const rows = [
       { keyName: 'a.one', translations: {} },
       { keyName: 'a.two', translations: {} },
       { keyName: 'a.three', translations: {} },
       { keyName: 'a.three', translations: {} },
     ]
-    await expect(applyImport('p1', rows as never, { localeColumns: {} } as never, 'u1', 'run1')).rejects.toMatchObject({
+    await expect(prepareTabularImport('p1', rows as never)).rejects.toMatchObject({
       statusCode: 402,
       details: { resource: 'keys', current: 99, adding: 2 },
     })
@@ -183,7 +188,7 @@ describe('an XLIFF import on a hosted plan', () => {
       '<?xml version="1.0" encoding="UTF-8"?>\n<xliff version="1.2"><file original="app" source-language="en" target-language="pt"><body>' +
         '<trans-unit id="a.one"><source>One</source></trans-unit></body></file></xliff>',
     )
-    await expect(importXliff('p1', doc, 'u1', 'run1')).rejects.toMatchObject({
+    await expect(prepareXliffImport('p1', doc)).rejects.toMatchObject({
       statusCode: 402,
       details: { resource: 'keys', adding: 1 },
     })
@@ -223,7 +228,7 @@ describe('locales on a hosted plan (distinct codes across the account)', () => {
       '<?xml version="1.0" encoding="UTF-8"?>\n<xliff version="1.2"><file original="app" source-language="en" target-language="ja"><body>' +
         '<trans-unit id="a.one"><source>One</source></trans-unit></body></file></xliff>',
     )
-    await expect(importXliff('p1', doc, 'u1', 'run1')).rejects.toMatchObject({
+    await expect(prepareXliffImport('p1', doc)).rejects.toMatchObject({
       statusCode: 402,
       details: { resource: 'locales', adding: 1 },
     })
@@ -240,7 +245,7 @@ describe('locales on a hosted plan (distinct codes across the account)', () => {
 
 describe('newKeyCount', () => {
   it('counts each missing namespace and name once', async () => {
-    vi.mocked(prisma.key.findMany).mockResolvedValue([{ name: 'x', namespace: { slug: 'web' } }] as never)
+    vi.mocked(prisma.key.findMany).mockResolvedValue([{ id: 'k1', name: 'x', namespaceId: 'ns-web' }] as never)
     const n = await newKeyCount('p1', [
       { namespaceSlug: 'web', name: 'x' },
       { namespaceSlug: 'app', name: 'x' },

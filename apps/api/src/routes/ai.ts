@@ -10,7 +10,9 @@ import {
   SuggestBodySchema,
 } from '../schemas/ai.schema.js'
 import { getAiSettings, getUsageSummary, saveAiSettings } from '../services/ai-settings.service.js'
-import { fillLocale, previewTranslation, suggestTranslation } from '../services/ai-translation.service.js'
+import { planFill, previewTranslation, suggestTranslation } from '../services/ai-translation.service.js'
+import { AI_KEYS_PER_CHUNK, startRun } from '../services/import-job.service.js'
+import type { AiFillChunk } from '../job-runner.js'
 
 export function aiRoutes(app: Api) {
   // ─── Settings: admin only (AGENTS.md, "AI briefings") ──────────────────────
@@ -71,15 +73,25 @@ export function aiRoutes(app: Api) {
   })
 
   // Batch-fill a whole locale from source strings. Every translation is checked before it is written.
+  // A fill runs as background jobs, a chunk of keys each, so no request makes
+  // hundreds of provider calls and saves. The answer is 202 with the run.
   app.post('/projects/:projectId/ai/fill-locale', authenticate, async (c) => {
-    const membership = await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.TRANSLATOR)
+    const projectId = c.req.param('projectId')
+    const membership = await requireProjectRole(c.var.user.userId, projectId, Role.TRANSLATOR)
     const body = FillLocaleBodySchema.parse(await readBody(c))
-    const { filled, skipped, warnings } = await fillLocale(
-      c.req.param('projectId'),
-      body,
-      c.var.user.userId,
-      membership.role,
-    )
-    return c.json({ filled, skipped, warnings })
+    const { keyIds, ...plan } = await planFill(projectId, body)
+    const chunks: AiFillChunk[] = []
+    for (let i = 0; i < keyIds.length; i += AI_KEYS_PER_CHUNK) {
+      chunks.push({ plan, keyIds: keyIds.slice(i, i + AI_KEYS_PER_CHUNK), role: membership.role })
+    }
+    const run = await startRun({
+      projectId,
+      userId: c.var.user.userId,
+      kind: 'ai.fill',
+      meta: { localeCode: body.localeCode, onlyEmpty: body.onlyEmpty },
+      chunks,
+      totalRows: keyIds.length,
+    })
+    return c.json(run, 202)
   })
 }

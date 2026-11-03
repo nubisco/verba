@@ -1,11 +1,9 @@
 import * as XLSX from 'xlsx'
 import { prisma } from '../prisma.js'
 import type { ImportMapping } from '../schemas/import.schema.js'
-import { upsertTranslation } from './translation.service.js'
-import { Role } from '../types.js'
-import { updateImportRun } from './import-run.service.js'
-import { emit } from '../events.js'
 import { assertKeysFit } from './plan-limits.service.js'
+import type { JobRow } from './import-job.service.js'
+import { projectKeyIndex } from './key-index.service.js'
 
 export interface ImportRow {
   keyName: string
@@ -29,13 +27,6 @@ export interface PreviewResult {
   updated: number
   skipped: number
   rows: PreviewRow[]
-}
-
-export interface Stats {
-  created: number
-  updated: number
-  skipped: number
-  errors: { row: number; message: string }[]
 }
 
 export function parseFile(buffer: Buffer, mimeType: string, mapping: ImportMapping): ImportRow[] {
@@ -161,6 +152,19 @@ export async function previewImport(
   })) as { id: string; code: string }[]
   const localeMap = new Map(locales.map((l) => [l.code, l]))
 
+  // Every key and every text in these locales, in two queries whatever the
+  // size of the file. The keys are matched by the namespace the import would
+  // write to (namespaceSlugOf), so the preview says what apply will do.
+  const keyIndex = await projectKeyIndex(projectId)
+  const texts = new Map<string, string>()
+  if (locales.length > 0) {
+    const found = await prisma.translation.findMany({
+      where: { localeId: { in: locales.map((l) => l.id) }, key: { projectId } },
+      select: { keyId: true, localeId: true, text: true },
+    })
+    for (const t of found) texts.set(`${t.keyId}\u0000${t.localeId}`, t.text)
+  }
+
   for (const row of rows) {
     if (!row.keyName) {
       result.skipped++
@@ -168,148 +172,63 @@ export async function previewImport(
       continue
     }
 
-    const nsName = row.namespaceName || 'default'
-    const existingKey = (await prisma.key.findFirst({
-      where: {
-        projectId,
-        name: row.keyName,
-        namespace: { slug: nsName },
-      },
-    })) as { id: string } | null
-
+    const existingKey = keyIndex.get(`${namespaceSlugOf(row.namespaceName)}\u0000${row.keyName}`)
     const localeChanges: PreviewRow['localeChanges'] = []
     for (const [localeCode, newText] of Object.entries(row.translations)) {
       const locale = localeMap.get(localeCode)
       if (!locale) continue
-
-      let oldText: string | null = null
-      if (existingKey) {
-        const existing = await prisma.translation.findUnique({
-          where: {
-            keyId_localeId: { keyId: existingKey.id, localeId: locale.id },
-          },
-        })
-        oldText = existing?.text ?? null
-      }
+      const oldText = existingKey ? (texts.get(`${existingKey}\u0000${locale.id}`) ?? null) : null
       localeChanges.push({ localeCode, oldText, newText })
     }
 
-    if (!existingKey) {
-      result.created++
-      result.rows.push({
-        keyName: row.keyName,
-        namespaceName: row.namespaceName,
-        status: 'create',
-        localeChanges,
-      })
-    } else {
-      result.updated++
-      result.rows.push({
-        keyName: row.keyName,
-        namespaceName: row.namespaceName,
-        status: 'update',
-        localeChanges,
-      })
-    }
+    if (!existingKey) result.created++
+    else result.updated++
+    result.rows.push({
+      keyName: row.keyName,
+      namespaceName: row.namespaceName,
+      status: existingKey ? 'update' : 'create',
+      localeChanges,
+    })
   }
 
   return result
 }
 
-/** The namespace an import row goes into, as applyImport finds or creates it. */
-function namespaceSlugOf(namespaceName: string | undefined): string {
+/** The namespace an import row goes into. */
+export function namespaceSlugOf(namespaceName: string | undefined): string {
   return (namespaceName || 'default').toLowerCase().replace(/[^a-z0-9]+/g, '-')
 }
 
-export async function applyImport(
+/**
+ * Prepare a CSV, XLSX or JSON import for the import jobs: check the plan
+ * before anything is written, and turn the file's rows into job rows. Rows
+ * without a key are counted as skipped and left out.
+ */
+export async function prepareTabularImport(
   projectId: string,
   rows: ImportRow[],
-  mapping: ImportMapping,
-  userId: string | undefined,
-  importRunId: string,
-): Promise<Stats> {
-  const stats: Stats = { created: 0, updated: 0, skipped: 0, errors: [] }
-
+): Promise<{ rows: JobRow[]; skipped: number }> {
   // On a hosted plan, an import that would create more keys than the account
   // may hold is refused before it writes anything.
   await assertKeysFit(
     projectId,
     rows.filter((r) => r.keyName).map((r) => ({ namespaceSlug: namespaceSlugOf(r.namespaceName), name: r.keyName })),
   )
-
-  const localeCodes = Object.keys(mapping.localeColumns)
-  const locales = (await prisma.locale.findMany({
-    where: { projectId, code: { in: localeCodes } },
-  })) as { id: string; code: string }[]
-  const localeMap = new Map(locales.map((l) => [l.code, l]))
-
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i]
+  const jobRows: JobRow[] = []
+  let skipped = 0
+  rows.forEach((row, i) => {
     if (!row.keyName) {
-      stats.skipped++
-      continue
+      skipped++
+      return
     }
-
-    try {
-      const nsName = row.namespaceName || 'default'
-      const nsSlug = namespaceSlugOf(row.namespaceName)
-
-      // Find or create namespace
-      let namespace = await prisma.namespace.findUnique({
-        where: { projectId_slug: { projectId, slug: nsSlug } },
-      })
-      if (!namespace) {
-        namespace = await prisma.namespace.create({
-          data: { projectId, name: nsName, slug: nsSlug },
-        })
-      }
-
-      // Find or create key
-      let key = (await prisma.key.findUnique({
-        where: {
-          namespaceId_name: { namespaceId: namespace.id, name: row.keyName },
-        },
-      })) as { id: string } | null
-      if (!key) {
-        key = (await prisma.key.create({
-          data: { projectId, namespaceId: namespace.id, name: row.keyName },
-        })) as { id: string }
-        stats.created++
-      } else {
-        stats.updated++
-      }
-
-      // Upsert translations
-      for (const [localeCode, text] of Object.entries(row.translations)) {
-        const locale = localeMap.get(localeCode)
-        if (!locale) {
-          stats.errors.push({
-            row: i + 2,
-            message: `Locale "${localeCode}" not found in project`,
-          })
-          continue
-        }
-        // Imports run behind the MAINTAINER role (routes/import.ts).
-        await upsertTranslation(key.id, locale.id, { text }, userId, Role.MAINTAINER)
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      stats.errors.push({ row: i + 2, message })
-    }
-  }
-
-  await updateImportRun(
-    importRunId,
-    'COMPLETED',
-    { created: stats.created, updated: stats.updated, skipped: stats.skipped },
-    stats.errors,
-  )
-  emit({
-    type: 'import.applied',
-    projectId,
-    created: stats.created,
-    updated: stats.updated,
+    jobRows.push({
+      // The first data row is line 2 of the file, under the header.
+      row: i + 2,
+      nsSlug: namespaceSlugOf(row.namespaceName),
+      nsName: row.namespaceName || 'default',
+      key: row.keyName,
+      cells: Object.entries(row.translations).map(([locale, text]) => ({ locale, text })),
+    })
   })
-
-  return stats
+  return { rows: jobRows, skipped }
 }

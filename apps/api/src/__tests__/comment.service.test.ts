@@ -72,7 +72,7 @@ describe('addComment', () => {
     expect(result).toEqual(mockComment)
   })
 
-  it('broadcasts comment.added via wsManager', async () => {
+  it('broadcasts comment.added via wsManager, naming the comment but not carrying it', async () => {
     const mockComment = {
       id: 'c2',
       translationId: 't2',
@@ -88,7 +88,7 @@ describe('addComment', () => {
     expect(wsManager.broadcast).toHaveBeenCalledWith('p2', {
       type: 'comment.added',
       translationId: 't2',
-      comment: mockComment,
+      commentId: 'c2',
     })
   })
 })

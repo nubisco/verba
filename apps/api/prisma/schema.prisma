@@ -40,15 +40,15 @@ model User {
   // Null for a person who has never signed in through Platform.
   platformRole         String?
 
-  memberships              Membership[]
-  comments                 Comment[]
-  translations             Translation[]
-  auditLogs                AuditLog[]
-  importRuns               ImportRun[]
-  accountMemberships       AccountMember[]
-  assignedTranslations     Translation[]  @relation("AssignedTranslations")
-  notifications            Notification[] @relation("NotificationRecipient")
-  triggeredNotifications   Notification[] @relation("NotificationActor")
+  memberships            Membership[]
+  comments               Comment[]
+  translations           Translation[]
+  auditLogs              AuditLog[]
+  importRuns             ImportRun[]
+  accountMemberships     AccountMember[]
+  assignedTranslations   Translation[]   @relation("AssignedTranslations")
+  notifications          Notification[]  @relation("NotificationRecipient")
+  triggeredNotifications Notification[]  @relation("NotificationActor")
 }
 
 // The tenant: an account holds projects, and its members are the people who
@@ -83,23 +83,23 @@ model AccountMember {
 }
 
 model Project {
-  id             String   @id @default(cuid())
-  name           String
-  slug           String   @unique
-  avatar         String?  // Emoji or short icon text, e.g. "🌍" or "VP"
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  accountId      String
-  aiProvider     String?  // "openai" | "anthropic" | "gemini"
-  aiApiKey       String?  // the project's own provider key, sealed by encryption.service.ts, never sent to a client
-  aiModel        String?  // null means the fleet default for the provider (ai.service.ts DEFAULT_MODELS)
-  aiEnabled      Boolean  @default(false)
-  aiUpdatedAt    DateTime?
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  avatar      String? // Emoji or short icon text, e.g. "🌍" or "VP"
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  accountId   String
+  aiProvider  String? // "openai" | "anthropic" | "gemini"
+  aiApiKey    String? // the project's own provider key, sealed by encryption.service.ts, never sent to a client
+  aiModel     String? // null means the fleet default for the provider (ai.service.ts DEFAULT_MODELS)
+  aiEnabled   Boolean   @default(false)
+  aiUpdatedAt DateTime?
 
-  account       Account       @relation(fields: [accountId], references: [id], onDelete: Restrict)
-  locales       Locale[]
-  namespaces    Namespace[]
-  keys          Key[]
+  account        Account         @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  locales        Locale[]
+  namespaces     Namespace[]
+  keys           Key[]
   memberships    Membership[]
   auditLogs      AuditLog[]
   importRuns     ImportRun[]
@@ -163,11 +163,11 @@ model Translation {
   updatedAt    DateTime  @updatedAt
   deletedAt    DateTime?
 
-  key       Key     @relation(fields: [keyId], references: [id], onDelete: Cascade)
-  locale    Locale  @relation(fields: [localeId], references: [id], onDelete: Cascade)
-  updatedBy User?   @relation(fields: [updatedById], references: [id])
-  assignedTo User?  @relation("AssignedTranslations", fields: [assignedToId], references: [id])
-  comments  Comment[]
+  key        Key       @relation(fields: [keyId], references: [id], onDelete: Cascade)
+  locale     Locale    @relation(fields: [localeId], references: [id], onDelete: Cascade)
+  updatedBy  User?     @relation(fields: [updatedById], references: [id])
+  assignedTo User?     @relation("AssignedTranslations", fields: [assignedToId], references: [id])
+  comments   Comment[]
 
   @@unique([keyId, localeId])
 }
@@ -219,19 +219,45 @@ model AuditLog {
   user    User?   @relation(fields: [userId], references: [id])
 }
 
+// A long piece of work on a project, run as background jobs in chunks
+// (jobs.ts): an import, or an AI fill of a locale. status: PENDING | RUNNING |
+// COMPLETED | FAILED. No request does the whole of it, so none can pass D1's
+// limit on queries per Worker invocation (docs/hosting-on-cloudflare.md).
 model ImportRun {
-  id        String   @id @default(cuid())
-  projectId String
-  userId    String?
-  status    String   @default("PENDING")
-  mapping   String   @default("{}")
-  stats     String   @default("{}")
-  errors    String   @default("[]")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(cuid())
+  projectId     String
+  userId        String?
+  kind          String   @default("import") // import | ai.fill
+  status        String   @default("PENDING")
+  mapping       String   @default("{}")
+  stats         String   @default("{}")
+  errors        String   @default("[]")
+  totalRows     Int      @default(0)
+  processedRows Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user    User?   @relation(fields: [userId], references: [id])
+  project Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User?         @relation(fields: [userId], references: [id])
+  chunks  ImportChunk[]
+}
+
+// One job's share of an ImportRun: the rows (or keys) it handles, as JSON, and
+// what it did. Its payload is emptied once it is done, and the cron deletes
+// the chunks of finished runs (maintenance.service.ts).
+model ImportChunk {
+  id          String   @id @default(cuid())
+  importRunId String
+  index       Int
+  status      String   @default("PENDING") // PENDING | DONE | FAILED
+  payload     String   @default("[]")
+  stats       String   @default("{}")
+  errors      String   @default("[]")
+  createdAt   DateTime @default(now())
+
+  run ImportRun @relation(fields: [importRunId], references: [id], onDelete: Cascade)
+
+  @@index([importRunId, status])
 }
 
 // Instance-level record of operator grants and operator actions on accounts.
@@ -264,7 +290,7 @@ model Notification {
   id        String   @id @default(cuid())
   userId    String
   actorId   String?
-  type      String   // "MENTION" | "KEY_COMMENT"
+  type      String // "MENTION" | "KEY_COMMENT"
   projectId String
   keyId     String
   commentId String?
@@ -332,8 +358,8 @@ model AccountPlan {
 model EntitlementOverride {
   id                   String    @id @default(cuid())
   orgId                String    @unique
-  features             String?   // JSON: EntitlementFeature[] | null
-  featureAdditions     String?   // JSON: EntitlementFeature[] | null
+  features             String? // JSON: EntitlementFeature[] | null
+  featureAdditions     String? // JSON: EntitlementFeature[] | null
   maxProjects          Int?
   maxSeatsPerProject   Int?
   maxKeysPerProject    Int?

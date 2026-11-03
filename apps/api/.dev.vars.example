@@ -9,3 +9,7 @@ ENABLE_LOCAL_PASSWORD=true
 # VERBA_LICENSES_URL=http://localhost:4970
 # VERBA_LICENSES_SERVICE_TOKEN=local-token
 # VERBA_ENTITLEMENT_WEBHOOK_SECRET=local-webhook-secret
+# AI fill on a local Worker: a key to seal providers' keys with, and any
+# OpenAI-compatible endpoint (leave OPENAI_BASE_URL out for OpenAI itself).
+# AI_ENCRYPTION_KEY=local-dev-only
+# OPENAI_BASE_URL=http://localhost:4971/v1

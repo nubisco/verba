@@ -148,50 +148,29 @@ export async function runSetupWizard(): Promise<void> {
     },
   ])
 
-  // SMTP (optional)
-  const { configureSMTP } = await inquirer.prompt([
+  // Email (optional): Resend is the only transport. Without it, sign-in
+  // codes are written to the API log.
+  const { configureEmail } = await inquirer.prompt([
     {
       type: 'confirm',
-      name: 'configureSMTP',
-      message: 'Configure SMTP for email/OTP sending? (optional)',
+      name: 'configureEmail',
+      message: 'Send sign-in codes by email through Resend? (optional)',
       default: false,
     },
   ])
 
-  let smtpVars = ''
-  if (configureSMTP) {
-    const smtp = await inquirer.prompt([
-      { type: 'input', name: 'host', message: 'SMTP host:' },
-      { type: 'input', name: 'port', message: 'SMTP port:', default: '587' },
+  let mailVars = ''
+  if (configureEmail) {
+    const mail = await inquirer.prompt([
+      { type: 'password', name: 'key', message: 'Resend API key:', mask: '*' },
       {
         type: 'input',
         name: 'from',
-        message: 'From address:',
-        default: 'noreply@verba.app',
-      },
-      {
-        type: 'input',
-        name: 'user',
-        message: 'SMTP username (leave blank if none):',
-      },
-      { type: 'password', name: 'pass', message: 'SMTP password:', mask: '*' },
-      {
-        type: 'confirm',
-        name: 'secure',
-        message: 'Use TLS (port 465)?',
-        default: false,
+        message: 'From address (for example Verba <auth@example.com>):',
+        validate: (v: string) => /@/.test(v) || 'Enter the address codes come from',
       },
     ])
-    smtpVars = [
-      `SMTP_HOST=${smtp.host}`,
-      `SMTP_PORT=${smtp.port}`,
-      `SMTP_FROM=${smtp.from}`,
-      smtp.user ? `SMTP_USER=${smtp.user}` : '',
-      smtp.pass ? `SMTP_PASS=${smtp.pass}` : '',
-      `SMTP_SECURE=${smtp.secure}`,
-    ]
-      .filter(Boolean)
-      .join('\n')
+    mailVars = [`RESEND_API_KEY=${mail.key}`, `MAIL_FROM="${mail.from}"`].join('\n')
   }
 
   // Write .env
@@ -203,7 +182,7 @@ export async function runSetupWizard(): Promise<void> {
       // Encrypts each project's AI provider key, and nothing else.
       `AI_ENCRYPTION_KEY="${crypto.randomBytes(32).toString('hex')}"`,
       `PORT=4000`,
-      smtpVars,
+      mailVars,
     ]
       .filter(Boolean)
       .join('\n') + '\n'

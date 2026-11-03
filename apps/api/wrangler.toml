@@ -46,10 +46,24 @@ class_name = "LiveHub"
 tag = "v1"
 new_sqlite_classes = ["LiveHub"]
 
-# hosted Verba never sends SMTP (no raw sockets on Workers): one-time codes
-# go through Resend. The stub keeps nodemailer out of the bundle.
-[alias]
-"nodemailer" = "./src/worker/stubs/nodemailer.ts"
+# Background jobs: imports and AI fills, one chunk per message (src/jobs.ts).
+# One message per invocation, so each chunk has D1's whole per-invocation
+# query budget, and one invocation at a time, because D1 runs one query at a
+# time anyway and a big import should not crowd out people's requests.
+[[queues.producers]]
+binding = "JOBS"
+queue = "verba-jobs"
+
+[[queues.consumers]]
+queue = "verba-jobs"
+max_batch_size = 1
+max_concurrency = 1
+max_retries = 3
+
+# Hourly housekeeping: audit retention, expired codes, finished job chunks,
+# and the 5 GB database size alert (src/services/maintenance.service.ts).
+[triggers]
+crons = ["0 * * * *"]
 
 [observability]
 enabled = true
@@ -61,7 +75,9 @@ ENABLE_EE = "true"
 # VERBA_ENTITLEMENT_WEBHOOK_SECRET are set too (docs/plans-and-billing.md).
 VERBA_LICENSES_URL = "https://licenses.nubisco.io"
 VERBA_SALES_URL = "https://nubisco.io/contact?product=verba&need=pre-sales"
-MAIL_FROM = "Verba <notifications@nubisco.io>"
+# Sign-in codes come from auth@, kept apart from notification volume
+# (AGENTS.md, "Transactional email"). Sent through Resend (RESEND_API_KEY).
+MAIL_FROM = "Verba <auth@nubisco.io>"
 # Sign-in through Accord. Checked against the NAS settings at cutover.
 PLATFORM_ISSUER = "https://auth.nubisco.io"
 PLATFORM_AUTH_ORIGIN = "https://auth.nubisco.io"

@@ -107,6 +107,8 @@
   "import.applying": "Applying…",
   "import.loading": "Loading…",
   "import.importComplete": "Import Complete",
+  "import.importFailed": "Import Failed",
+  "import.importing": "Importing… {done} of {total}",
   "import.viewImportRun": "View Import Run",
   "import.create": "+{count} create",
   "import.update": "~{count} update",

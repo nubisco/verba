@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../prisma.js', () => ({
   prisma: {
@@ -19,14 +19,7 @@ vi.mock('../services/auth.service.js', () => ({
 }))
 
 import { prisma } from '../prisma.js'
-import {
-  OTP_MAX_ATTEMPTS,
-  hashCode,
-  isDisposableEmail,
-  mailFrom,
-  requestOtp,
-  verifyOtp,
-} from '../services/otp.service.js'
+import { OTP_MAX_ATTEMPTS, hashCode, isDisposableEmail, requestOtp, verifyOtp } from '../services/otp.service.js'
 
 const liveToken = (overrides: Record<string, unknown> = {}) => ({
   id: 'otp1',
@@ -100,7 +93,6 @@ describe('requestOtp', () => {
     vi.clearAllMocks()
     vi.spyOn(console, 'log').mockImplementation(() => {})
     delete process.env.RESEND_API_KEY
-    delete process.env.SMTP_HOST
   })
 
   it('stores a hash, never the code', async () => {
@@ -129,16 +121,5 @@ describe('isDisposableEmail', () => {
     expect(isDisposableEmail('a@example.com', '')).toBe(false)
     expect(isDisposableEmail('a@notmailinator.com', '')).toBe(false)
     expect(isDisposableEmail('a@spam.test', 'spam.test, other.test')).toBe(true)
-  })
-})
-
-describe('mailFrom', () => {
-  afterEach(() => vi.unstubAllEnvs())
-
-  it('sends from the configured address on every transport', () => {
-    expect(mailFrom({ MAIL_FROM: 'Verba <hi@example.com>', SMTP_FROM: 'x@y.z' } as NodeJS.ProcessEnv)).toBe(
-      'Verba <hi@example.com>',
-    )
-    expect(mailFrom({ SMTP_FROM: 'x@y.z' } as NodeJS.ProcessEnv)).toBe('x@y.z')
   })
 })
