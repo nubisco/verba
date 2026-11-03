@@ -3,6 +3,10 @@ name: Deploy
 # Builds the multi-arch images after a release on master, pushes them to GHCR, and deploys them
 # to the NAS.
 #
+# Two editions of the API are built. verba-api is the public, Community Edition image anyone can
+# pull. verba-api-ee carries the Enterprise Edition (packages/ee) and is for Nubisco's hosted
+# Verba only: it goes to a private package, amd64 only, and is what the NAS runs.
+#
 # The image builds run on GitHub's runners and are the only part that executes repository code.
 # The deploy job runs on a self-hosted runner and checks out nothing: it asks the NAS to deploy
 # the sha- tag of the commit that was built, through a key that can run one deploy script and
@@ -138,6 +142,70 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  # The hosted API image, with the Enterprise Edition compiled in (hosted billing, EE sign-in).
+  # It must stay private: the public images above are Community Edition only. It is amd64 only,
+  # the NAS's architecture. No OCI labels are added, so the package is not described as this
+  # public repository's image.
+  build-ee:
+    name: Build verba-api-ee (amd64, private)
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get version and tag
+        id: version
+        env:
+          SHA: ${{ needs.prepare.outputs.sha }}
+        run: |
+          echo "VERSION=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+          echo "SHORT=sha-${SHA:0:7}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          platforms: linux/amd64
+          build-args: |
+            EDITION=ee
+            APP_VERSION=${{ steps.version.outputs.VERSION }}
+            BUILD_HASH=${{ needs.prepare.outputs.sha }}
+          tags: |
+            ${{ env.REGISTRY }}/nubisco/verba-api-ee:latest
+            ${{ env.REGISTRY }}/nubisco/verba-api-ee:${{ steps.version.outputs.VERSION }}
+            ${{ env.REGISTRY }}/nubisco/verba-api-ee:${{ steps.version.outputs.SHORT }}
+          push: true
+          no-cache: true
+
+      # The deploy goes ahead only while the package is private. If it ever reads otherwise
+      # (or cannot be read), this fails and the NAS keeps the version it runs.
+      - name: Check the package is private
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          visibility=$(gh api /orgs/nubisco/packages/container/verba-api-ee --jq .visibility)
+          echo "verba-api-ee visibility: ${visibility}"
+          if [ "$visibility" != "private" ]; then
+            echo "::error::ghcr.io/nubisco/verba-api-ee is not private. Make it private in the package settings before deploying."
+            exit 1
+          fi
+
   merge:
     name: Create multi-arch manifest (${{ matrix.package }})
     runs-on: ubuntu-latest
@@ -187,9 +255,11 @@ jobs:
             -t ${{ env.REGISTRY }}/nubisco/${{ matrix.package }}:sha-${SHA:0:7} \
             $(printf '${{ env.REGISTRY }}/nubisco/${{ matrix.package }}@sha256:%s ' *)
 
+  # The NAS's compose file names verba-api-ee for the API and verba-ce for the web, both at
+  # ${VERBA_VERSION}, which the deploy script sets to this sha- tag. So it waits for both.
   nas:
     name: Deploy to the NAS
-    needs: [prepare, merge]
+    needs: [prepare, merge, build-ee]
     runs-on: [self-hosted, nas-deploy]
     # The script's worst case is three 4-minute pull attempts, then stop, Build and the
     # health wait.

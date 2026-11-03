@@ -181,6 +181,11 @@ The API allows `GET, POST, PUT, PATCH, DELETE, OPTIONS`. In dev, any `localhost`
 
 The API refuses to start with the default `JWT_SECRET` in production.
 
+## Images and the hosted deployment
+
+- **Two API images, from one Dockerfile.** `apps/api/Dockerfile` takes `EDITION` (default `ce`). `ghcr.io/nubisco/verba-api` is the public Community Edition image: packages/ee is replaced by a stub, so no proprietary code ships in it. `ghcr.io/nubisco/verba-api-ee` (`EDITION=ee`) compiles packages/ee in, is amd64 only, and is a **private** package used by verba.nubisco.io alone. Never make it public and never point the public `docker-compose.yml` at it.
+- **Deploy** (`.github/workflows/docker.yml`): after Release on master, the public images and the EE image are built for the same pinned commit and tagged `sha-<7>`. The EE build checks that its package is private and fails otherwise. The `nas` job then runs `ssh nas-deploy "verba sha-<7>"`. Which images run is decided by the compose file on the NAS, not in this repository: hosted Verba uses `verba-api-ee` for the API and `verba-ce` for the web.
+
 ## New Feature Checklist
 
 1. **Schema change?** → Edit `prisma/schema.prisma`, run `pnpm db:push` and `pnpm prisma:generate`, then write the PostgreSQL migration with `pnpm db:migration:new <name>` (see Database).
