@@ -20,6 +20,16 @@ The code is `packages/ee/src/plans`. The API loads it from `apps/api/src/service
 2. **Fetch.** When the copy is missing or more than a day old, Verba asks licenses (`GET /v1/entitlements/verba/:accountId`) with its service token. The billing page always asks, so someone back from checkout sees the new plan even if the webhook is late.
 3. **Never downgrade on a network error.** If licenses cannot be reached, the copy held stays. Only an account with no copy at all and no answer from licenses is treated as Free.
 
+## Limits
+
+On a hosted plan, creating past a limit is refused with `402` and a `plan_limit` body: `{ error, code: "plan_limit", resource, limit, current, adding }`, where `resource` is `projects`, `members` or `keys`. The web app opens one upgrade prompt for any of these, in the server's words, with **See plans** for the account's owners and admins.
+
+- **Projects**: creating one. On a hosted plan this account limit replaces the older per-person project cap that comes from the Platform token's `app_plan`.
+- **Members**: adding a person to the account, directly or by adding them to one of its projects.
+- **Keys**: creating one, and imports (CSV, XLSX, JSON and XLIFF). An import that would create more keys than fit is refused before it writes anything. Keys it would only update do not count.
+
+Only creation is checked. Nothing is deleted, and nothing already over a limit (after a downgrade, say) becomes read-only. On a Community or self-hosted instance nothing is refused and nothing is counted: the check returns before it reads the database (`apps/api/src/services/plan-limits.service.ts`).
+
 ## Upgrading
 
 Paddle runs a checkout only on `nubisco.io`. It refuses one on any product's own domain ("Transaction checkout creation is blocked for this vendor"), so Verba never loads Paddle.js.

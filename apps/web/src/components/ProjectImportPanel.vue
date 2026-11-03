@@ -136,6 +136,7 @@
 </template>
 
 <script setup lang="ts">
+import { notePlanLimit } from '../planLimit'
 import { ref, onMounted, computed } from 'vue'
 import { apiFetch } from '../api'
 import { trackEvent } from '../composables/useAnalytics'
@@ -317,6 +318,7 @@ async function doApply() {
     })
     if (!res.ok) {
       const d = await res.json()
+      notePlanLimit(res.status, d)
       throw new Error(d.error ?? 'Apply failed')
     }
     applyResult.value = await res.json()

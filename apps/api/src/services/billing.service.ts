@@ -18,21 +18,9 @@ import type { FastifyInstance } from 'fastify'
 import { prisma } from '../prisma.js'
 import { AccountRole } from '../types.js'
 import { accountUsage, requireAccountRole } from './account.service.js'
+import { eeEnabled, loadEE } from './edition.service.js'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type EeModule = any
-
-export function eeEnabled(env: Record<string, string | undefined> = process.env): boolean {
-  return env.OSS_ONLY !== 'true' && env.ENABLE_EE === 'true'
-}
-
-async function loadEE(): Promise<EeModule | null> {
-  try {
-    return (await import('@nubisco/verba-ee')) as EeModule
-  } catch {
-    return null
-  }
-}
+export { eeEnabled }
 
 /** Mounts the EE billing routes when this instance sells hosted plans. */
 export async function registerHostedBilling(app: FastifyInstance): Promise<void> {

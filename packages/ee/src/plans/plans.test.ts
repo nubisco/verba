@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { resolveEntitlements, type EntitlementsDb } from '../entitlements/entitlement.service.js'
 import type { LicensesEntitlement } from './client.js'
 import { configFromEnv, configurePlans, plansConfig } from './config.js'
+import { accountLimits } from './enforce.js'
 import { FREE_LIMITS } from './limits.js'
 import { plansPlugin, type PlansDeps } from './routes.js'
 import { hmacSha256Hex } from './signature.js'
@@ -488,5 +489,39 @@ describe('the billing routes', () => {
     expect(res.statusCode).toBe(200)
     expect(res.json()).toEqual({ url: 'https://portal.test/overview' })
     expect(calls.find((c) => c.path === '/v1/billing/portal')?.body).toEqual({ app: 'verba', workspace_id: ACCOUNT })
+  })
+})
+
+// ── What the API enforces ───────────────────────────────────────────────────
+
+describe('accountLimits', () => {
+  it('reports the hosted limits the API enforces on creation', async () => {
+    entitlements.set(ACCOUNT, pro())
+    expect(await accountLimits(mem.db, ACCOUNT)).toEqual({ projects: 10, members: 25, keys: 15000 })
+  })
+
+  it('reports nothing to enforce when plans are off', async () => {
+    configurePlans(null)
+    expect(await accountLimits(mem.db, ACCOUNT)).toBeNull()
+    expect(calls).toHaveLength(0)
+  })
+
+  it('reports nothing to enforce when a licence key decides the plan', async () => {
+    const db: EntitlementsDb = {
+      ...mem.db,
+      licenseState: {
+        findFirst: async () => ({
+          status: 'valid',
+          licensee: 'Example Ltd',
+          planId: 'self_hosted_enterprise',
+          seats: 50,
+          features: '[]',
+          expiresAt: null,
+          graceEndsAt: null,
+          lastVerifiedAt: null,
+        }),
+      },
+    }
+    expect(await accountLimits(db, ACCOUNT)).toBeNull()
   })
 })

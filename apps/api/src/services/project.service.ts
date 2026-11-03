@@ -1,6 +1,7 @@
 import { prisma } from '../prisma.js'
 import type { CreateProjectInput, UpdateProjectInput } from '../schemas/project.schema.js'
 import { isOperator } from './operator.service.js'
+import { assertWithinLimit, plansEnforced } from './plan-limits.service.js'
 
 function notFound(): never {
   throw Object.assign(new Error('Project not found'), { statusCode: 404 })
@@ -68,7 +69,11 @@ export async function createProject(
   accountId: string,
   data: CreateProjectInput,
 ) {
-  if (!(await isOperator(userId))) {
+  if (await plansEnforced(accountId)) {
+    // A hosted plan from the licenses service: the account's limit applies,
+    // and replaces the per-person cap below, operators included.
+    await assertWithinLimit(accountId, 'projects')
+  } else if (!(await isOperator(userId))) {
     const cap = getProjectCapForPlan(plan)
     if (Number.isFinite(cap)) {
       const ownedAdminCount = await prisma.membership.count({

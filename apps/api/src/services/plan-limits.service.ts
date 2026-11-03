@@ -1,0 +1,115 @@
+// Plan limits on creation, for an account on a hosted plan.
+//
+// The services call assertWithinLimit before they create a project, add a
+// person to an account, or create translation keys. It refuses with 402 and a
+// `plan_limit` body when the account's plan would be exceeded, and the web app
+// turns that into one upgrade prompt.
+//
+// It refuses nothing unless this instance sells hosted plans: EE enabled, and
+// the EE plans module configured against Nubisco's licenses service. On a
+// Community or self-hosted instance it returns at once, before counting
+// anything. The limits themselves come from EE (`accountLimits`), and the
+// counts from here.
+//
+// Only creation is checked. Nothing is ever deleted or blocked for being over
+// a limit already, for example after a downgrade.
+
+import { prisma } from '../prisma.js'
+import { eeEnabled, loadEE } from './edition.service.js'
+
+export type LimitedResource = 'projects' | 'members' | 'keys'
+
+export interface PlanLimitDetail {
+  code: 'plan_limit'
+  resource: LimitedResource
+  limit: number
+  current: number
+  adding: number
+}
+
+const NOUNS: Record<LimitedResource, [string, string]> = {
+  projects: ['project', 'projects'],
+  members: ['member', 'members'],
+  keys: ['translation key', 'translation keys'],
+}
+
+function count(n: number, resource: LimitedResource): string {
+  const [one, many] = NOUNS[resource]
+  return `${n.toLocaleString('en')} ${n === 1 ? one : many}`
+}
+
+/** The words of the refusal, the same wherever it is shown. */
+export function planLimitMessage(resource: LimitedResource, limit: number, current: number, adding: number): string {
+  const has = `This account's plan allows ${count(limit, resource)}, and it has ${current.toLocaleString('en')}.`
+  const would = adding > 1 ? ` This would add ${adding.toLocaleString('en')} more.` : ''
+  return `${has}${would} Upgrade the plan to add more.`
+}
+
+/** The account's limits when hosted plans are on, else null (nothing to enforce). */
+async function limitsOf(accountId: string): Promise<Record<LimitedResource, number | null> | null> {
+  if (!eeEnabled()) return null
+  const ee = await loadEE()
+  if (typeof ee?.accountLimits !== 'function') return null
+  return (await ee.accountLimits(prisma, accountId)) ?? null
+}
+
+/** Whether limits are enforced for this account. */
+export async function plansEnforced(accountId: string): Promise<boolean> {
+  return (await limitsOf(accountId)) !== null
+}
+
+async function currentCount(accountId: string, resource: LimitedResource): Promise<number> {
+  if (resource === 'projects') return prisma.project.count({ where: { accountId } })
+  if (resource === 'members') return prisma.accountMember.count({ where: { accountId } })
+  return prisma.key.count({ where: { project: { accountId } } })
+}
+
+/**
+ * Refuses a creation that would take the account past its plan's limit.
+ * `adding` is how many the change creates (an import can create many keys).
+ */
+export async function assertWithinLimit(accountId: string, resource: LimitedResource, adding = 1): Promise<void> {
+  if (adding <= 0) return
+  const limits = await limitsOf(accountId)
+  const limit = limits?.[resource]
+  if (limit === null || limit === undefined) return
+  const current = await currentCount(accountId, resource)
+  if (current + adding <= limit) return
+  const details: PlanLimitDetail = { code: 'plan_limit', resource, limit, current, adding }
+  throw Object.assign(new Error(planLimitMessage(resource, limit, current, adding)), { statusCode: 402, details })
+}
+
+/** The same check for a project's account. */
+export async function assertProjectWithinLimit(projectId: string, resource: LimitedResource, adding = 1) {
+  if (adding <= 0 || !eeEnabled()) return
+  const project = await prisma.project.findUnique({ where: { id: projectId }, select: { accountId: true } })
+  if (project) await assertWithinLimit(project.accountId, resource, adding)
+}
+
+/**
+ * How many of these keys do not exist in the project yet, keyed by namespace
+ * slug and key name. For an import, which creates the missing ones. Counted
+ * only when hosted plans are on.
+ */
+export async function newKeyCount(projectId: string, keys: { namespaceSlug: string; name: string }[]): Promise<number> {
+  const wanted = new Set(keys.map((k) => `${k.namespaceSlug}\u0000${k.name}`))
+  if (wanted.size === 0) return 0
+  const existing = await prisma.key.findMany({
+    where: { projectId, name: { in: [...new Set(keys.map((k) => k.name))] } },
+    select: { name: true, namespace: { select: { slug: true } } },
+  })
+  for (const k of existing) wanted.delete(`${k.namespace.slug}\u0000${k.name}`)
+  return wanted.size
+}
+
+/**
+ * Refuses an import, before it writes anything, when the keys it would create
+ * take the project's account past its plan. Keys that exist already are
+ * updated, not created, so they do not count.
+ */
+export async function assertKeysFit(projectId: string, keys: { namespaceSlug: string; name: string }[]): Promise<void> {
+  if (keys.length === 0 || !eeEnabled()) return
+  const project = await prisma.project.findUnique({ where: { id: projectId }, select: { accountId: true } })
+  if (!project || !(await plansEnforced(project.accountId))) return
+  await assertWithinLimit(project.accountId, 'keys', await newKeyCount(projectId, keys))
+}

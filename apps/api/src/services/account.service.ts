@@ -2,6 +2,7 @@ import { prisma } from '../prisma.js'
 import { AccountRole } from '../types.js'
 import type { AddAccountMemberInput, CreateAccountInput, UpdateAccountInput } from '../schemas/account.schema.js'
 import { isOperator, recordInstanceAudit } from './operator.service.js'
+import { assertWithinLimit } from './plan-limits.service.js'
 
 // Accounts are the tenant level above projects (fleet standard, "Every rail
 // has the same anatomy" in the workspace AGENTS.md). Every project belongs to
@@ -222,6 +223,7 @@ export async function addMember(actorId: string, accountId: string, data: AddAcc
     where: { userId_accountId: { userId: user.id, accountId } },
   })
   if (existing) fail(409, 'Already a member of this account')
+  await assertWithinLimit(accountId, 'members')
   const member = await prisma.accountMember.create({ data: { userId: user.id, accountId, role: data.role } })
   await recordInstanceAudit({
     actorId,
@@ -303,6 +305,7 @@ export async function ensureMemberForProject(actorId: string, projectId: string,
   if (!actor || (ROLE_WEIGHT[actor.role] ?? 0) < ROLE_WEIGHT[AccountRole.ADMIN]!) {
     fail(403, 'This person is not in the account yet. Ask an account owner or admin to add them.')
   }
+  await assertWithinLimit(project.accountId, 'members')
   await prisma.accountMember.create({
     data: { userId, accountId: project.accountId, role: AccountRole.MEMBER },
   })
