@@ -113,3 +113,76 @@ export async function assertKeysFit(projectId: string, keys: { namespaceSlug: st
   if (!project || !(await plansEnforced(project.accountId))) return
   await assertWithinLimit(project.accountId, 'keys', await newKeyCount(projectId, keys))
 }
+
+// ── Read-only while over a limit ────────────────────────────────────────────
+//
+// A hosted account over any of its plan's limits (Pro gone back to Free, say)
+// is read-only until it is back under every limit or upgrades. Nothing is
+// deleted. Reading and exporting keep working, and so do deleting and removing
+// people, which is how an owner gets back under, and billing, which is how
+// they upgrade. The write guard (read-only.ts) asks assertWritable before any
+// other write in the account.
+
+export interface OverLimit {
+  resource: LimitedResource
+  limit: number
+  current: number
+}
+
+const ENFORCED: LimitedResource[] = ['projects', 'members', 'keys']
+
+/** The limits the account is over now. Empty without hosted plans. */
+export async function overLimits(accountId: string): Promise<OverLimit[]> {
+  const limits = await limitsOf(accountId)
+  if (!limits) return []
+  const over: OverLimit[] = []
+  for (const resource of ENFORCED) {
+    const limit = limits[resource]
+    if (limit === null || limit === undefined) continue
+    const current = await currentCount(accountId, resource)
+    if (current > limit) over.push({ resource, limit, current })
+  }
+  return over
+}
+
+function joined(parts: string[]): string {
+  return parts.length <= 1 ? (parts[0] ?? '') : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
+}
+
+/** "It has 12 projects, and the plan allows 10." For the banner and the refusal alike. */
+export function overLimitSummary(over: OverLimit[]): string {
+  const has = joined(over.map((o) => count(o.current, o.resource)))
+  const allows = joined(
+    over.map((o) => (over.length === 1 ? o.limit.toLocaleString('en') : count(o.limit, o.resource))),
+  )
+  return `It has ${has}, and the plan allows ${allows}.`
+}
+
+export function readOnlyMessage(over: OverLimit[]): string {
+  return `This account is read-only. ${overLimitSummary(over)} Nothing was deleted, and everyone can still read and export. Delete some, or upgrade the plan, to make changes again.`
+}
+
+/** Refuses a write in an account that is over its plan. */
+export async function assertWritable(accountId: string): Promise<void> {
+  if (!eeEnabled()) return
+  const over = await overLimits(accountId)
+  if (over.length === 0) return
+  const first = over[0]!
+  throw Object.assign(new Error(readOnlyMessage(over)), {
+    statusCode: 402,
+    details: {
+      code: 'plan_limit',
+      readOnly: true,
+      over,
+      resource: first.resource,
+      limit: first.limit,
+      current: first.current,
+    },
+  })
+}
+
+/** The account a project belongs to, or null when there is no such project. */
+export async function accountOfProject(projectId: string): Promise<string | null> {
+  const project = await prisma.project.findUnique({ where: { id: projectId }, select: { accountId: true } })
+  return project?.accountId ?? null
+}

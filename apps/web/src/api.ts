@@ -1,5 +1,5 @@
 import router from './router'
-import { notePlanLimit } from './planLimit'
+import { notePlanLimit, noteWrite } from './planLimit'
 
 // Exported because federated sign-in is a full-page navigation to the API
 // rather than a fetch: the browser has to leave the SPA for the provider and
@@ -29,6 +29,7 @@ export async function apiFetch<T = unknown>(path: string, options: RequestInit =
   }
 
   if (res.status === 204) {
+    if (!isGet) noteWrite()
     return undefined as T
   }
 
@@ -37,5 +38,6 @@ export async function apiFetch<T = unknown>(path: string, options: RequestInit =
   if (!res.ok) {
     throw new Error(data?.error ?? data?.message ?? 'Request failed')
   }
+  if (!isGet) noteWrite()
   return data as T
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { notePlanLimit, onPlanLimit } from '../planLimit'
+import { notePlanLimit, noteWrite, onPlanLimit, onWrite } from '../planLimit'
 
 describe('plan limit refusals', () => {
   const body = {
@@ -31,5 +31,22 @@ describe('plan limit refusals', () => {
     notePlanLimit(402, null)
     expect(heard).not.toHaveBeenCalled()
     stop()
+  })
+
+  it('carries the read-only reason through', () => {
+    const heard = vi.fn()
+    const stop = onPlanLimit(heard)
+    notePlanLimit(402, { ...body, readOnly: true, over: [{ resource: 'projects', limit: 1, current: 2 }] })
+    expect(heard).toHaveBeenCalledWith(expect.objectContaining({ readOnly: true, over: [expect.any(Object)] }))
+    stop()
+  })
+
+  it('tells the write listeners after an accepted write', () => {
+    const heard = vi.fn()
+    const stop = onWrite(heard)
+    noteWrite()
+    stop()
+    noteWrite()
+    expect(heard).toHaveBeenCalledTimes(1)
   })
 })

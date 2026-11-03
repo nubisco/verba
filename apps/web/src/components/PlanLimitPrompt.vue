@@ -1,5 +1,5 @@
 <template>
-  <NbModal :open="limit !== null" title="This account's plan is full" size="sm" @close="limit = null">
+  <NbModal :open="limit !== null" :title="title" size="sm" @close="limit = null">
     <p class="plan-limit__body">{{ limit?.message }}</p>
     <p v-if="!accounts.canManage" class="plan-limit__body">
       An owner or admin of this account can upgrade it from Settings, Billing.
@@ -18,7 +18,7 @@
  * `plan_limit` and this opens with its words. It only opens on an instance
  * that sells hosted plans, because nothing is refused anywhere else.
  */
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { onPlanLimit, type PlanLimit } from '../planLimit'
 import { useAccountsStore } from '../stores/accounts'
@@ -28,6 +28,7 @@ const router = useRouter()
 const accounts = useAccountsStore()
 const instanceConfig = useInstanceConfigStore()
 const limit = ref<PlanLimit | null>(null)
+const title = computed(() => (limit.value?.readOnly ? 'This account is read-only' : "This account's plan is full"))
 
 let stop: (() => void) | null = null
 onMounted(() => {

@@ -2,7 +2,7 @@ import { prisma } from '../prisma.js'
 import { AccountRole } from '../types.js'
 import type { AddAccountMemberInput, CreateAccountInput, UpdateAccountInput } from '../schemas/account.schema.js'
 import { isOperator, recordInstanceAudit } from './operator.service.js'
-import { assertWithinLimit } from './plan-limits.service.js'
+import { assertWithinLimit, overLimits, overLimitSummary } from './plan-limits.service.js'
 
 // Accounts are the tenant level above projects (fleet standard, "Every rail
 // has the same anatomy" in the workspace AGENTS.md). Every project belongs to
@@ -330,4 +330,14 @@ export async function accountUsage(accountId: string) {
     prisma.locale.findMany({ where: { project: { accountId } }, select: { code: true }, distinct: ['code'] }),
   ])
   return { projects, members, keys, locales: locales.length }
+}
+
+/**
+ * Whether the account is read-only because it is over its hosted plan, for
+ * every member (they are all held to it). Never read-only without hosted plans.
+ */
+export async function accountPlanStatus(userId: string, accountId: string) {
+  await requireAccountRole(userId, accountId, AccountRole.MEMBER)
+  const over = await overLimits(accountId)
+  return { readOnly: over.length > 0, over, summary: over.length > 0 ? overLimitSummary(over) : null }
 }

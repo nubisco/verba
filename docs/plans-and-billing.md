@@ -24,11 +24,21 @@ The code is `packages/ee/src/plans`. The API loads it from `apps/api/src/service
 
 On a hosted plan, creating past a limit is refused with `402` and a `plan_limit` body: `{ error, code: "plan_limit", resource, limit, current, adding }`, where `resource` is `projects`, `members` or `keys`. The web app opens one upgrade prompt for any of these, in the server's words, with **See plans** for the account's owners and admins.
 
-- **Projects**: creating one. On a hosted plan this account limit replaces the older per-person project cap that comes from the Platform token's `app_plan`.
+- **Projects**: creating one. There is no other project cap: a self-hosted instance has no plan limits at all.
 - **Members**: adding a person to the account, directly or by adding them to one of its projects.
 - **Keys**: creating one, and imports (CSV, XLSX, JSON and XLIFF). An import that would create more keys than fit is refused before it writes anything. Keys it would only update do not count.
 
-Only creation is checked. Nothing is deleted, and nothing already over a limit (after a downgrade, say) becomes read-only. On a Community or self-hosted instance nothing is refused and nothing is counted: the check returns before it reads the database (`apps/api/src/services/plan-limits.service.ts`).
+On a Community or self-hosted instance nothing is refused and nothing is counted: the check returns before it reads the database (`apps/api/src/services/plan-limits.service.ts`).
+
+## Read-only while over a limit
+
+An account over any of its plan's limits, for example a Pro account gone back to Free, is read-only until it is back under every limit or upgrades. Nothing is deleted.
+
+- **Still works**: reading and exporting, deleting anything and removing people (which is how an account gets back under), billing (which is how it upgrades), and previewing an import.
+- **Refused**: every other write in the account, such as creating, editing, importing, translating, approving and commenting. The answer is `402` with `code: "plan_limit"`, `readOnly: true` and `over` (each limit it is over), and the reason in words: "This account is read-only. It has 2 projects, and the plan allows 1. Nothing was deleted, and everyone can still read and export. Delete some, or upgrade the plan, to make changes again."
+- **Shown**: a warning banner across the account for every member, from `GET /accounts/:accountId/plan-status`, with **See plans** for owners and admins. It is checked again after every accepted write, so it goes as soon as the account is back under.
+
+The guard is `apps/api/src/read-only.ts`, added to every route as it is registered. It only acts for a member of the account, so nobody outside learns anything about it, and only when hosted plans are on.
 
 ## Upgrading
 

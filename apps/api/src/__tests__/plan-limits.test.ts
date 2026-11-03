@@ -110,25 +110,22 @@ describe('the create paths', () => {
     accountLimits.mockResolvedValue({ projects: 3, members: 5, keys: 100 })
   })
 
-  it('refuses a project past the account limit, in place of the per-person cap', async () => {
+  it('refuses a project past the account limit', async () => {
     vi.mocked(prisma.project.count).mockResolvedValue(3)
-    await expect(createProject('u1', 'pro', 'acc1', { name: 'X', slug: 'x' })).rejects.toMatchObject({
+    await expect(createProject('acc1', { name: 'X', slug: 'x' })).rejects.toMatchObject({
       statusCode: 402,
       details: { resource: 'projects' },
     })
     expect(prisma.project.create).not.toHaveBeenCalled()
-    // The old per-person cap from the Platform token is not consulted on a hosted plan.
-    expect(prisma.membership.count).not.toHaveBeenCalled()
   })
 
-  it('keeps the per-person cap on an instance without hosted plans', async () => {
+  it('limits nothing without hosted plans: there is no per-person cap any more', async () => {
     accountLimits.mockResolvedValue(null)
-    vi.mocked(prisma.user.findUnique).mockResolvedValue({ email: 'a@example.com', deactivatedAt: null } as never)
-    vi.mocked(prisma.membership.count).mockResolvedValue(3)
-    await expect(createProject('u1', 'free', 'acc1', { name: 'X', slug: 'x' })).rejects.toMatchObject({
-      statusCode: 402,
-    })
-    expect(prisma.membership.count).toHaveBeenCalled()
+    vi.mocked(prisma.membership.count).mockResolvedValue(500)
+    vi.mocked(prisma.project.findUnique).mockResolvedValue(null)
+    vi.mocked(prisma.project.create).mockResolvedValue({ id: 'p9', slug: 'x', accountId: 'acc1' } as never)
+    await expect(createProject('acc1', { name: 'X', slug: 'x' })).resolves.toBeDefined()
+    expect(prisma.membership.count).not.toHaveBeenCalled()
     expect(prisma.project.count).not.toHaveBeenCalled()
   })
 

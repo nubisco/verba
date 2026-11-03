@@ -34,6 +34,7 @@ import { setupRoutes } from './routes/setup.js'
 import { configRoutes } from './routes/config.js'
 import { billingRoutes } from './routes/billing.js'
 import { trustProxySetting } from './rate-limits.js'
+import { guardReadOnlyWrites } from './read-only.js'
 import { SESSION_COOKIE, makeAuthenticate, sessionTtlSeconds } from './session.js'
 
 export function buildApp() {
@@ -68,6 +69,9 @@ export function buildApp() {
   })
 
   app.decorate('authenticate', makeAuthenticate(app))
+  // An account over its hosted plan is read-only: every route registered
+  // below gets the write guard. It does nothing without hosted plans.
+  app.addHook('onRoute', guardReadOnlyWrites)
 
   app.setErrorHandler((err, _req, reply) => {
     if (err instanceof ZodError) {
