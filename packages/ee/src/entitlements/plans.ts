@@ -53,8 +53,7 @@ const FREE: Plan = {
   baseEntitlements: {
     features: new Set(EVERY_PLAN),
     ...UNLIMITED,
-    // The earlier per-project caps (5 seats, 500 keys and 5 locales in each
-    // of 3 projects) as account totals.
+    // Jose, 2026-11-03: account totals, the same as Free in licenses.
     maxProjects: 3,
     maxMembers: 5,
     maxKeys: 1500,

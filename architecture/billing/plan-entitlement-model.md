@@ -46,9 +46,9 @@ All limits are account totals. `null` is unlimited.
 | Keys     | 1,500  | 15,000    | unlimited                                    |
 | Locales  | 5      | unlimited | unlimited                                    |
 
-Pro's numbers are the Paddle product Verba Pro's. Free's are the earlier per-project caps (5 seats, 500 keys and 5 locales in each of 3 projects) expressed as account totals. The per-project and API-call caps are no longer set on any plan.
+Pro's numbers are the Paddle product Verba Pro's. Free's were set by Jose on 2026-11-03, and licenses' Free row has the same numbers. The per-project and API-call caps are no longer set on any plan.
 
-For a hosted account (billing configured, see docs/plans-and-billing.md), the numbers in force are the ones in the entitlement Nubisco's licenses service sends: the Paddle product's for Pro, licenses' own Free row for Free, or a sales override.
+For a hosted account (billing configured, see docs/plans-and-billing.md), the numbers in force are the ones in the entitlement Nubisco's licenses service sends: the Paddle product's for Pro, licenses' Free row for Free (the same numbers as above), or a sales override.
 
 ## Entitlement resolution order
 

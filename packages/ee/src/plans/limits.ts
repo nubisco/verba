@@ -19,10 +19,11 @@ export type LimitKey = (typeof LIMIT_KEYS)[number]
 
 /**
  * What an account licenses has never been asked about is held to, when it
- * cannot be asked. The same numbers as Free in licenses (src/billing/plans.ts),
- * which answers them itself whenever it can be reached.
+ * cannot be asked. Free as Jose set it on 2026-11-03, as account totals: the
+ * same numbers as Verba's plan table and as Free in licenses
+ * (src/billing/plans.ts), which answers them itself whenever it can be reached.
  */
-export const FREE_LIMITS: Record<LimitKey, number | null> = { projects: 1, keys: 1000, members: 3, locales: null }
+export const FREE_LIMITS: Record<LimitKey, number | null> = { projects: 3, keys: 1500, members: 5, locales: 5 }
 
 /**
  * The plan in Verba's table for a hosted account: Free, or Pro for any paid
