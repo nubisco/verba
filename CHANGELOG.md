@@ -1,3 +1,10 @@
+# [1.24.0](https://github.com/nubisco/verba/compare/v1.23.0...v1.24.0) (2026-11-03)
+
+
+### Features
+
+* **api:** run hosted Verba as a Cloudflare Worker, locally ([3f36dcc](https://github.com/nubisco/verba/commit/3f36dcc3a5b5480c680a0a2bbe895edc710dedbf))
+
 # [1.23.0](https://github.com/nubisco/verba/compare/v1.22.1...v1.23.0) (2026-11-03)
 
 
