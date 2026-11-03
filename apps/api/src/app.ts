@@ -1,5 +1,4 @@
 import { Hono } from 'hono'
-import type { UpgradeWebSocket } from 'hono/ws'
 import { bodyLimit } from 'hono/body-limit'
 import { cors } from 'hono/cors'
 import { ZodError } from 'zod'
@@ -17,7 +16,6 @@ import { exportRoutes } from './routes/export.js'
 import { importRunRoutes } from './routes/import-runs.js'
 import { importRoutes } from './routes/import.js'
 import { accountRoutes } from './routes/accounts.js'
-import { wsRoutes } from './routes/ws.js'
 import { adminRoutes } from './routes/admin.js'
 import { notificationRoutes } from './routes/notifications.js'
 import { aiRoutes } from './routes/ai.js'
@@ -33,11 +31,12 @@ export const BODY_LIMIT_BYTES = 1024 * 1024
 
 export interface BuildOptions {
   /**
-   * How this runtime upgrades a request to a WebSocket. Given the app, it
-   * returns the helper for the project rooms (routes/ws.ts). The Node server
-   * passes @hono/node-ws (index.ts). Without it there is no /ws route.
+   * Registers this runtime's project rooms (`/ws/projects/:projectId`). The
+   * Node server registers routes/ws.ts with @hono/node-ws (index.ts), a Worker
+   * hands the socket to the account's Durable Object (worker/ws.ts). Without
+   * it there is no /ws route.
    */
-  websocket?: (app: Api) => UpgradeWebSocket
+  websocket?: (app: Api) => void
   /** Log each request. On by default, as Fastify's `logger: true` was. */
   logRequests?: boolean
   /** Where the sign-in rate limits count. This process unless given (a Worker's bindings). */
@@ -142,7 +141,7 @@ export async function buildApp(options: BuildOptions = {}): Promise<Api> {
   importRunRoutes(app)
   importRoutes(app)
   accountRoutes(app)
-  if (options.websocket) wsRoutes(app, options.websocket(app))
+  options.websocket?.(app)
   adminRoutes(app)
   notificationRoutes(app)
   aiRoutes(app)

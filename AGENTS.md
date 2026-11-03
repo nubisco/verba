@@ -127,6 +127,7 @@ Invalid transitions return HTTP 422. Implemented in `canTransitionStatus()` in `
 - The frontend uses `credentials: 'include'` on every fetch (see `api.ts`).
 - Routes that need auth put the `authenticate` middleware from `src/session.ts` before the handler: `app.get(path, authenticate, async (c) => ...)`.
 - `c.var.user` contains `{ userId, email }` after authentication.
+- **Hosted Verba is a Cloudflare Worker** (`src/worker.ts`, `apps/api/wrangler.toml`, `src/worker/`), built from the same app. It sets the D1 Prisma client, live delivery through the account's Durable Object (`src/worker/live-hub.ts`) and the per-minute rate limiting bindings, then serves `/api`. Its typecheck is `pnpm --filter @nubisco/verba-api types:check`, and CI bundles it with `wrangler deploy --dry-run`. Run it locally as docs/hosting-on-cloudflare.md, "Running the Worker locally", describes. Deploys go through the deploy workflow from the cutover on, so nothing on Cloudflare is created or changed from a working copy.
 - Work that may finish after the response (an analytics event, a live update) goes through `defer()` (`src/defer.ts`), and live updates through `live()` (`src/live.ts`), never straight to `wsManager`: on a Worker both are different (docs/hosting-on-cloudflare.md).
 - Handlers return `c.json(...)`, read bodies with `readBody(c)` (`src/http.ts`) and throw `httpError(status, message)` for a refusal. Every POST, PUT and PATCH route gets the read-only guard automatically (`guardEveryWrite`, `src/read-only.ts`).
 

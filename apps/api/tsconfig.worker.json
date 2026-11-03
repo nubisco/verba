@@ -1,0 +1,16 @@
+{
+  // Typechecks the Cloudflare Worker (src/worker.ts), which the Node build in
+  // tsconfig.json leaves out: it imports the workerd Prisma client, whose
+  // query compiler is a WebAssembly module, and package.json. wrangler bundles
+  // it, so this only checks.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "rootDir": "../..",
+    "tsBuildInfoFile": null
+  },
+  "include": ["src/worker.ts", "src/worker/wasm.d.ts"],
+  "exclude": [],
+  "references": []
+}

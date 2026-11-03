@@ -12,6 +12,7 @@ import { serve, type ServerType } from '@hono/node-server'
 import { createNodeWebSocket } from '@hono/node-ws'
 import WebSocket from 'ws'
 import { buildApp } from '../app.js'
+import { wsRoutes } from '../routes/ws.js'
 import { prisma } from '../prisma.js'
 import { signToken } from './inject.js'
 
@@ -42,7 +43,7 @@ describe('project rooms on the WebSocket', () => {
       websocket: (api) => {
         const nodeWs = createNodeWebSocket({ app: api })
         injectWebSocket = nodeWs.injectWebSocket
-        return nodeWs.upgradeWebSocket
+        wsRoutes(api, nodeWs.upgradeWebSocket)
       },
     })
     server = await new Promise<ServerType>((resolve) => {

@@ -1,0 +1,11 @@
+# Local settings for `wrangler dev` (copy to .dev.vars, which is never
+# committed). Real secrets go to Cloudflare with `wrangler secret put`.
+JWT_SECRET=local-dev-secret
+VERBA_OPERATORS=you@example.com
+# Password sign-in, so a local Worker can be used without Accord or email.
+ENABLE_LOCAL_PASSWORD=true
+# Plans against a local stand-in for the licenses service. Leave these three
+# out to run without plans.
+# VERBA_LICENSES_URL=http://localhost:4970
+# VERBA_LICENSES_SERVICE_TOKEN=local-token
+# VERBA_ENTITLEMENT_WEBHOOK_SECRET=local-webhook-secret

@@ -13,5 +13,6 @@
     }
   },
   "include": ["src"],
+  "exclude": ["src/worker.ts", "src/generated/prisma-worker"],
   "references": [{ "path": "../../packages/shared" }, { "path": "../../packages/ee" }]
 }

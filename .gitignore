@@ -49,3 +49,7 @@ Thumbs.db
 coverage/
 
 .claude/
+
+# Cloudflare Worker local state and settings (apps/api/wrangler.toml)
+.wrangler/
+.dev.vars

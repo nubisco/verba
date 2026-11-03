@@ -7,6 +7,8 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc -b",
+    "types:check": "tsc -p tsconfig.worker.json",
+    "worker:dev": "wrangler dev",
     "start": "node dist/index.js",
     "test": "vitest run",
     "prisma:generate": "prisma generate",
@@ -21,6 +23,7 @@
     "@hono/node-server": "^1.19.18",
     "@hono/node-ws": "^1.3.1",
     "@nubisco/verba-shared": "workspace:*",
+    "@prisma/adapter-d1": "^7.10.1",
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
     "bcryptjs": "^3.0.3",
@@ -44,6 +47,7 @@
     "@types/ws": "^8.18.2",
     "tsx": "^4.21.0",
     "vitest": "^4.1.1",
+    "wrangler": "^4.131.2",
     "ws": "^8.22.1"
   }
 }
