@@ -508,7 +508,7 @@ describe('the billing routes', () => {
 describe('accountLimits', () => {
   it('reports the hosted limits the API enforces on creation', async () => {
     entitlements.set(ACCOUNT, pro())
-    expect(await accountLimits(mem.db, ACCOUNT)).toEqual({ projects: 10, members: 25, keys: 15000 })
+    expect(await accountLimits(mem.db, ACCOUNT)).toEqual({ projects: 10, members: 25, keys: 15000, locales: null })
   })
 
   it('reports nothing to enforce when plans are off', async () => {

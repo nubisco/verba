@@ -22,11 +22,12 @@ The code is `packages/ee/src/plans`. The API loads it from `apps/api/src/service
 
 ## Limits
 
-On a hosted plan, creating past a limit is refused with `402` and a `plan_limit` body: `{ error, code: "plan_limit", resource, limit, current, adding }`, where `resource` is `projects`, `members` or `keys`. The web app opens one upgrade prompt for any of these, in the server's words, with **See plans** for the account's owners and admins.
+On a hosted plan, creating past a limit is refused with `402` and a `plan_limit` body: `{ error, code: "plan_limit", resource, limit, current, adding }`, where `resource` is `projects`, `members`, `keys` or `locales`. The web app opens one upgrade prompt for any of these, in the server's words, with **See plans** for the account's owners and admins.
 
 - **Projects**: creating one. There is no other project cap: a self-hosted instance has no plan limits at all.
 - **Members**: adding a person to the account, directly or by adding them to one of its projects.
 - **Keys**: creating one, and imports (CSV, XLSX, JSON and XLIFF). An import that would create more keys than fit is refused before it writes anything. Keys it would only update do not count.
+- **Locales**: adding one to a project, and XLIFF imports, which add their source and target locales. Locales are counted as the distinct locale codes across the account's projects, so a code another project already has adds nothing. CSV, XLSX and JSON imports only fill locales that exist, so they never add one.
 
 On a Community or self-hosted instance nothing is refused and nothing is counted: the check returns before it reads the database (`apps/api/src/services/plan-limits.service.ts`).
 

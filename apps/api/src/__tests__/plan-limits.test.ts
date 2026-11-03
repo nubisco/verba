@@ -11,7 +11,7 @@ vi.mock('../prisma.js', () => ({
     accountMember: { count: vi.fn(), findUnique: vi.fn(), create: vi.fn() },
     key: { count: vi.fn(), findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn() },
     namespace: { findUnique: vi.fn(), findFirst: vi.fn() },
-    locale: { findMany: vi.fn() },
+    locale: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn() },
     membership: { count: vi.fn() },
     user: { findUnique: vi.fn() },
     instanceAuditLog: { create: vi.fn() },
@@ -28,6 +28,7 @@ import { addMember } from '../services/account.service.js'
 import { createKey } from '../services/key.service.js'
 import { applyImport } from '../services/import.service.js'
 import { importXliff } from '../services/xliff.service.js'
+import { createLocale } from '../services/locale.service.js'
 
 const PRO = { projects: 10, members: 25, keys: 15000 }
 
@@ -187,6 +188,53 @@ describe('an XLIFF import on a hosted plan', () => {
       details: { resource: 'keys', adding: 1 },
     })
     expect(prisma.key.create).not.toHaveBeenCalled()
+  })
+})
+
+describe('locales on a hosted plan (distinct codes across the account)', () => {
+  beforeEach(() => {
+    vi.stubEnv('ENABLE_EE', 'true')
+    accountLimits.mockResolvedValue({ projects: 3, members: 5, keys: 1500, locales: 5 })
+    vi.mocked(prisma.locale.findUnique).mockResolvedValue(null)
+    // The account's projects translate into five codes already.
+    vi.mocked(prisma.locale.findMany).mockResolvedValue(
+      ['en', 'pt-PT', 'fr', 'de', 'es'].map((code) => ({ code })) as never,
+    )
+  })
+
+  it('refuses a sixth locale', async () => {
+    await expect(createLocale('p1', { code: 'it', name: 'Italian' } as never)).rejects.toMatchObject({
+      statusCode: 402,
+      message: "This account's plan allows 5 locales, and it has 5. Upgrade the plan to add more.",
+      details: { code: 'plan_limit', resource: 'locales', limit: 5, current: 5, adding: 1 },
+    })
+    expect(prisma.locale.create).not.toHaveBeenCalled()
+  })
+
+  it('allows a code another project in the account already has: it adds no locale', async () => {
+    vi.mocked(prisma.locale.create).mockResolvedValue({ id: 'l9', code: 'fr' } as never)
+    await expect(createLocale('p1', { code: 'fr', name: 'French' } as never)).resolves.toBeDefined()
+  })
+
+  it('refuses an XLIFF import whose new locales do not fit, before writing anything', async () => {
+    vi.mocked(prisma.key.findMany).mockResolvedValue([])
+    vi.mocked(prisma.key.count).mockResolvedValue(0)
+    const doc = Buffer.from(
+      '<?xml version="1.0" encoding="UTF-8"?>\n<xliff version="1.2"><file original="app" source-language="en" target-language="ja"><body>' +
+        '<trans-unit id="a.one"><source>One</source></trans-unit></body></file></xliff>',
+    )
+    await expect(importXliff('p1', doc, 'u1', 'run1')).rejects.toMatchObject({
+      statusCode: 402,
+      details: { resource: 'locales', adding: 1 },
+    })
+    expect(prisma.key.create).not.toHaveBeenCalled()
+  })
+
+  it('counts nothing without hosted plans', async () => {
+    vi.stubEnv('ENABLE_EE', '')
+    vi.mocked(prisma.locale.create).mockResolvedValue({ id: 'l9', code: 'it' } as never)
+    await expect(createLocale('p1', { code: 'it', name: 'Italian' } as never)).resolves.toBeDefined()
+    expect(prisma.locale.findMany).not.toHaveBeenCalled()
   })
 })
 

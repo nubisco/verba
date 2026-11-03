@@ -1,7 +1,7 @@
 // Plan limits on creation, for an account on a hosted plan.
 //
 // The services call assertWithinLimit before they create a project, add a
-// person to an account, or create translation keys. It refuses with 402 and a
+// person to an account, create translation keys, or add a locale. It refuses with 402 and a
 // `plan_limit` body when the account's plan would be exceeded, and the web app
 // turns that into one upgrade prompt.
 //
@@ -17,7 +17,11 @@
 import { prisma } from '../prisma.js'
 import { eeEnabled, loadEE } from './edition.service.js'
 
-export type LimitedResource = 'projects' | 'members' | 'keys'
+// Locales are counted as the distinct locale codes across the account's
+// projects: a project translating into pt-PT that another project already
+// translates into adds no locale to the account. Keys, members and projects
+// are plain counts across the account.
+export type LimitedResource = 'projects' | 'members' | 'keys' | 'locales'
 
 export interface PlanLimitDetail {
   code: 'plan_limit'
@@ -31,6 +35,7 @@ const NOUNS: Record<LimitedResource, [string, string]> = {
   projects: ['project', 'projects'],
   members: ['member', 'members'],
   keys: ['translation key', 'translation keys'],
+  locales: ['locale', 'locales'],
 }
 
 function count(n: number, resource: LimitedResource): string {
@@ -61,7 +66,18 @@ export async function plansEnforced(accountId: string): Promise<boolean> {
 async function currentCount(accountId: string, resource: LimitedResource): Promise<number> {
   if (resource === 'projects') return prisma.project.count({ where: { accountId } })
   if (resource === 'members') return prisma.accountMember.count({ where: { accountId } })
+  if (resource === 'locales') return (await localeCodesOf(accountId)).size
   return prisma.key.count({ where: { project: { accountId } } })
+}
+
+/** The distinct locale codes the account's projects translate into. */
+async function localeCodesOf(accountId: string): Promise<Set<string>> {
+  const rows = await prisma.locale.findMany({
+    where: { project: { accountId } },
+    select: { code: true },
+    distinct: ['code'],
+  })
+  return new Set(rows.map((r) => r.code))
 }
 
 /**
@@ -129,7 +145,7 @@ export interface OverLimit {
   current: number
 }
 
-const ENFORCED: LimitedResource[] = ['projects', 'members', 'keys']
+const ENFORCED: LimitedResource[] = ['projects', 'members', 'keys', 'locales']
 
 /** The limits the account is over now. Empty without hosted plans. */
 export async function overLimits(accountId: string): Promise<OverLimit[]> {
@@ -185,4 +201,21 @@ export async function assertWritable(accountId: string): Promise<void> {
 export async function accountOfProject(projectId: string): Promise<string | null> {
   const project = await prisma.project.findUnique({ where: { id: projectId }, select: { accountId: true } })
   return project?.accountId ?? null
+}
+
+/**
+ * Refuses adding these locale codes to a project, before anything is written,
+ * when the ones new to the account take it past its plan. A code another
+ * project in the account already has adds nothing.
+ */
+export async function assertLocalesFit(projectId: string, codes: string[]): Promise<void> {
+  if (codes.length === 0 || !eeEnabled()) return
+  const project = await prisma.project.findUnique({ where: { id: projectId }, select: { accountId: true } })
+  if (!project) return
+  // Unlimited (Pro), or no hosted plan: nothing to count.
+  const limit = (await limitsOf(project.accountId))?.locales
+  if (limit === null || limit === undefined) return
+  const held = await localeCodesOf(project.accountId)
+  const adding = new Set(codes.filter((c) => !held.has(c))).size
+  await assertWithinLimit(project.accountId, 'locales', adding)
 }

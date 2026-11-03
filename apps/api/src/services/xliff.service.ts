@@ -13,7 +13,7 @@ import { upsertTranslation } from './translation.service.js'
 import { Role } from '../types.js'
 import { updateImportRun } from './import-run.service.js'
 import { emit } from '../events.js'
-import { assertKeysFit } from './plan-limits.service.js'
+import { assertKeysFit, assertLocalesFit } from './plan-limits.service.js'
 
 export interface XliffStats {
   created: number
@@ -161,8 +161,9 @@ export async function importXliff(
   const targetLanguage = targetLanguageOf(doc)
   const sourceLanguage = sourceLanguageOf(doc)
 
-  // On a hosted plan, refused before anything is written when the keys it
-  // would create take the account past its plan.
+  // On a hosted plan, refused before anything is written when the keys or
+  // the locales it would create take the account past its plan.
+  await assertLocalesFit(projectId, [sourceLanguage, targetLanguage])
   await assertKeysFit(
     projectId,
     doc.files.flatMap((f) => f.units.map((u) => ({ namespaceSlug: slugifyOriginal(f.original), name: u.id }))),

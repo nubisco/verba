@@ -12,6 +12,7 @@ vi.mock('../prisma.js', () => ({
     project: { count: vi.fn(), findUnique: vi.fn() },
     accountMember: { count: vi.fn(), findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn() },
     key: { count: vi.fn() },
+    locale: { findMany: vi.fn() },
     membership: { findFirst: vi.fn() },
     instanceAuditLog: { create: vi.fn() },
   },
@@ -46,6 +47,7 @@ beforeEach(async () => {
   vi.mocked(prisma.project.count).mockResolvedValue(2)
   vi.mocked(prisma.accountMember.count).mockResolvedValue(3)
   vi.mocked(prisma.key.count).mockResolvedValue(10)
+  vi.mocked(prisma.locale.findMany).mockResolvedValue([{ code: 'en' }] as never)
   vi.mocked(prisma.project.findUnique).mockResolvedValue({ accountId: 'acc1' } as never)
   // The caller is an owner of acc1 and a member of its project p1, and of nothing else.
   vi.mocked(prisma.accountMember.findUnique).mockImplementation((async (args: {
@@ -103,6 +105,20 @@ describe('an account over its hosted plan', () => {
     vi.mocked(prisma.accountMember.count).mockResolvedValue(8)
     const res = await write('POST', '/projects/p1/keys')
     expect(res.json().error).toContain('It has 2 projects and 8 members, and the plan allows 1 project and 5 members.')
+  })
+
+  it('counts locales too: over 5 distinct locales makes it read-only', async () => {
+    vi.mocked(prisma.project.count).mockResolvedValue(1)
+    accountLimits.mockResolvedValue({ projects: 3, members: 5, keys: 1500, locales: 5 })
+    vi.mocked(prisma.locale.findMany).mockResolvedValue(
+      ['en', 'pt-PT', 'fr', 'de', 'es', 'it'].map((code) => ({ code })) as never,
+    )
+    const res = await write('POST', '/projects/p1/keys')
+    expect(res.statusCode).toBe(402)
+    expect(res.json()).toMatchObject({ readOnly: true, over: [{ resource: 'locales', limit: 5, current: 6 }] })
+    expect(res.json().error).toContain('It has 6 locales, and the plan allows 5.')
+    // Deleting a locale is how it gets back under.
+    expect((await write('DELETE', '/projects/p1/locales/l6')).statusCode).not.toBe(402)
   })
 
   it('still lets people delete and be removed, which is how it gets back under', async () => {

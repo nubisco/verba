@@ -10,7 +10,7 @@
 import { resolveEntitlements, type EntitlementsDb } from '../entitlements/entitlement.service.js'
 import { plansConfig } from './config.js'
 
-export type EnforcedResource = 'projects' | 'members' | 'keys'
+export type EnforcedResource = 'projects' | 'members' | 'keys' | 'locales'
 
 export async function accountLimits(
   db: EntitlementsDb,
@@ -23,5 +23,6 @@ export async function accountLimits(
     projects: ctx.entitlements.maxProjects,
     members: ctx.entitlements.maxMembers,
     keys: ctx.entitlements.maxKeys,
+    locales: ctx.entitlements.maxLocales,
   }
 }
