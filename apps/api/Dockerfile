@@ -1,13 +1,20 @@
 # syntax=docker/dockerfile:1
 
+# Which edition the image carries. `ce` (the default) is the public image: the
+# Enterprise Edition is replaced by a stub, so no proprietary code ships in it.
+# `ee` builds packages/ee into the image, for Nubisco's hosted Verba only. That
+# image is pushed to a private package and never published.
+# Declared before the first FROM, because a FROM line reads it.
+ARG EDITION=ce
+
 # ---- base: node 22 LTS with pnpm via corepack ----
 # pnpm is the exact version in package.json "packageManager", so the image,
 # CI and local installs agree. Bump both together.
 FROM node:22.23.4-alpine AS base
 RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 
-# ---- build: full install + compile ----
-FROM base AS build
+# ---- build (Community Edition): full install + compile, EE stubbed ----
+FROM base AS build-ce
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json ./apps/api/
@@ -28,6 +35,33 @@ RUN sed -i 's/provider = "sqlite"/provider = "postgresql"/' apps/api/prisma/sche
     && echo '{"compilerOptions":{"composite":true,"outDir":"dist","rootDir":"src"},"include":["src"]}' > packages/ee/tsconfig.json \
     && pnpm --filter @nubisco/verba-shared build \
     && pnpm --filter @nubisco/verba-api build
+
+# ---- build (Enterprise Edition): the same, with packages/ee compiled in ----
+FROM base AS build-ee
+WORKDIR /app
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/api/package.json ./apps/api/
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/ee/package.json ./packages/ee/
+RUN pnpm install --frozen-lockfile --filter @nubisco/verba-api --filter @nubisco/verba-shared --filter @nubisco/verba-ee
+
+COPY tsconfig.base.json tsconfig.json ./
+COPY packages/shared ./packages/shared
+COPY packages/ee ./packages/ee
+COPY apps/api ./apps/api
+
+# The EE package points `main` at its TypeScript source, which is what
+# development and the tests load. The image runs compiled JavaScript, so the
+# copy built here points at dist instead.
+RUN sed -i 's/provider = "sqlite"/provider = "postgresql"/' apps/api/prisma/schema.prisma \
+    && pnpm --filter @nubisco/verba-api exec prisma generate \
+    && pnpm --filter @nubisco/verba-shared build \
+    && pnpm --filter @nubisco/verba-ee build \
+    && pnpm --filter @nubisco/verba-api build \
+    && node -e "const f='packages/ee/package.json',p=require('./'+f);p.main='./dist/index.js';require('fs').writeFileSync(f,JSON.stringify(p,null,2))" \
+    && test -f packages/ee/dist/index.js
+
+FROM build-${EDITION} AS build
 
 # ---- deploy bundle: standalone dir with only prod deps (no symlinks) ----
 # The Prisma client is generated into src/generated and compiled into dist, so
