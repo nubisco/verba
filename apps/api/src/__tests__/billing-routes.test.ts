@@ -22,6 +22,7 @@ vi.mock('../prisma.js', () => ({
 vi.mock('../services/analytics.service.js', () => ({ track: vi.fn() }))
 
 import { buildApp } from '../app.js'
+import { inject, signToken } from './inject.js'
 import { prisma } from '../prisma.js'
 
 const SECRET = 'hook-secret'
@@ -38,13 +39,12 @@ const PRO = {
   computed_at: '2026-11-03T00:00:00Z',
 }
 
-let app: ReturnType<typeof buildApp>
+let app: Awaited<ReturnType<typeof buildApp>>
 let cookies: Record<string, string>
 let licensesCalls: string[]
 
 async function start() {
-  app = buildApp()
-  await app.ready()
+  app = await buildApp()
 }
 
 beforeEach(() => {
@@ -78,7 +78,6 @@ beforeEach(() => {
 })
 
 afterEach(async () => {
-  await app.close()
   // The plans config is module state in EE, set when the plugin mounts. Typed
   // loosely because the Community image compiles against a stub EE index.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -103,20 +102,20 @@ describe('an instance that does not sell plans', () => {
     vi.stubEnv('VERBA_LICENSES_URL', 'https://licenses.test')
     vi.stubEnv('VERBA_LICENSES_SERVICE_TOKEN', 'svc')
     await start()
-    cookies = { token: app.jwt.sign({ userId: 'u-admin', email: 'a@example.com' }) }
-    const config = await app.inject({ method: 'GET', url: '/config' })
+    cookies = { token: await signToken({ userId: 'u-admin', email: 'a@example.com' }) }
+    const config = await inject(app, { method: 'GET', url: '/config' })
     expect(config.json().features.billing).toBe(false)
-    expect((await app.inject({ method: 'GET', url: '/accounts/acc-a/billing', cookies })).statusCode).toBe(404)
-    expect((await app.inject({ method: 'POST', url: '/billing/entitlement', ...signed({}) })).statusCode).toBe(404)
+    expect((await inject(app, { method: 'GET', url: '/accounts/acc-a/billing', cookies })).statusCode).toBe(404)
+    expect((await inject(app, { method: 'POST', url: '/billing/entitlement', ...signed({}) })).statusCode).toBe(404)
     expect(licensesCalls).toHaveLength(0)
   })
 
   it('has none with EE on but the licenses service not configured', async () => {
     vi.stubEnv('ENABLE_EE', 'true')
     await start()
-    cookies = { token: app.jwt.sign({ userId: 'u-admin', email: 'a@example.com' }) }
-    expect((await app.inject({ method: 'GET', url: '/config' })).json().features.billing).toBe(false)
-    expect((await app.inject({ method: 'GET', url: '/accounts/acc-a/billing', cookies })).statusCode).toBe(404)
+    cookies = { token: await signToken({ userId: 'u-admin', email: 'a@example.com' }) }
+    expect((await inject(app, { method: 'GET', url: '/config' })).json().features.billing).toBe(false)
+    expect((await inject(app, { method: 'GET', url: '/accounts/acc-a/billing', cookies })).statusCode).toBe(404)
   })
 })
 
@@ -130,12 +129,12 @@ describe('an instance that sells plans', () => {
   })
 
   it('reports billing in /config', async () => {
-    expect((await app.inject({ method: 'GET', url: '/config' })).json().features.billing).toBe(true)
+    expect((await inject(app, { method: 'GET', url: '/config' })).json().features.billing).toBe(true)
   })
 
   it('shows an account admin the plan from licenses and the usage counted here', async () => {
-    cookies = { token: app.jwt.sign({ userId: 'u-admin', email: 'a@example.com' }) }
-    const res = await app.inject({ method: 'GET', url: '/accounts/acc-a/billing', cookies })
+    cookies = { token: await signToken({ userId: 'u-admin', email: 'a@example.com' }) }
+    const res = await inject(app, { method: 'GET', url: '/accounts/acc-a/billing', cookies })
     expect(res.statusCode).toBe(200)
     expect(res.json()).toMatchObject({
       plan: 'pro',
@@ -146,15 +145,15 @@ describe('an instance that sells plans', () => {
   })
 
   it('refuses a member below account admin, and someone outside the account', async () => {
-    cookies = { token: app.jwt.sign({ userId: 'u-member', email: 'm@example.com' }) }
-    expect((await app.inject({ method: 'GET', url: '/accounts/acc-a/billing', cookies })).statusCode).toBe(403)
-    cookies = { token: app.jwt.sign({ userId: 'u-other', email: 'o@example.com' }) }
-    expect((await app.inject({ method: 'GET', url: '/accounts/acc-a/billing', cookies })).statusCode).toBe(404)
+    cookies = { token: await signToken({ userId: 'u-member', email: 'm@example.com' }) }
+    expect((await inject(app, { method: 'GET', url: '/accounts/acc-a/billing', cookies })).statusCode).toBe(403)
+    cookies = { token: await signToken({ userId: 'u-other', email: 'o@example.com' }) }
+    expect((await inject(app, { method: 'GET', url: '/accounts/acc-a/billing', cookies })).statusCode).toBe(404)
     expect(licensesCalls).toHaveLength(0)
   })
 
   it('accepts a signed entitlement and refuses an unsigned one', async () => {
-    const bad = await app.inject({
+    const bad = await inject(app, {
       method: 'POST',
       url: '/billing/entitlement',
       payload: JSON.stringify({ event: 'entitlement.updated', timestamp: 'now', data: PRO }),
@@ -162,7 +161,7 @@ describe('an instance that sells plans', () => {
     })
     expect(bad.statusCode).toBe(401)
     expect(prisma.accountPlan.create).not.toHaveBeenCalled()
-    const ok = await app.inject({
+    const ok = await inject(app, {
       method: 'POST',
       url: '/billing/entitlement',
       ...signed({ event: 'entitlement.updated', timestamp: '2026-11-03T00:00:00Z', data: PRO }),
@@ -175,11 +174,11 @@ describe('an instance that sells plans', () => {
   })
 
   it('leaves JSON parsing of every other route as it was', async () => {
-    cookies = { token: app.jwt.sign({ userId: 'u-admin', email: 'a@example.com' }) }
+    cookies = { token: await signToken({ userId: 'u-admin', email: 'a@example.com' }) }
     // The webhook reads its body as raw text. The checkout, outside its scope,
     // still gets parsed JSON: the period is read and licenses is asked. This
     // fake licenses names no checkout page, so the answer is 503, not a 400.
-    const res = await app.inject({
+    const res = await inject(app, {
       method: 'POST',
       url: '/accounts/acc-a/billing/checkout',
       cookies,

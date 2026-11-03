@@ -1,24 +1,17 @@
-import type { FastifyInstance } from 'fastify'
+import type { Api } from '../http.js'
+import { authenticate } from '../session.js'
 import { requireProjectRole } from '../services/acl.service.js'
 import { listImportRuns, getImportRun } from '../services/import-run.service.js'
 import { Role } from '../types.js'
 
-export async function importRunRoutes(app: FastifyInstance) {
-  app.get<{ Params: { projectId: string } }>(
-    '/projects/:projectId/import-runs',
-    { preHandler: [app.authenticate] },
-    async (req) => {
-      await requireProjectRole(req.user.userId, req.params.projectId, Role.READER)
-      return listImportRuns(req.params.projectId)
-    },
-  )
+export function importRunRoutes(app: Api) {
+  app.get('/projects/:projectId/import-runs', authenticate, async (c) => {
+    await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.READER)
+    return c.json(await listImportRuns(c.req.param('projectId')))
+  })
 
-  app.get<{ Params: { projectId: string; id: string } }>(
-    '/projects/:projectId/import-runs/:id',
-    { preHandler: [app.authenticate] },
-    async (req) => {
-      await requireProjectRole(req.user.userId, req.params.projectId, Role.READER)
-      return getImportRun(req.params.projectId, req.params.id)
-    },
-  )
+  app.get('/projects/:projectId/import-runs/:id', authenticate, async (c) => {
+    await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.READER)
+    return c.json(await getImportRun(c.req.param('projectId'), c.req.param('id')))
+  })
 }

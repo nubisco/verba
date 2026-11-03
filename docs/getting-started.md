@@ -176,7 +176,7 @@ A maintainer or admin then reviews and approves.
 ```
 verba/
 ├── apps/
-│   ├── api/          # Node.js + Fastify backend
+│   ├── api/          # Node.js + Hono backend
 │   └── web/          # Vue 3 frontend
 ├── packages/
 │   ├── shared/       # Shared TypeScript types

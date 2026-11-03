@@ -1,16 +1,14 @@
-import type { FastifyInstance } from 'fastify'
+import type { Api } from '../http.js'
+import { authenticate } from '../session.js'
 import { AuditQuerySchema } from '../schemas/audit.schema.js'
 import * as auditSvc from '../services/audit.service.js'
 import { requireProjectRole } from '../services/acl.service.js'
 import { Role } from '../types.js'
 
-export async function auditRoutes(app: FastifyInstance) {
-  app.get<{
-    Params: { projectId: string }
-    Querystring: Record<string, string>
-  }>('/projects/:projectId/audit-logs', { preHandler: [app.authenticate] }, async (req) => {
-    await requireProjectRole(req.user.userId, req.params.projectId, Role.READER)
-    const { entityType, page, limit } = AuditQuerySchema.parse(req.query)
-    return auditSvc.listAuditLogs(req.params.projectId, entityType, page, limit)
+export function auditRoutes(app: Api) {
+  app.get('/projects/:projectId/audit-logs', authenticate, async (c) => {
+    await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.READER)
+    const { entityType, page, limit } = AuditQuerySchema.parse(c.req.query())
+    return c.json(await auditSvc.listAuditLogs(c.req.param('projectId'), entityType, page, limit))
   })
 }

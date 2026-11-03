@@ -1,20 +1,19 @@
-import type { FastifyInstance } from 'fastify'
+import { readBody, type Api } from '../http.js'
+import { authenticate } from '../session.js'
 import { CreateKeySchema, UpdateKeySchema, KeyQuerySchema } from '../schemas/key.schema.js'
 import * as svc from '../services/key.service.js'
 import * as analytics from '../services/analytics.service.js'
 import { requireProjectRole, canWriteNamespace } from '../services/acl.service.js'
 import { Role } from '../types.js'
 import { prisma } from '../prisma.js'
-export async function keyRoutes(app: FastifyInstance) {
+
+export function keyRoutes(app: Api) {
   // Project-level history
-  app.get<{
-    Params: { projectId: string }
-    Querystring: { page?: string; limit?: string }
-  }>('/projects/:projectId/history', { preHandler: [app.authenticate] }, async (req) => {
-    const { projectId } = req.params
-    await requireProjectRole(req.user.userId, projectId, Role.READER)
-    const page = Math.max(1, parseInt(req.query.page ?? '1', 10))
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit ?? '50', 10)))
+  app.get('/projects/:projectId/history', authenticate, async (c) => {
+    const projectId = c.req.param('projectId')
+    await requireProjectRole(c.var.user.userId, projectId, Role.READER)
+    const page = Math.max(1, parseInt(c.req.query('page') ?? '1', 10))
+    const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') ?? '50', 10)))
     const skip = (page - 1) * limit
     const [items, total] = await Promise.all([
       prisma.auditLog.findMany({
@@ -26,7 +25,7 @@ export async function keyRoutes(app: FastifyInstance) {
       }),
       prisma.auditLog.count({ where: { projectId } }),
     ])
-    return {
+    return c.json({
       items: items.map((log) => ({
         id: log.id,
         action: log.action,
@@ -38,156 +37,130 @@ export async function keyRoutes(app: FastifyInstance) {
       total,
       page,
       limit,
+    })
+  })
+
+  app.get('/projects/:projectId/keys', authenticate, async (c) => {
+    await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.READER)
+    const query = KeyQuerySchema.parse(c.req.query())
+    return c.json(await svc.listKeys(c.req.param('projectId'), query))
+  })
+
+  app.post('/projects/:projectId/keys', authenticate, async (c) => {
+    const membership = await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.TRANSLATOR)
+    const body = CreateKeySchema.parse(await readBody(c))
+    if (!canWriteNamespace(membership, body.namespaceId)) {
+      throw Object.assign(new Error('Forbidden'), { statusCode: 403 })
     }
+    const key = await svc.createKey(c.req.param('projectId'), body, c.var.user.userId)
+    analytics.track('key_added_manual', {
+      userId: c.var.user.userId,
+      props: { project_id: c.req.param('projectId') },
+    })
+    return c.json(key, 201)
   })
 
-  app.get<{
-    Params: { projectId: string }
-    Querystring: Record<string, string>
-  }>('/projects/:projectId/keys', { preHandler: [app.authenticate] }, async (req) => {
-    await requireProjectRole(req.user.userId, req.params.projectId, Role.READER)
-    const query = KeyQuerySchema.parse(req.query)
-    return svc.listKeys(req.params.projectId, query)
+  app.get('/projects/:projectId/keys/:id', authenticate, async (c) => {
+    await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.READER)
+    return c.json(await svc.getKey(c.req.param('projectId'), c.req.param('id')))
   })
 
-  app.post<{ Params: { projectId: string } }>(
-    '/projects/:projectId/keys',
-    { preHandler: [app.authenticate] },
-    async (req, reply) => {
-      const membership = await requireProjectRole(req.user.userId, req.params.projectId, Role.TRANSLATOR)
-      const body = CreateKeySchema.parse(req.body)
-      if (!canWriteNamespace(membership, body.namespaceId)) {
-        throw Object.assign(new Error('Forbidden'), { statusCode: 403 })
-      }
-      const key = await svc.createKey(req.params.projectId, body, req.user.userId)
-      analytics.track('key_added_manual', {
-        userId: req.user.userId,
-        props: { project_id: req.params.projectId },
-      })
-      return reply.status(201).send(key)
-    },
-  )
+  app.patch('/projects/:projectId/keys/:id', authenticate, async (c) => {
+    const membership = await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.TRANSLATOR)
+    const body = UpdateKeySchema.parse(await readBody(c))
+    const key = await svc.getKey(c.req.param('projectId'), c.req.param('id'))
+    if (!canWriteNamespace(membership, key.namespaceId)) {
+      throw Object.assign(new Error('Forbidden'), { statusCode: 403 })
+    }
+    const updated = await svc.updateKey(c.req.param('projectId'), c.req.param('id'), body)
+    analytics.track('key_edited', {
+      userId: c.var.user.userId,
+      props: { project_id: c.req.param('projectId') },
+    })
+    return c.json(updated)
+  })
 
-  app.get<{ Params: { projectId: string; id: string } }>(
-    '/projects/:projectId/keys/:id',
-    { preHandler: [app.authenticate] },
-    async (req) => {
-      await requireProjectRole(req.user.userId, req.params.projectId, Role.READER)
-      return svc.getKey(req.params.projectId, req.params.id)
-    },
-  )
+  app.delete('/projects/:projectId/keys/:id', authenticate, async (c) => {
+    const membership = await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.TRANSLATOR)
+    const key = await svc.getKey(c.req.param('projectId'), c.req.param('id'))
+    if (!canWriteNamespace(membership, key.namespaceId)) {
+      throw Object.assign(new Error('Forbidden'), { statusCode: 403 })
+    }
+    await svc.deleteKey(c.req.param('projectId'), c.req.param('id'), c.var.user.userId)
+    analytics.track('key_deleted', {
+      userId: c.var.user.userId,
+      props: { project_id: c.req.param('projectId') },
+    })
+    return c.body(null, 204)
+  })
 
-  app.patch<{ Params: { projectId: string; id: string } }>(
-    '/projects/:projectId/keys/:id',
-    { preHandler: [app.authenticate] },
-    async (req) => {
-      const membership = await requireProjectRole(req.user.userId, req.params.projectId, Role.TRANSLATOR)
-      const body = UpdateKeySchema.parse(req.body)
-      const key = await svc.getKey(req.params.projectId, req.params.id)
-      if (!canWriteNamespace(membership, key.namespaceId)) {
-        throw Object.assign(new Error('Forbidden'), { statusCode: 403 })
-      }
-      const updated = await svc.updateKey(req.params.projectId, req.params.id, body)
-      analytics.track('key_edited', {
-        userId: req.user.userId,
-        props: { project_id: req.params.projectId },
-      })
-      return updated
-    },
-  )
+  app.post('/projects/:projectId/keys/:id/restore', authenticate, async (c) => {
+    const membership = await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.ADMIN)
+    if (!membership) throw Object.assign(new Error('Forbidden'), { statusCode: 403 })
+    const key = await svc.restoreKey(c.req.param('projectId'), c.req.param('id'))
+    return c.json(key, 200)
+  })
 
-  app.delete<{ Params: { projectId: string; id: string } }>(
-    '/projects/:projectId/keys/:id',
-    { preHandler: [app.authenticate] },
-    async (req, reply) => {
-      const membership = await requireProjectRole(req.user.userId, req.params.projectId, Role.TRANSLATOR)
-      const key = await svc.getKey(req.params.projectId, req.params.id)
-      if (!canWriteNamespace(membership, key.namespaceId)) {
-        throw Object.assign(new Error('Forbidden'), { statusCode: 403 })
-      }
-      await svc.deleteKey(req.params.projectId, req.params.id, req.user.userId)
-      analytics.track('key_deleted', {
-        userId: req.user.userId,
-        props: { project_id: req.params.projectId },
-      })
-      return reply.status(204).send()
-    },
-  )
+  app.get('/projects/:projectId/keys/:keyId/history', authenticate, async (c) => {
+    const projectId = c.req.param('projectId')
+    const keyId = c.req.param('keyId')
+    await requireProjectRole(c.var.user.userId, projectId, Role.READER)
+    // Without this, any key id (and so its comments and their authors'
+    // emails) was readable through any project the caller could read.
+    await svc.assertKeyInProject(projectId, keyId)
 
-  app.post<{ Params: { projectId: string; id: string } }>(
-    '/projects/:projectId/keys/:id/restore',
-    { preHandler: [app.authenticate] },
-    async (req, reply) => {
-      const membership = await requireProjectRole(req.user.userId, req.params.projectId, Role.ADMIN)
-      if (!membership) throw Object.assign(new Error('Forbidden'), { statusCode: 403 })
-      const key = await svc.restoreKey(req.params.projectId, req.params.id)
-      return reply.status(200).send(key)
-    },
-  )
+    const translationRows = await prisma.translation.findMany({
+      where: { keyId, deletedAt: null },
+      select: { id: true, locale: { select: { code: true } } },
+    })
+    const translationIds = translationRows.map((t) => t.id)
+    const localeByTranslationId = new Map(translationRows.map((t) => [t.id, t.locale.code]))
 
-  app.get<{ Params: { projectId: string; keyId: string } }>(
-    '/projects/:projectId/keys/:keyId/history',
-    { preHandler: [app.authenticate] },
-    async (req) => {
-      const { projectId, keyId } = req.params
-      await requireProjectRole(req.user.userId, projectId, Role.READER)
-      // Without this, any key id (and so its comments and their authors'
-      // emails) was readable through any project the caller could read.
-      await svc.assertKeyInProject(projectId, keyId)
+    const auditLogs = await prisma.auditLog.findMany({
+      where: {
+        projectId,
+        OR: [
+          { entityType: 'Key', entityId: keyId },
+          { entityType: 'Translation', entityId: { in: translationIds } },
+        ],
+      },
+      include: { user: { select: { id: true, email: true, name: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    })
 
-      const translationRows = await prisma.translation.findMany({
-        where: { keyId, deletedAt: null },
-        select: { id: true, locale: { select: { code: true } } },
-      })
-      const translationIds = translationRows.map((t) => t.id)
-      const localeByTranslationId = new Map(translationRows.map((t) => [t.id, t.locale.code]))
+    const commentRows = await prisma.comment.findMany({
+      where: { translationId: { in: translationIds }, deletedAt: null },
+      include: { user: { select: { id: true, email: true, name: true } } },
+      orderBy: { createdAt: 'desc' },
+    })
 
-      const auditLogs = await prisma.auditLog.findMany({
-        where: {
-          projectId,
-          OR: [
-            { entityType: 'Key', entityId: keyId },
-            { entityType: 'Translation', entityId: { in: translationIds } },
-          ],
-        },
-        include: { user: { select: { id: true, email: true, name: true } } },
-        orderBy: { createdAt: 'desc' },
-        take: 100,
-      })
+    const auditEntries = auditLogs.map((log) => ({
+      id: log.id,
+      action: log.action,
+      entityType: log.entityType,
+      entityId: log.entityId,
+      localeCode: log.entityType === 'Translation' ? localeByTranslationId.get(log.entityId) : undefined,
+      createdAt: log.createdAt.toISOString(),
+      user: log.user,
+      meta: undefined as { text?: string } | undefined,
+    }))
 
-      const commentRows = await prisma.comment.findMany({
-        where: { translationId: { in: translationIds }, deletedAt: null },
-        include: { user: { select: { id: true, email: true, name: true } } },
-        orderBy: { createdAt: 'desc' },
-      })
+    const commentEntries = commentRows.map((comment) => ({
+      id: comment.id,
+      action: 'comment.added',
+      entityType: 'translation',
+      entityId: comment.translationId,
+      localeCode: localeByTranslationId.get(comment.translationId),
+      createdAt: comment.createdAt.toISOString(),
+      user: comment.user,
+      meta: { text: comment.text.slice(0, 80) },
+    }))
 
-      const auditEntries = auditLogs.map((log) => ({
-        id: log.id,
-        action: log.action,
-        entityType: log.entityType,
-        entityId: log.entityId,
-        localeCode: log.entityType === 'Translation' ? localeByTranslationId.get(log.entityId) : undefined,
-        createdAt: log.createdAt.toISOString(),
-        user: log.user,
-        meta: undefined as { text?: string } | undefined,
-      }))
+    const combined = [...auditEntries, ...commentEntries].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    )
 
-      const commentEntries = commentRows.map((c) => ({
-        id: c.id,
-        action: 'comment.added',
-        entityType: 'translation',
-        entityId: c.translationId,
-        localeCode: localeByTranslationId.get(c.translationId),
-        createdAt: c.createdAt.toISOString(),
-        user: c.user,
-        meta: { text: c.text.slice(0, 80) },
-      }))
-
-      const combined = [...auditEntries, ...commentEntries].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      )
-
-      return combined
-    },
-  )
+    return c.json(combined)
+  })
 }

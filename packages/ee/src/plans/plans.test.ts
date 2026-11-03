@@ -8,7 +8,7 @@
  * Paddle are never called: a fake licenses answers every fetch.
  */
 
-import Fastify, { type FastifyInstance } from 'fastify'
+import { Hono } from 'hono'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { resolveEntitlements, type EntitlementsDb } from '../entitlements/entitlement.service.js'
 import type { LicensesEntitlement } from './client.js'
@@ -16,7 +16,7 @@ import { configFromEnv, configurePlans, plansConfig } from './config.js'
 import { PLANS } from '../entitlements/plans.js'
 import { accountLimits } from './enforce.js'
 import { FREE_LIMITS } from './limits.js'
-import { plansPlugin, type PlansDeps } from './routes.js'
+import { plansPlugin, type PlansDeps, type PlansEnv } from './routes.js'
 import { hmacSha256Hex } from './signature.js'
 import { STALE_MS, applyEntitlement, cachedPlan, planFor, type AccountPlanDbRow } from './store.js'
 
@@ -128,25 +128,59 @@ const fakeLicenses = (async (input: Parameters<typeof fetch>[0], init?: RequestI
 // ── The app under test ──────────────────────────────────────────────────────
 
 let mem: ReturnType<typeof memoryDb>
-let app: FastifyInstance
+let app: TestApp
 
-async function buildApp(env: Record<string, string | undefined> = ENV): Promise<FastifyInstance> {
-  const a = Fastify()
+interface InjectOptions {
+  method: string
+  url: string
+  payload?: unknown
+  headers?: Record<string, string>
+}
+
+interface TestApp {
+  inject(options: InjectOptions): Promise<{
+    statusCode: number
+    headers: Record<string, string>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    json(): any
+  }>
+}
+
+/** Requests against the routes without a server, in the shape the tests read. */
+function testApp(a: Hono<PlansEnv>): TestApp {
+  return {
+    async inject({ method, url, payload, headers = {} }) {
+      const body = payload === undefined ? undefined : typeof payload === 'string' ? payload : JSON.stringify(payload)
+      const res = await a.request(`http://localhost${url}`, {
+        method,
+        headers: { ...(typeof payload === 'object' ? { 'content-type': 'application/json' } : {}), ...headers },
+        body,
+      })
+      const text = await res.text()
+      return {
+        statusCode: res.status,
+        headers: Object.fromEntries(res.headers.entries()),
+        json: () => JSON.parse(text),
+      }
+    },
+  }
+}
+
+async function buildApp(env: Record<string, string | undefined> = ENV): Promise<TestApp> {
+  const a = new Hono<PlansEnv>()
   // The API's own error handler, so thrown { statusCode, details } read the same.
-  a.setErrorHandler((err, _req, reply) => {
+  a.onError((err, c) => {
     const e = err as { statusCode?: number; message?: string; details?: Record<string, unknown> }
-    void reply.status(e.statusCode ?? 500).send({ error: e.message, ...(e.details ?? {}) })
+    return c.json({ error: e.message, ...(e.details ?? {}) }, (e.statusCode ?? 500) as 500)
   })
   const deps: PlansDeps = {
     db: mem.db,
     // A session is the x-test-user header here: who is signed in.
-    authenticate: async (req, reply) => {
-      const user = req.headers['x-test-user']
-      if (typeof user !== 'string') {
-        await reply.status(401).send({ error: 'Unauthorized' })
-        return
-      }
-      ;(req as unknown as { user: { userId: string } }).user = { userId: user }
+    authenticate: async (c, next) => {
+      const user = c.req.header('x-test-user')
+      if (typeof user !== 'string') return c.json({ error: 'Unauthorized' }, 401)
+      c.set('user', { userId: user })
+      await next()
     },
     requireAccountAdmin: async (userId) => {
       if (userId !== 'admin') throw Object.assign(new Error('Forbidden'), { statusCode: 403 })
@@ -155,9 +189,8 @@ async function buildApp(env: Record<string, string | undefined> = ENV): Promise<
     env,
     fetchImpl: fakeLicenses,
   }
-  await a.register(plansPlugin, deps)
-  await a.ready()
-  return a
+  plansPlugin(a, deps)
+  return testApp(a)
 }
 
 function signedDelivery(e: LicensesEntitlement, secret = HOOK_SECRET) {
@@ -185,7 +218,6 @@ beforeEach(async () => {
 })
 
 afterEach(async () => {
-  await app.close()
   configurePlans(null)
   vi.restoreAllMocks()
 })
@@ -204,7 +236,6 @@ describe('config gating', () => {
   })
 
   it('mounts no routes and leaves plans off without the licenses service', async () => {
-    await app.close()
     app = await buildApp({})
     expect(plansConfig()).toBeNull()
     const page = await app.inject({
@@ -396,7 +427,6 @@ describe('the entitlement webhook', () => {
   })
 
   it('is not there when no secret is configured', async () => {
-    await app.close()
     app = await buildApp({ ...ENV, VERBA_ENTITLEMENT_WEBHOOK_SECRET: undefined })
     const res = await push(pro())
     expect(res.statusCode).toBe(404)

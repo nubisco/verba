@@ -1,18 +1,11 @@
 import 'dotenv/config'
 import { readFileSync } from 'node:fs'
-import Fastify from 'fastify'
-import cors from '@fastify/cors'
-import cookie from '@fastify/cookie'
-import jwt from '@fastify/jwt'
-import multipart from '@fastify/multipart'
-import websocket from '@fastify/websocket'
-import rateLimit from '@fastify/rate-limit'
+import { Hono } from 'hono'
+import type { UpgradeWebSocket } from 'hono/ws'
+import { bodyLimit } from 'hono/body-limit'
+import { cors } from 'hono/cors'
 import { ZodError } from 'zod'
 
-const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8')) as {
-  name: string
-  version: string
-}
 import { projectRoutes } from './routes/projects.js'
 import { namespaceRoutes } from './routes/namespaces.js'
 import { localeRoutes } from './routes/locales.js'
@@ -33,86 +26,131 @@ import { aiRoutes } from './routes/ai.js'
 import { setupRoutes } from './routes/setup.js'
 import { configRoutes } from './routes/config.js'
 import { billingRoutes } from './routes/billing.js'
-import { trustProxySetting } from './rate-limits.js'
-import { guardReadOnlyWrites } from './read-only.js'
-import { SESSION_COOKIE, makeAuthenticate, sessionTtlSeconds } from './session.js'
+import type { Api, AppEnv } from './http.js'
+import { guardEveryWrite } from './read-only.js'
 
-export function buildApp() {
+const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8')) as {
+  name: string
+  version: string
+}
+
+/** The largest request body, as Fastify's default bodyLimit had it: 1 MiB. */
+export const BODY_LIMIT_BYTES = 1024 * 1024
+
+export interface BuildOptions {
+  /**
+   * How this runtime upgrades a request to a WebSocket. Given the app, it
+   * returns the helper for the project rooms (routes/ws.ts). The Node server
+   * passes @hono/node-ws (index.ts). Without it there is no /ws route.
+   */
+  websocket?: (app: Api) => UpgradeWebSocket
+  /** Log each request. On by default, as Fastify's `logger: true` was. */
+  logRequests?: boolean
+}
+
+export async function buildApp(options: BuildOptions = {}): Promise<Api> {
   if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
     throw new Error('JWT_SECRET must be set in production')
   }
 
-  const app = Fastify({ logger: true, trustProxy: trustProxySetting() })
+  const app = new Hono<AppEnv>()
+  // An account over its hosted plan is read-only: every write route
+  // registered below gets the write guard. It does nothing without hosted plans.
+  guardEveryWrite(app)
+
+  if (options.logRequests ?? process.env.NODE_ENV !== 'test') {
+    // One JSON line per request, as Fastify's logger wrote them, so the
+    // container's log reads the same and stays machine-readable.
+    app.use(async (c, next) => {
+      const started = performance.now()
+      await next()
+      console.log(
+        JSON.stringify({
+          time: Date.now(),
+          msg: 'request completed',
+          method: c.req.method,
+          url: c.req.path,
+          statusCode: c.res.status,
+          responseTime: Math.round((performance.now() - started) * 10) / 10,
+        }),
+      )
+    })
+  }
 
   const isDev = process.env.NODE_ENV !== 'production'
-  app.register(cors, {
-    // In dev, allow any localhost origin (Vite may use a fallback port).
-    // In production, CORS_ORIGIN must be set explicitly.
-    origin: isDev
-      ? (origin, cb) => cb(null, !origin || origin.startsWith('http://localhost'))
-      : process.env.CORS_ORIGIN || false,
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  const corsOrigin = process.env.CORS_ORIGIN
+  // In dev, allow any localhost origin (Vite may use a fallback port).
+  // In production, CORS_ORIGIN must be set explicitly, and without it no
+  // cross-origin request is allowed.
+  if (isDev || corsOrigin) {
+    app.use(
+      cors({
+        origin: isDev ? (origin) => (origin.startsWith('http://localhost') ? origin : null) : corsOrigin!,
+        credentials: true,
+        allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      }),
+    )
+  }
+
+  // Uploads are limited per file instead (routes/import.ts). No other route
+  // reads a multipart body (readBody in http.ts ignores one).
+  const limitBody = bodyLimit({
+    maxSize: BODY_LIMIT_BYTES,
+    onError: (c) => c.json({ error: 'Request body is too large' }, 413),
+  })
+  app.use(async (c, next) => {
+    if ((c.req.header('content-type') ?? '').startsWith('multipart/form-data')) return next()
+    return limitBody(c, next)
   })
 
-  app.register(cookie)
-  // Off by default: only the routes that name a limit get one (see rate-limits.ts).
-  app.register(rateLimit, { global: false })
-  app.register(multipart)
-  app.register(websocket)
-  app.register(jwt, {
-    secret: process.env.JWT_SECRET || 'dev-secret',
-    cookie: { cookieName: SESSION_COOKIE, signed: false },
-    // Applies to every verify, the WebSocket's included. maxAge also retires
-    // sessions signed before they carried an expiry.
-    verify: { maxAge: sessionTtlSeconds() },
-  })
-
-  app.decorate('authenticate', makeAuthenticate(app))
-  // An account over its hosted plan is read-only: every route registered
-  // below gets the write guard. It does nothing without hosted plans.
-  app.addHook('onRoute', guardReadOnlyWrites)
-
-  app.setErrorHandler((err, _req, reply) => {
+  app.onError((err, c) => {
     if (err instanceof ZodError) {
-      return reply.status(400).send({ error: 'Validation error', issues: err.issues })
+      return c.json({ error: 'Validation error', issues: err.issues }, 400)
     }
     const e = err as { statusCode?: number; message?: string; details?: Record<string, unknown> }
     const statusCode = e.statusCode ?? 500
+    if (statusCode >= 500) console.error(err)
     // `details` carries what a caller needs to recover, such as the accounts
     // to choose from when a request did not name one (account.service.ts).
-    return reply.status(statusCode).send({ error: e.message ?? 'Internal Server Error', ...(e.details ?? {}) })
+    return c.json({ error: e.message ?? 'Internal Server Error', ...(e.details ?? {}) }, statusCode as 500)
   })
 
-  app.get('/health', async () => ({ status: 'ok' }))
+  // The same body Fastify answered an unknown route with.
+  app.notFound((c) =>
+    c.json({ message: `Route ${c.req.method}:${c.req.path} not found`, error: 'Not Found', statusCode: 404 }, 404),
+  )
 
-  app.get('/version', async () => ({
-    name: pkg.name,
-    version: pkg.version,
-    commit: process.env.VERBA_GIT_SHA ?? null,
-    environment: process.env.NODE_ENV ?? null,
-  }))
+  app.get('/health', (c) => c.json({ status: 'ok' }))
 
-  app.register(authRoutes)
-  app.register(memberRoutes)
-  app.register(projectRoutes)
-  app.register(namespaceRoutes)
-  app.register(localeRoutes)
-  app.register(keyRoutes)
-  app.register(translationRoutes)
-  app.register(auditRoutes)
-  app.register(commentRoutes)
-  app.register(exportRoutes)
-  app.register(importRunRoutes)
-  app.register(importRoutes)
-  app.register(accountRoutes)
-  app.register(wsRoutes)
-  app.register(adminRoutes)
-  app.register(notificationRoutes)
-  app.register(aiRoutes)
-  app.register(setupRoutes)
-  app.register(configRoutes)
-  app.register(billingRoutes)
+  app.get('/version', (c) =>
+    c.json({
+      name: pkg.name,
+      version: pkg.version,
+      commit: process.env.VERBA_GIT_SHA ?? null,
+      environment: process.env.NODE_ENV ?? null,
+    }),
+  )
+
+  authRoutes(app)
+  memberRoutes(app)
+  projectRoutes(app)
+  namespaceRoutes(app)
+  localeRoutes(app)
+  keyRoutes(app)
+  translationRoutes(app)
+  auditRoutes(app)
+  commentRoutes(app)
+  exportRoutes(app)
+  importRunRoutes(app)
+  importRoutes(app)
+  accountRoutes(app)
+  if (options.websocket) wsRoutes(app, options.websocket(app))
+  adminRoutes(app)
+  notificationRoutes(app)
+  aiRoutes(app)
+  setupRoutes(app)
+  configRoutes(app)
+  await billingRoutes(app)
 
   return app
 }

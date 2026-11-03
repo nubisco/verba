@@ -23,10 +23,12 @@ Instance operators are named by email in `VERBA_OPERATORS` (comma separated) and
 ```
 verba/
 ├── apps/
-│   ├── api/                  # Fastify + Prisma backend
+│   ├── api/                  # Hono + Prisma backend (Node server in Docker)
 │   │   ├── src/
-│   │   │   ├── app.ts              # Fastify factory, CORS, JWT, plugin registration
-│   │   │   ├── index.ts            # Entry point, starts server, loads plugins
+│   │   │   ├── app.ts              # Hono app factory: CORS, body limit, errors, routes
+│   │   │   ├── index.ts            # Node entry point (@hono/node-server), WebSockets, plugins
+│   │   │   ├── http.ts             # App type, readBody, httpError
+│   │   │   ├── session.ts          # Session JWT cookie, `authenticate` middleware
 │   │   │   ├── routes/             # HTTP handlers (thin, delegate to services)
 │   │   │   ├── services/           # All business logic lives here
 │   │   │   ├── schemas/            # Zod input schemas
@@ -60,7 +62,7 @@ These are hard rules. Do not deviate.
 
 1. **Routes never call Prisma directly.** Every route handler must call a service function. Prisma queries belong in services only.
 2. **REST only.** No GraphQL, no tRPC, no WebSockets.
-3. **No microservices.** Everything in `apps/api` is a single Fastify process.
+3. **No microservices.** Everything in `apps/api` is a single Hono app. Today it runs as one Node process. Hosted Verba is moving to Cloudflare Workers (docs/hosting-on-cloudflare.md), so nothing in a route or service may depend on Node's HTTP server: take the request through Hono's context, never through `c.env.incoming`, except in `rate-limits.ts`.
 4. **ACL is enforced on the server.** The frontend may hide UI elements but the API must always validate role and status independently.
 5. **Flat keys internally.** Translation keys are dot-separated strings (e.g. `auth.login.title`), never nested objects in the database.
 6. **Zod for all input validation.** Define schemas in `src/schemas/`, parse in the route handler before calling the service.
@@ -72,7 +74,7 @@ These are hard rules. Do not deviate.
 | Layer    | Technology                                  |
 | -------- | ------------------------------------------- |
 | Frontend | Vue 3, TypeScript, SCSS, Vite, Pinia        |
-| Backend  | Node.js 22, TypeScript, Fastify 4           |
+| Backend  | Node.js 22, TypeScript, Hono 4              |
 | Auth     | JWT in httpOnly cookie (`token`)            |
 | ORM      | Prisma (SQLite for dev, Postgres for prod)  |
 | Monorepo | pnpm workspaces                             |
@@ -121,10 +123,11 @@ Invalid transitions return HTTP 422. Implemented in `canTransitionStatus()` in `
 
 - **Login/Register**: `POST /auth/login`, `POST /auth/register`
 - Token is stored as an `httpOnly` cookie named `token`. Never in `localStorage`.
-- Sessions expire (`SESSION_TTL_HOURS`, default 7 days) and are renewed once a day while in use, which is also when a deactivated account is signed out. Create one only with `issueSession()` and clear it with `clearSession()` from `src/session.ts`, which set `secure` (production), `sameSite=lax` and the expiry. Never call `app.jwt.sign` or set the cookie by hand.
+- Sessions expire (`SESSION_TTL_HOURS`, default 7 days) and are renewed once a day while in use, which is also when a deactivated account is signed out. Create one only with `issueSession()` and clear it with `clearSession()` from `src/session.ts`, which set `secure` (production), `sameSite=lax` and the expiry. Never sign a token or set the cookie by hand.
 - The frontend uses `credentials: 'include'` on every fetch (see `api.ts`).
-- Fastify routes that need auth use `{ preHandler: [app.authenticate] }`.
-- `req.user` contains `{ userId, email }` after authentication.
+- Routes that need auth put the `authenticate` middleware from `src/session.ts` before the handler: `app.get(path, authenticate, async (c) => ...)`.
+- `c.var.user` contains `{ userId, email }` after authentication.
+- Handlers return `c.json(...)`, read bodies with `readBody(c)` (`src/http.ts`) and throw `httpError(status, message)` for a refusal. Every POST, PUT and PATCH route gets the read-only guard automatically (`guardEveryWrite`, `src/read-only.ts`).
 
 ## Database
 

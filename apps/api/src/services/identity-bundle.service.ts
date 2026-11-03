@@ -1,13 +1,13 @@
 // Per-browser bag of platform identities the user has authenticated as.
 //
-// We never store platform refresh/access tokens here — we just remember each
+// We never store platform refresh/access tokens here. We just remember each
 // (email, platformSub) the browser has signed in as in the past. The actual
 // "switch to identity X" flow re-runs OIDC authorize against platform with
 // login_hint=<email>, which silently succeeds when platform's own multi-
 // identity session has that identity active.
 //
-// One identity per bundle is `isActive` at any moment — the active row is
-// what the local Fastify-issued JWT cookie represents.
+// One identity per bundle is `isActive` at any moment, and the active row is
+// what the local session cookie (session.ts) represents.
 
 import { randomBytes } from 'node:crypto'
 import { prisma } from '../prisma.js'

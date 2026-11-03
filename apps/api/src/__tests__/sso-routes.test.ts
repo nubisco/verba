@@ -53,6 +53,7 @@ vi.mock('../prisma.js', () => ({
 }))
 
 import { buildApp } from '../app.js'
+import { inject } from './inject.js'
 import * as platformAuthService from '../services/platform-auth.service.js'
 import { resetSsoRuntimeForTests, safeLandingUrl, ssoCallbackUrl } from '../services/sso.service.js'
 
@@ -100,10 +101,9 @@ describe('federated sign-in routes', () => {
   })
 
   it('is absent, not merely hidden, when no provider is configured', async () => {
-    const app = buildApp()
-    const start = await app.inject({ method: 'GET', url: '/auth/sso/start' })
-    const callback = await app.inject({ method: 'GET', url: '/auth/sso/callback?token=x&state=y' })
-    await app.close()
+    const app = await buildApp()
+    const start = await inject(app, { method: 'GET', url: '/auth/sso/start' })
+    const callback = await inject(app, { method: 'GET', url: '/auth/sso/callback?token=x&state=y' })
 
     expect(start.statusCode).toBe(404)
     expect(callback.statusCode).toBe(404)
@@ -111,9 +111,8 @@ describe('federated sign-in routes', () => {
 
   it('redirects to the provider and keeps the state in an httpOnly cookie', async () => {
     ssoRuntimeFromEnv.mockReturnValue(handoverRuntime(async () => ({})))
-    const app = buildApp()
-    const res = await app.inject({ method: 'GET', url: '/auth/sso/start?redirect=/projects/42' })
-    await app.close()
+    const app = await buildApp()
+    const res = await inject(app, { method: 'GET', url: '/auth/sso/start?redirect=/projects/42' })
 
     expect(res.statusCode).toBe(302)
     const location = new URL(res.headers.location as string)
@@ -131,13 +130,12 @@ describe('federated sign-in routes', () => {
 
   it('refuses a callback whose state does not match the cookie', async () => {
     ssoRuntimeFromEnv.mockReturnValue(handoverRuntime(async () => ({})))
-    const app = buildApp()
-    const res = await app.inject({
+    const app = await buildApp()
+    const res = await inject(app, {
       method: 'GET',
       url: '/auth/sso/callback?token=tok&state=forged',
       cookies: { verba_sso_state: 'genuine' },
     })
-    await app.close()
 
     expect(res.statusCode).toBe(302)
     expect(res.headers.location).toBe(`${WEB}/login?error=sso_state`)
@@ -151,13 +149,12 @@ describe('federated sign-in routes', () => {
         throw new Error('JWT signature verification failed')
       }),
     )
-    const app = buildApp()
-    const res = await app.inject({
+    const app = await buildApp()
+    const res = await inject(app, {
       method: 'GET',
       url: '/auth/sso/callback?token=tok&state=st',
       cookies: { verba_sso_state: 'st' },
     })
-    await app.close()
 
     expect(res.headers.location).toBe(`${WEB}/login?error=sso_token`)
     expect(res.headers.location).not.toContain('signature')
@@ -176,13 +173,12 @@ describe('federated sign-in routes', () => {
       created: false,
     })
 
-    const app = buildApp()
-    const res = await app.inject({
+    const app = await buildApp()
+    const res = await inject(app, {
       method: 'GET',
       url: '/auth/sso/callback?token=tok&state=st',
       cookies: { verba_sso_state: 'st', verba_sso_landing: '/projects/42' },
     })
-    await app.close()
 
     expect(res.statusCode).toBe(302)
     expect(res.headers.location).toBe(`${WEB}/projects/42`)
@@ -197,13 +193,12 @@ describe('federated sign-in routes', () => {
     ssoRuntimeFromEnv.mockReturnValue(handoverRuntime(async () => ({ sub: 'p-2', email: 'stranger@example.com' })))
     vi.mocked(platformAuthService.upsertUserFromClaims).mockResolvedValue(null)
 
-    const app = buildApp()
-    const res = await app.inject({
+    const app = await buildApp()
+    const res = await inject(app, {
       method: 'GET',
       url: '/auth/sso/callback?token=tok&state=st',
       cookies: { verba_sso_state: 'st' },
     })
-    await app.close()
 
     expect(res.headers.location).toBe(`${WEB}/login?error=not_a_member`)
     expect(cookiesOf(res).token).toBeUndefined()
@@ -211,9 +206,8 @@ describe('federated sign-in routes', () => {
 
   it('advertises the provider and its name on the public config', async () => {
     ssoRuntimeFromEnv.mockReturnValue(handoverRuntime(async () => ({})))
-    const app = buildApp()
-    const res = await app.inject({ method: 'GET', url: '/config' })
-    await app.close()
+    const app = await buildApp()
+    const res = await inject(app, { method: 'GET', url: '/config' })
 
     expect(res.json().auth.sso).toEqual({ enabled: true, mode: 'handover', label: 'Nubisco Platform' })
   })

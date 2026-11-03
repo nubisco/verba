@@ -33,7 +33,7 @@ pnpm dev
 ```
 verba/
 ├── apps/
-│   ├── api/          # Fastify + Prisma backend
+│   ├── api/          # Hono + Prisma backend
 │   │   ├── src/
 │   │   │   ├── routes/       # Thin HTTP handlers, delegate to services
 │   │   │   ├── services/     # Business logic, ACL, workflow

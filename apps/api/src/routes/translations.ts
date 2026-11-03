@@ -1,4 +1,5 @@
-import type { FastifyInstance } from 'fastify'
+import { readBody, type Api } from '../http.js'
+import { authenticate } from '../session.js'
 import {
   UpsertTranslationSchema,
   UpdateTranslationStatusSchema,
@@ -16,111 +17,88 @@ const AssignTranslationSchema = z.object({
   assigneeId: z.string().nullable(),
 })
 
-export async function translationRoutes(app: FastifyInstance) {
-  app.get<{
-    Params: { projectId: string }
-    Querystring: Record<string, string>
-  }>('/projects/:projectId/translations', { preHandler: [app.authenticate] }, async (req) => {
-    await requireProjectRole(req.user.userId, req.params.projectId, Role.READER)
-    const query = TranslationQuerySchema.parse(req.query)
-    return svc.listTranslations(req.params.projectId, query)
+export function translationRoutes(app: Api) {
+  app.get('/projects/:projectId/translations', authenticate, async (c) => {
+    await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.READER)
+    const query = TranslationQuerySchema.parse(c.req.query())
+    return c.json(await svc.listTranslations(c.req.param('projectId'), query))
   })
 
-  app.get<{ Params: { projectId: string; id: string } }>(
-    '/projects/:projectId/translations/:id',
-    { preHandler: [app.authenticate] },
-    async (req) => {
-      await requireProjectRole(req.user.userId, req.params.projectId, Role.READER)
-      return svc.getTranslation(req.params.projectId, req.params.id)
-    },
-  )
+  app.get('/projects/:projectId/translations/:id', authenticate, async (c) => {
+    await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.READER)
+    return c.json(await svc.getTranslation(c.req.param('projectId'), c.req.param('id')))
+  })
 
-  app.put<{ Params: { projectId: string; keyId: string; localeId: string } }>(
-    '/projects/:projectId/keys/:keyId/translations/:localeId',
-    { preHandler: [app.authenticate] },
-    async (req, reply) => {
-      const membership = await requireProjectRole(req.user.userId, req.params.projectId, Role.TRANSLATOR)
-      const key = await keySvc.getKey(req.params.projectId, req.params.keyId)
-      if (!canWriteNamespace(membership, key.namespaceId)) {
-        throw Object.assign(new Error('Forbidden'), { statusCode: 403 })
-      }
-      // The locale must be this project's too, or a write here lands a row
-      // pointing at another project's locale.
-      await localeSvc.getLocale(req.params.projectId, req.params.localeId)
-      const body = UpsertTranslationSchema.parse(req.body)
-      const t = await svc.upsertTranslation(
-        req.params.keyId,
-        req.params.localeId,
-        body,
-        req.user.userId,
-        membership.role,
-      )
-      analytics.track('translation_saved', {
-        userId: req.user.userId,
-        props: {
-          project_id: req.params.projectId,
-          locale_id: req.params.localeId,
-          source:
-            typeof (req.body as { source?: string })?.source === 'string'
-              ? (req.body as { source: string }).source
-              : 'manual',
-        },
-      })
-      return reply.status(200).send(t)
-    },
-  )
+  app.put('/projects/:projectId/keys/:keyId/translations/:localeId', authenticate, async (c) => {
+    const membership = await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.TRANSLATOR)
+    const key = await keySvc.getKey(c.req.param('projectId'), c.req.param('keyId'))
+    if (!canWriteNamespace(membership, key.namespaceId)) {
+      throw Object.assign(new Error('Forbidden'), { statusCode: 403 })
+    }
+    // The locale must be this project's too, or a write here lands a row
+    // pointing at another project's locale.
+    await localeSvc.getLocale(c.req.param('projectId'), c.req.param('localeId'))
+    const raw = await readBody<{ source?: unknown }>(c)
+    const body = UpsertTranslationSchema.parse(raw)
+    const t = await svc.upsertTranslation(
+      c.req.param('keyId'),
+      c.req.param('localeId'),
+      body,
+      c.var.user.userId,
+      membership.role,
+    )
+    analytics.track('translation_saved', {
+      userId: c.var.user.userId,
+      props: {
+        project_id: c.req.param('projectId'),
+        locale_id: c.req.param('localeId'),
+        source: typeof raw?.source === 'string' ? raw.source : 'manual',
+      },
+    })
+    return c.json(t, 200)
+  })
 
-  app.get<{ Params: { projectId: string } }>(
-    '/projects/:projectId/kanban',
-    { preHandler: [app.authenticate] },
-    async (req) => {
-      await requireProjectRole(req.user.userId, req.params.projectId, Role.READER)
-      return svc.listTranslationsForKanban(req.params.projectId)
-    },
-  )
+  app.get('/projects/:projectId/kanban', authenticate, async (c) => {
+    await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.READER)
+    return c.json(await svc.listTranslationsForKanban(c.req.param('projectId')))
+  })
 
-  app.patch<{ Params: { projectId: string; id: string } }>(
-    '/projects/:projectId/translations/:id/status',
-    { preHandler: [app.authenticate] },
-    async (req) => {
-      const membership = await requireProjectRole(req.user.userId, req.params.projectId, Role.TRANSLATOR)
-      const body = UpdateTranslationStatusSchema.parse(req.body)
-      const translation = await svc.getTranslation(req.params.projectId, req.params.id)
-      if (!canWriteNamespace(membership, translation.key.namespaceId)) {
-        throw Object.assign(new Error('Forbidden'), { statusCode: 403 })
-      }
-      const result = await svc.updateStatus(
-        req.params.projectId,
-        req.params.id,
-        body.status,
-        membership.role,
-        req.user.userId,
-      )
-      analytics.track('translation_status_changed', {
-        userId: req.user.userId,
-        props: {
-          project_id: req.params.projectId,
-          translation_id: req.params.id,
-          to_status: body.status,
-        },
-      })
-      return result
-    },
-  )
+  app.patch('/projects/:projectId/translations/:id/status', authenticate, async (c) => {
+    const membership = await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.TRANSLATOR)
+    const body = UpdateTranslationStatusSchema.parse(await readBody(c))
+    const translation = await svc.getTranslation(c.req.param('projectId'), c.req.param('id'))
+    if (!canWriteNamespace(membership, translation.key.namespaceId)) {
+      throw Object.assign(new Error('Forbidden'), { statusCode: 403 })
+    }
+    const result = await svc.updateStatus(
+      c.req.param('projectId'),
+      c.req.param('id'),
+      body.status,
+      membership.role,
+      c.var.user.userId,
+    )
+    analytics.track('translation_status_changed', {
+      userId: c.var.user.userId,
+      props: {
+        project_id: c.req.param('projectId'),
+        translation_id: c.req.param('id'),
+        to_status: body.status,
+      },
+    })
+    return c.json(result)
+  })
 
-  app.patch<{ Params: { projectId: string; translationId: string } }>(
-    '/projects/:projectId/translations/:translationId/assign',
-    { preHandler: [app.authenticate] },
-    async (req) => {
-      const membership = await requireProjectRole(req.user.userId, req.params.projectId, Role.TRANSLATOR)
-      const body = AssignTranslationSchema.parse(req.body)
-      return svc.assignTranslation(
-        req.params.projectId,
-        req.params.translationId,
+  app.patch('/projects/:projectId/translations/:translationId/assign', authenticate, async (c) => {
+    const membership = await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.TRANSLATOR)
+    const body = AssignTranslationSchema.parse(await readBody(c))
+    return c.json(
+      await svc.assignTranslation(
+        c.req.param('projectId'),
+        c.req.param('translationId'),
         body.assigneeId,
         membership.role,
-        req.user.userId,
-      )
-    },
-  )
+        c.var.user.userId,
+      ),
+    )
+  })
 }
