@@ -87,11 +87,16 @@ export async function serializeEntitlementContext(orgId: string | null) {
       ? {
           planId: ctx.subscription.planId,
           status: ctx.subscription.status,
+          billing: ctx.subscription.billing ?? null,
           currentPeriodEnd: ctx.subscription.currentPeriodEnd,
           cancelAtPeriodEnd: ctx.subscription.cancelAtPeriodEnd,
+          endsAt: ctx.subscription.endsAt ?? null,
+          graceUntil: ctx.subscription.graceUntil ?? null,
         }
       : null,
     hasOverride: ctx.hasOverride,
+    // Set when the plan comes from Nubisco's licenses service (hosted billing).
+    billing: ctx.billing ?? null,
   }
 }
 
@@ -106,7 +111,15 @@ export async function serializeEntitlementContext(orgId: string | null) {
  * @param resolveOrgId Optional fn to extract orgId from the request.
  */
 export function requireWithinLimit(
-  limitKey: 'maxProjects' | 'maxSeatsPerProject' | 'maxKeysPerProject' | 'maxLocalesPerProject' | 'maxMonthlyApiCalls',
+  limitKey:
+    | 'maxProjects'
+    | 'maxMembers'
+    | 'maxKeys'
+    | 'maxLocales'
+    | 'maxSeatsPerProject'
+    | 'maxKeysPerProject'
+    | 'maxLocalesPerProject'
+    | 'maxMonthlyApiCalls',
   getCurrent: (req: FastifyRequest) => number | Promise<number>,
   resolveOrgId: OrgIdResolver = () => null,
 ) {

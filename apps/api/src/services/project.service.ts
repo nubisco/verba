@@ -1,6 +1,6 @@
 import { prisma } from '../prisma.js'
 import type { CreateProjectInput, UpdateProjectInput } from '../schemas/project.schema.js'
-import { isOperator } from './operator.service.js'
+import { assertWithinLimit } from './plan-limits.service.js'
 
 function notFound(): never {
   throw Object.assign(new Error('Project not found'), { statusCode: 404 })
@@ -37,20 +37,6 @@ export async function getProject(id: string) {
   return toClientProject(project)
 }
 
-// Project cap per platform plan. Platform owns the plan name; Verba owns the
-// mapping to a concrete project limit. Unknown plans fall back to 'free'.
-// TRIAL_PROJECT_CAP env var overrides the 'free' tier (emergency lever).
-const PLAN_PROJECT_CAP: Record<string, number> = {
-  free: Number(process.env.TRIAL_PROJECT_CAP ?? 3),
-  starter: 10,
-  pro: Number.POSITIVE_INFINITY,
-  enterprise: Number.POSITIVE_INFINITY,
-}
-
-function getProjectCapForPlan(plan: string | undefined): number {
-  return PLAN_PROJECT_CAP[plan ?? 'free'] ?? PLAN_PROJECT_CAP.free
-}
-
 async function resolveUniqueSlug(base: string): Promise<string> {
   let candidate = base
   for (let i = 2; i < 1000; i++) {
@@ -62,26 +48,10 @@ async function resolveUniqueSlug(base: string): Promise<string> {
 }
 
 /** A new project in `accountId`, which the caller has resolved against the person's memberships. */
-export async function createProject(
-  userId: string,
-  plan: string | undefined,
-  accountId: string,
-  data: CreateProjectInput,
-) {
-  if (!(await isOperator(userId))) {
-    const cap = getProjectCapForPlan(plan)
-    if (Number.isFinite(cap)) {
-      const ownedAdminCount = await prisma.membership.count({
-        where: { userId, role: 'ADMIN' },
-      })
-      if (ownedAdminCount >= cap) {
-        throw Object.assign(
-          new Error(`Project limit reached for plan "${plan ?? 'free'}" (${cap}). Upgrade your plan to add more.`),
-          { statusCode: 402 },
-        )
-      }
-    }
-  }
+export async function createProject(accountId: string, data: CreateProjectInput) {
+  // Only a hosted plan limits projects, and it limits the account. A
+  // self-hosted instance has no plan limits (Jose, 2026-11-03).
+  await assertWithinLimit(accountId, 'projects')
   const slug = await resolveUniqueSlug(data.slug)
   return toClientProject(await prisma.project.create({ data: { ...data, slug, accountId } }))
 }

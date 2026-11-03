@@ -92,7 +92,7 @@ describe('createProject', () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValue({ isGlobalAdmin: true } as never)
     vi.mocked(prisma.project.findUnique).mockResolvedValue(null)
     vi.mocked(prisma.project.create).mockResolvedValue(mockProject)
-    const result = await createProject('user1', 'pro', 'acc1', {
+    const result = await createProject('acc1', {
       name: 'Test Project',
       slug: 'test-project',
     })
@@ -103,18 +103,18 @@ describe('createProject', () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValue({ isGlobalAdmin: true } as never)
     vi.mocked(prisma.project.findUnique).mockResolvedValueOnce(mockProject).mockResolvedValueOnce(null)
     vi.mocked(prisma.project.create).mockResolvedValue(mockProject)
-    await createProject('user1', 'pro', 'acc1', { name: 'Other', slug: 'test-project' })
+    await createProject('acc1', { name: 'Other', slug: 'test-project' })
     expect(prisma.project.create).toHaveBeenCalledWith({
       data: { name: 'Other', slug: 'test-project-2', accountId: 'acc1' },
     })
   })
 
-  it('throws 402 when free-plan user is at the project cap', async () => {
-    vi.mocked(prisma.user.findUnique).mockResolvedValue({ isGlobalAdmin: false } as never)
-    vi.mocked(prisma.membership.count).mockResolvedValue(3)
-    await expect(createProject('user1', 'free', 'acc1', { name: 'X', slug: 'x' })).rejects.toMatchObject({
-      statusCode: 402,
-    })
+  it('has no per-person cap: a self-hosted instance has no plan limits', async () => {
+    vi.mocked(prisma.membership.count).mockResolvedValue(500)
+    vi.mocked(prisma.project.findUnique).mockResolvedValue(null)
+    vi.mocked(prisma.project.create).mockResolvedValue(mockProject)
+    await expect(createProject('acc1', { name: 'X', slug: 'x' })).resolves.toBeDefined()
+    expect(prisma.membership.count).not.toHaveBeenCalled()
   })
 })
 

@@ -63,6 +63,13 @@ services:
       OIDC_LABEL: ${OIDC_LABEL:-}
       OIDC_AUTO_PROVISION: ${OIDC_AUTO_PROVISION:-}
       LICENSE_KEY: ${LICENSE_KEY:-}
+      ENABLE_EE: ${ENABLE_EE:-}
+      # Hosted plans and billing through Nubisco's licenses service (EE). Only
+      # Nubisco's hosted Verba sets these: unset, there are no plans or billing.
+      VERBA_LICENSES_URL: ${VERBA_LICENSES_URL:-}
+      VERBA_LICENSES_SERVICE_TOKEN: ${VERBA_LICENSES_SERVICE_TOKEN:-}
+      VERBA_ENTITLEMENT_WEBHOOK_SECRET: ${VERBA_ENTITLEMENT_WEBHOOK_SECRET:-}
+      VERBA_SALES_URL: ${VERBA_SALES_URL:-}
       # Only needed when this API is not reachable at <web origin>/api.
       PUBLIC_API_URL: ${PUBLIC_API_URL:-}
       ANALYTICS_URL: ${ANALYTICS_URL:-}

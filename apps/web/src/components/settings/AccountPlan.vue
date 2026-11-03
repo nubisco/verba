@@ -77,6 +77,14 @@ const planItems = computed(() => {
   return [
     { term: 'Plan ID', value: d.plan.id },
     { term: 'Mode', value: d.plan.managed ? 'Managed SaaS' : 'Self-hosted' },
+    ...(d.billing
+      ? [
+          { term: 'Billing state', value: d.billing.state },
+          { term: 'Plan source', value: d.billing.source },
+          { term: 'Entitlement version', value: d.billing.version ?? 'None held' },
+          { term: 'Fetched from licenses', value: formatDate(d.billing.fetchedAt) },
+        ]
+      : []),
   ]
 })
 
@@ -106,6 +114,9 @@ const limitItems = computed(() => {
   if (!e) return []
   return [
     { term: 'Projects', value: limitLabel(e.maxProjects) },
+    { term: 'Members', value: limitLabel(e.maxMembers ?? null) },
+    { term: 'Keys', value: limitLabel(e.maxKeys ?? null) },
+    { term: 'Locales', value: limitLabel(e.maxLocales ?? null) },
     { term: 'Seats per project', value: limitLabel(e.maxSeatsPerProject) },
     { term: 'Keys per project', value: limitLabel(e.maxKeysPerProject) },
     { term: 'Locales per project', value: limitLabel(e.maxLocalesPerProject) },

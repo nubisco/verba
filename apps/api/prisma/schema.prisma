@@ -52,6 +52,7 @@ model Account {
 
   projects Project[]
   members  AccountMember[]
+  plan     AccountPlan?
 }
 
 // role: "OWNER" | "ADMIN" | "MEMBER" (types.ts AccountRole). An account always
@@ -273,6 +274,9 @@ model Notification {
 /// Active subscription for a managed-SaaS org.
 /// planId: "free" | "pro" | "business" | "enterprise"
 /// status: "trialing" | "active" | "past_due" | "canceled" | "paused" | "incomplete"
+/// Unused since hosted billing moved to Nubisco's licenses service (Paddle as
+/// merchant of record, see AccountPlan). It was written by a Stripe integration
+/// that was never connected. Kept because dropping a table is destructive.
 model Subscription {
   id                   String    @id @default(cuid())
   orgId                String    @unique
@@ -285,6 +289,29 @@ model Subscription {
   cancelAtPeriodEnd    Boolean   @default(false)
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
+}
+
+/// The local copy of an account's entitlement from Nubisco's licenses service
+/// (packages/ee/src/plans). Written only when hosted billing is configured: by
+/// the signed entitlement.updated webhook, by a fetch when the copy is missing
+/// or a day old, and when the billing page opens. A lower version is ignored,
+/// and a network error never replaces it.
+/// state: "trialing" | "active" | "grace" | "restricted" | "free"
+/// source: "subscription" | "override" | "free"
+model AccountPlan {
+  accountId    String    @id
+  plan         String
+  state        String
+  source       String
+  limits       String    @default("{}") // JSON: Record<string, number | null>, null is unlimited
+  subscription String? // JSON: the subscription summary licenses sends
+  version      Int       @default(0)
+  graceUntil   DateTime?
+  endsAt       DateTime?
+  fetchedAt    DateTime
+  updatedAt    DateTime  @updatedAt
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
 }
 
 /// Manual entitlement override for a specific org.

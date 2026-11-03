@@ -24,6 +24,7 @@ export default defineNubiscoDocs({
         { text: 'Introduction', link: '/introduction' },
         { text: 'Quick Start', link: '/getting-started' },
         { text: 'Self-Hosting', link: '/self-hosting' },
+        { text: 'Plans and Billing', link: '/plans-and-billing' },
       ],
     },
     {

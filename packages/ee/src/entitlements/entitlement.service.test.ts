@@ -3,6 +3,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { resolveEntitlements, hasFeature, serializeEntitlements } from './entitlement.service.js'
+import { PLANS } from './plans.js'
 import type { EntitlementsDb } from './entitlement.service.js'
 
 // ---------------------------------------------------------------------------
@@ -10,13 +11,15 @@ import type { EntitlementsDb } from './entitlement.service.js'
 // ---------------------------------------------------------------------------
 
 function makePrisma(overrides: {
-  subscription?: Record<string, unknown> | null
   entitlementOverride?: Record<string, unknown> | null
   licenseState?: Record<string, unknown> | null
 }): EntitlementsDb {
   return {
-    subscription: {
-      findUnique: async () => overrides.subscription ?? null,
+    account: { findUnique: async () => null },
+    accountPlan: {
+      findUnique: async () => null,
+      create: async () => null,
+      updateMany: async () => ({ count: 0 }),
     },
     entitlementOverride: {
       findUnique: async () => overrides.entitlementOverride ?? null,
@@ -42,10 +45,11 @@ describe('oss_self_hosted', () => {
     expect(ctx.entitlements.maxLocalesPerProject).toBeNull()
   })
 
-  it('has no EE features by default', async () => {
+  it('has the features every plan has, and no enterprise features', async () => {
     const prisma = makePrisma({})
     const ctx = await resolveEntitlements(prisma, null)
-    expect(ctx.entitlements.features.size).toBe(0)
+    expect([...ctx.entitlements.features].sort()).toEqual(['ai_suggestions', 'api_tokens', 'webhooks'])
+    expect(ctx.entitlements.features.has('sso')).toBe(false)
   })
 
   it('hasFeature returns false for any EE feature', async () => {
@@ -56,91 +60,18 @@ describe('oss_self_hosted', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Managed SaaS: free tier
+// An account on an instance without hosted billing
 // ---------------------------------------------------------------------------
 
-describe('free managed SaaS', () => {
-  const subscription = {
-    id: 'sub_1',
-    orgId: 'org_1',
-    planId: 'free',
-    status: 'active',
-    stripeSubscriptionId: null,
-    stripeCustomerId: null,
-    currentPeriodStart: null,
-    currentPeriodEnd: null,
-    cancelAtPeriodEnd: false,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  }
-
-  it('resolves free plan limits', async () => {
-    const prisma = makePrisma({ subscription })
-    const ctx = await resolveEntitlements(prisma, 'org_1')
-    expect(ctx.plan.id).toBe('free')
-    expect(ctx.entitlements.maxProjects).toBe(3)
-    expect(ctx.entitlements.maxSeatsPerProject).toBe(5)
-    expect(ctx.entitlements.features.size).toBe(0)
-  })
-})
-
-// ---------------------------------------------------------------------------
-// Managed SaaS: pro tier
-// ---------------------------------------------------------------------------
-
-describe('pro managed SaaS', () => {
-  const subscription = {
-    id: 'sub_2',
-    orgId: 'org_2',
-    planId: 'pro',
-    status: 'active',
-    stripeSubscriptionId: 'si_abc',
-    stripeCustomerId: 'cus_abc',
-    currentPeriodStart: new Date(),
-    currentPeriodEnd: new Date(),
-    cancelAtPeriodEnd: false,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  }
-
-  it('resolves pro plan limits and features', async () => {
-    const prisma = makePrisma({ subscription })
-    const ctx = await resolveEntitlements(prisma, 'org_2')
-    expect(ctx.plan.id).toBe('pro')
-    expect(ctx.entitlements.maxProjects).toBe(10)
-    expect(ctx.entitlements.features.has('ai_suggestions')).toBe(true)
-    expect(ctx.entitlements.features.has('webhooks')).toBe(true)
-    expect(ctx.entitlements.features.has('sso')).toBe(false)
-  })
-})
-
-// ---------------------------------------------------------------------------
-// Enterprise managed SaaS
-// ---------------------------------------------------------------------------
-
-describe('enterprise managed SaaS', () => {
-  const subscription = {
-    id: 'sub_3',
-    orgId: 'org_3',
-    planId: 'enterprise',
-    status: 'active',
-    stripeSubscriptionId: null,
-    stripeCustomerId: null,
-    currentPeriodStart: null,
-    currentPeriodEnd: null,
-    cancelAtPeriodEnd: false,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  }
-
-  it('resolves enterprise plan with all features and unlimited resources', async () => {
-    const prisma = makePrisma({ subscription })
-    const ctx = await resolveEntitlements(prisma, 'org_3')
-    expect(ctx.plan.id).toBe('enterprise')
+describe('an account without hosted billing configured', () => {
+  it('resolves exactly as OSS self-hosted: no limits, no billing state', async () => {
+    const prisma = makePrisma({})
+    const ctx = await resolveEntitlements(prisma, 'acc_1')
+    expect(ctx.plan.id).toBe('oss_self_hosted')
     expect(ctx.entitlements.maxProjects).toBeNull()
-    expect(ctx.entitlements.features.has('sso')).toBe(true)
-    expect(ctx.entitlements.features.has('multi_tenancy')).toBe(true)
-    expect(ctx.entitlements.features.has('priority_support')).toBe(true)
+    expect(ctx.entitlements.maxMembers).toBeNull()
+    expect(ctx.subscription).toBeNull()
+    expect(ctx.billing).toBeNull()
   })
 })
 
@@ -201,20 +132,6 @@ describe('self_hosted_enterprise', () => {
 // ---------------------------------------------------------------------------
 
 describe('EntitlementOverride', () => {
-  const subscription = {
-    id: 'sub_4',
-    orgId: 'org_4',
-    planId: 'free',
-    status: 'active',
-    stripeSubscriptionId: null,
-    stripeCustomerId: null,
-    currentPeriodStart: null,
-    currentPeriodEnd: null,
-    cancelAtPeriodEnd: false,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  }
-
   it('override replaces features when features field is set', async () => {
     const override = {
       id: 'ov_1',
@@ -231,7 +148,7 @@ describe('EntitlementOverride', () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     }
-    const prisma = makePrisma({ subscription, entitlementOverride: override })
+    const prisma = makePrisma({ entitlementOverride: override })
     const ctx = await resolveEntitlements(prisma, 'org_4')
     expect(ctx.entitlements.features.has('sso')).toBe(true)
     expect(ctx.entitlements.features.has('webhooks')).toBe(true)
@@ -254,9 +171,9 @@ describe('EntitlementOverride', () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     }
-    const prisma = makePrisma({ subscription, entitlementOverride: override })
+    const prisma = makePrisma({ entitlementOverride: override })
     const ctx = await resolveEntitlements(prisma, 'org_4')
-    // free has no features, featureAdditions adds sso
+    // oss_self_hosted has no features, featureAdditions adds sso
     expect(ctx.entitlements.features.has('sso')).toBe(true)
     expect(ctx.entitlements.maxProjects).toBe(99)
   })
@@ -277,7 +194,7 @@ describe('EntitlementOverride', () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     }
-    const prisma = makePrisma({ subscription, entitlementOverride: override })
+    const prisma = makePrisma({ entitlementOverride: override })
     const ctx = await resolveEntitlements(prisma, 'org_4')
     expect(ctx.entitlements.features.has('sso')).toBe(false)
     expect(ctx.hasOverride).toBe(false)
@@ -295,5 +212,54 @@ describe('serializeEntitlements', () => {
     const json = serializeEntitlements(ctx.entitlements)
     expect(Array.isArray(json.features)).toBe(true)
     expect(json.maxProjects).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// The plan table (Jose, 2026-11-03)
+// ---------------------------------------------------------------------------
+
+describe('the plan table', () => {
+  it('has Free and Pro for hosted accounts, and Enterprise only as the licence plan', () => {
+    expect(Object.keys(PLANS).sort()).toEqual(['free', 'oss_self_hosted', 'pro', 'self_hosted_enterprise'])
+    expect(PLANS.self_hosted_enterprise.requiresLicenseKey).toBe(true)
+  })
+
+  it('locks no feature behind Pro: Free and Pro differ only by limits', () => {
+    expect([...PLANS.free.baseEntitlements.features].sort()).toEqual([...PLANS.pro.baseEntitlements.features].sort())
+  })
+
+  it('holds Pro to the Paddle product, as account totals', () => {
+    const pro = PLANS.pro.baseEntitlements
+    expect([pro.maxProjects, pro.maxMembers, pro.maxKeys, pro.maxLocales]).toEqual([10, 25, 15000, null])
+    expect([pro.maxSeatsPerProject, pro.maxKeysPerProject, pro.maxLocalesPerProject, pro.maxMonthlyApiCalls]).toEqual([
+      null,
+      null,
+      null,
+      null,
+    ])
+  })
+
+  it('holds Free to its earlier caps, as account totals', () => {
+    const free = PLANS.free.baseEntitlements
+    expect([free.maxProjects, free.maxMembers, free.maxKeys, free.maxLocales]).toEqual([3, 5, 1500, 5])
+    expect(free.maxKeysPerProject).toBeNull()
+  })
+
+  it('reads a licence key that names a plan this table lacks as Enterprise', async () => {
+    const prisma = makePrisma({
+      licenseState: {
+        status: 'valid',
+        licensee: 'Example Ltd',
+        planId: 'enterprise',
+        seats: 10,
+        features: '[]',
+        expiresAt: null,
+        graceEndsAt: null,
+        lastVerifiedAt: null,
+      },
+    })
+    const ctx = await resolveEntitlements(prisma, null)
+    expect(ctx.plan.id).toBe('self_hosted_enterprise')
   })
 })

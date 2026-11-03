@@ -33,7 +33,7 @@ EE adds features for larger organizations and managed deployments:
 
 - SSO / SAML authentication
 - Per-account plans, limits, billing and self-serve account creation
-- Stripe billing integration
+- Hosted plans and billing through Nubisco's licenses service (Paddle as merchant of record)
 - Signed license key validation for self-hosted deployments
 - Advanced audit log export
 - Background job orchestration

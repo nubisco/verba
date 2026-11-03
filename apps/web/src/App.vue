@@ -2,11 +2,13 @@
   <RouterView />
   <ModalManager ref="modalManagerRef" />
   <NbToaster placement="bottom-end" />
+  <PlanLimitPrompt />
 </template>
 
 <script setup lang="ts">
 import { ref, provide } from 'vue'
 import ModalManager from '@/components/ModalManager.vue'
+import PlanLimitPrompt from '@/components/PlanLimitPrompt.vue'
 
 const modalManagerRef = ref<InstanceType<typeof ModalManager> | null>(null)
 provide('$modal', modalManagerRef)

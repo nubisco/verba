@@ -23,6 +23,13 @@ export async function accountRoutes(app: FastifyInstance) {
     svc.getAccount(req.user.userId, req.params.accountId),
   )
 
+  // Read-only because the account is over its hosted plan? Any member may ask.
+  app.get<{ Params: { accountId: string } }>(
+    '/accounts/:accountId/plan-status',
+    { preHandler: [app.authenticate] },
+    async (req) => svc.accountPlanStatus(req.user.userId, req.params.accountId),
+  )
+
   app.patch<{ Params: { accountId: string } }>(
     '/accounts/:accountId',
     { preHandler: [app.authenticate] },

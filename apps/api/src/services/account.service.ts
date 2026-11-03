@@ -2,6 +2,7 @@ import { prisma } from '../prisma.js'
 import { AccountRole } from '../types.js'
 import type { AddAccountMemberInput, CreateAccountInput, UpdateAccountInput } from '../schemas/account.schema.js'
 import { isOperator, recordInstanceAudit } from './operator.service.js'
+import { assertWithinLimit, overLimits, overLimitSummary } from './plan-limits.service.js'
 
 // Accounts are the tenant level above projects (fleet standard, "Every rail
 // has the same anatomy" in the workspace AGENTS.md). Every project belongs to
@@ -222,6 +223,7 @@ export async function addMember(actorId: string, accountId: string, data: AddAcc
     where: { userId_accountId: { userId: user.id, accountId } },
   })
   if (existing) fail(409, 'Already a member of this account')
+  await assertWithinLimit(accountId, 'members')
   const member = await prisma.accountMember.create({ data: { userId: user.id, accountId, role: data.role } })
   await recordInstanceAudit({
     actorId,
@@ -303,6 +305,7 @@ export async function ensureMemberForProject(actorId: string, projectId: string,
   if (!actor || (ROLE_WEIGHT[actor.role] ?? 0) < ROLE_WEIGHT[AccountRole.ADMIN]!) {
     fail(403, 'This person is not in the account yet. Ask an account owner or admin to add them.')
   }
+  await assertWithinLimit(project.accountId, 'members')
   await prisma.accountMember.create({
     data: { userId, accountId: project.accountId, role: AccountRole.MEMBER },
   })
@@ -312,4 +315,29 @@ export async function ensureMemberForProject(actorId: string, projectId: string,
     targetUserId: userId,
     detail: { accountId: project.accountId, role: AccountRole.MEMBER, via: 'project', projectId },
   })
+}
+
+/**
+ * What an account holds now, counted the way hosted plans limit it: projects,
+ * the people in the account, translation keys across its projects, and the
+ * distinct locales its projects translate into. Read by the billing page.
+ */
+export async function accountUsage(accountId: string) {
+  const [projects, members, keys, locales] = await Promise.all([
+    prisma.project.count({ where: { accountId } }),
+    prisma.accountMember.count({ where: { accountId } }),
+    prisma.key.count({ where: { project: { accountId } } }),
+    prisma.locale.findMany({ where: { project: { accountId } }, select: { code: true }, distinct: ['code'] }),
+  ])
+  return { projects, members, keys, locales: locales.length }
+}
+
+/**
+ * Whether the account is read-only because it is over its hosted plan, for
+ * every member (they are all held to it). Never read-only without hosted plans.
+ */
+export async function accountPlanStatus(userId: string, accountId: string) {
+  await requireAccountRole(userId, accountId, AccountRole.MEMBER)
+  const over = await overLimits(accountId)
+  return { readOnly: over.length > 0, over, summary: over.length > 0 ? overLimitSummary(over) : null }
 }
