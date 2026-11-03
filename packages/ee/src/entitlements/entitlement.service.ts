@@ -158,9 +158,10 @@ export function serializeEntitlements(set: EntitlementSet): EntitlementSetJson {
 // ---------------------------------------------------------------------------
 
 function resolvePlan(licenseState: LicenseState): ReturnType<typeof getPlan> {
-  // Self-hosted EE: valid/grace license key takes precedence
+  // Self-hosted EE: valid/grace license key takes precedence. Any key names
+  // the Enterprise plan unless it names another plan this table has.
   if ((licenseState.status === 'valid' || licenseState.status === 'grace') && licenseState.planId) {
-    return getPlan(licenseState.planId as PlanId)
+    return getPlan(licenseState.planId as PlanId) ?? getPlan('self_hosted_enterprise')
   }
 
   // Default: OSS self-hosted (no billing, no license)

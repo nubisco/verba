@@ -10,7 +10,7 @@ Paddle is the merchant of record, and Nubisco's licenses service owns everything
 
 - **The account is the billed unit.** licenses keeps one billing account per Verba `Account` (product `verba`, workspace id = the account id).
 - **Verba keeps a copy of each account's entitlement** in the `AccountPlan` table: plan, state, limits and the subscription summary. Plan resolution (`resolveEntitlements` in `packages/ee/src/entitlements`) reads only that copy.
-- **The limits come from licenses, not from Verba.** For Pro they are the Paddle product's `custom_data`, for Free they are licenses' own Free row, and a sales override replaces either. Verba's old plan table (`packages/ee/src/entitlements/plans.ts`) still names the features of each plan, but its numbers do not apply to a hosted account.
+- **The limits come from licenses, not from Verba.** For Pro they are the Paddle product's `custom_data`, for Free they are licenses' own Free row, and a sales override replaces either. Verba's plan table (`packages/ee/src/entitlements/plans.ts`) describes the same two plans, Free and Pro, which differ only by limits: every feature is on both. A sales deal shows as Enterprise, with the features of Pro and the limits of its override.
 
 The code is `packages/ee/src/plans`. The API loads it from `apps/api/src/services/billing.service.ts`, which is the only Community Edition file that knows it exists.
 

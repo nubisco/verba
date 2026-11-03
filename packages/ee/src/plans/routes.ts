@@ -21,7 +21,8 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { configFromEnv, configurePlans, plansConfig, type PlansConfig } from './config.js'
 import { LicensesError, openPortal, startCheckout, type LicensesEntitlement } from './client.js'
-import { hostedLimits, hostedPlanId } from './limits.js'
+import { PLANS } from '../entitlements/plans.js'
+import { hostedLimits } from './limits.js'
 import { signatureMatches } from './signature.js'
 import { applyEntitlement, planFor, type ApplyOutcome, type PlansDb } from './store.js'
 
@@ -150,13 +151,22 @@ export async function plansPlugin(app: FastifyInstance, deps: PlansDeps): Promis
       const row = await planFor(deps.db, accountId, { force: true })
       reply.header('cache-control', 'no-store')
       return {
-        plan: hostedPlanId(row),
+        // As licenses names it: free, pro, or enterprise for a sales deal.
+        plan: row?.plan ?? 'free',
         state: row?.state ?? 'free',
         source: row?.source ?? 'free',
         subscription: row?.subscription ?? null,
         limits: hostedLimits(row),
         usage: await deps.accountUsage(accountId),
         salesUrl: config.salesUrl,
+        // What Pro raises the limits to, for the upgrade panel. Verba's plan
+        // table matches the Paddle product (account totals).
+        proLimits: {
+          projects: PLANS.pro.baseEntitlements.maxProjects,
+          members: PLANS.pro.baseEntitlements.maxMembers,
+          keys: PLANS.pro.baseEntitlements.maxKeys,
+          locales: PLANS.pro.baseEntitlements.maxLocales,
+        },
       }
     },
   )

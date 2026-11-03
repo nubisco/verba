@@ -54,9 +54,8 @@
         <header>
           <h3 class="type-heading-01">Upgrade to Pro</h3>
           <p class="billing__lede">
-            Pro raises the limits on projects, members and translation keys. Every feature is on both plans: Pro only
-            raises the limits. 14 days free, then billed {{ period === 'yearly' ? 'yearly' : 'monthly' }}. Prices
-            exclude VAT.
+            {{ proSummary }} Every feature is on both plans: Pro only raises the limits. 14 days free, then billed
+            {{ period === 'yearly' ? 'yearly' : 'monthly' }}. Prices exclude VAT.
           </p>
         </header>
         <div class="billing__form">
@@ -93,6 +92,8 @@ interface BillingState {
   limits: Record<string, number | null>
   usage: Record<string, number>
   salesUrl: string | null
+  /** Pro's limits, account totals. Null is unlimited. */
+  proLimits: Record<'projects' | 'members' | 'keys' | 'locales', number | null>
 }
 
 const props = defineProps<{ accountId: string }>()
@@ -115,7 +116,16 @@ const period = ref<'monthly' | 'yearly'>('monthly')
 const checkingOut = ref(false)
 const openingPortal = ref(false)
 
-const PLAN_NAMES: Record<string, string> = { free: 'Free', pro: 'Pro', business: 'Business', enterprise: 'Enterprise' }
+const PLAN_NAMES: Record<string, string> = { free: 'Free', pro: 'Pro', enterprise: 'Enterprise' }
+
+/** "Up to 10 projects, 25 members and 15,000 translation keys in the account, and any number of locales." */
+const proSummary = computed(() => {
+  const l = state.value?.proLimits
+  if (!l) return ''
+  const n = (v: number | null, what: string) => (v === null ? `unlimited ${what}` : `${v.toLocaleString()} ${what}`)
+  const locales = l.locales === null ? 'any number of locales' : `${l.locales} locales`
+  return `Up to ${n(l.projects, 'projects')}, ${n(l.members, 'members')} and ${n(l.keys, 'translation keys')} in the account, and ${locales}.`
+})
 const planName = computed(() => PLAN_NAMES[state.value?.plan ?? 'free'] ?? state.value?.plan)
 
 const stateBadge = computed(() => {

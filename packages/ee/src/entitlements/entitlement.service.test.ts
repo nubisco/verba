@@ -3,6 +3,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { resolveEntitlements, hasFeature, serializeEntitlements } from './entitlement.service.js'
+import { PLANS } from './plans.js'
 import type { EntitlementsDb } from './entitlement.service.js'
 
 // ---------------------------------------------------------------------------
@@ -44,10 +45,11 @@ describe('oss_self_hosted', () => {
     expect(ctx.entitlements.maxLocalesPerProject).toBeNull()
   })
 
-  it('has no EE features by default', async () => {
+  it('has the features every plan has, and no enterprise features', async () => {
     const prisma = makePrisma({})
     const ctx = await resolveEntitlements(prisma, null)
-    expect(ctx.entitlements.features.size).toBe(0)
+    expect([...ctx.entitlements.features].sort()).toEqual(['ai_suggestions', 'api_tokens', 'webhooks'])
+    expect(ctx.entitlements.features.has('sso')).toBe(false)
   })
 
   it('hasFeature returns false for any EE feature', async () => {
@@ -210,5 +212,54 @@ describe('serializeEntitlements', () => {
     const json = serializeEntitlements(ctx.entitlements)
     expect(Array.isArray(json.features)).toBe(true)
     expect(json.maxProjects).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// The plan table (Jose, 2026-11-03)
+// ---------------------------------------------------------------------------
+
+describe('the plan table', () => {
+  it('has Free and Pro for hosted accounts, and Enterprise only as the licence plan', () => {
+    expect(Object.keys(PLANS).sort()).toEqual(['free', 'oss_self_hosted', 'pro', 'self_hosted_enterprise'])
+    expect(PLANS.self_hosted_enterprise.requiresLicenseKey).toBe(true)
+  })
+
+  it('locks no feature behind Pro: Free and Pro differ only by limits', () => {
+    expect([...PLANS.free.baseEntitlements.features].sort()).toEqual([...PLANS.pro.baseEntitlements.features].sort())
+  })
+
+  it('holds Pro to the Paddle product, as account totals', () => {
+    const pro = PLANS.pro.baseEntitlements
+    expect([pro.maxProjects, pro.maxMembers, pro.maxKeys, pro.maxLocales]).toEqual([10, 25, 15000, null])
+    expect([pro.maxSeatsPerProject, pro.maxKeysPerProject, pro.maxLocalesPerProject, pro.maxMonthlyApiCalls]).toEqual([
+      null,
+      null,
+      null,
+      null,
+    ])
+  })
+
+  it('holds Free to its earlier caps, as account totals', () => {
+    const free = PLANS.free.baseEntitlements
+    expect([free.maxProjects, free.maxMembers, free.maxKeys, free.maxLocales]).toEqual([3, 5, 1500, 5])
+    expect(free.maxKeysPerProject).toBeNull()
+  })
+
+  it('reads a licence key that names a plan this table lacks as Enterprise', async () => {
+    const prisma = makePrisma({
+      licenseState: {
+        status: 'valid',
+        licensee: 'Example Ltd',
+        planId: 'enterprise',
+        seats: 10,
+        features: '[]',
+        expiresAt: null,
+        graceEndsAt: null,
+        lastVerifiedAt: null,
+      },
+    })
+    const ctx = await resolveEntitlements(prisma, null)
+    expect(ctx.plan.id).toBe('self_hosted_enterprise')
   })
 })

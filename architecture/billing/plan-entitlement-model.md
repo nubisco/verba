@@ -11,41 +11,44 @@ This document describes the internal product model that powers Verba's feature g
 
 ## Plan tiers
 
-| Plan ID                  | Mode         | Managed | License key | Notes                   |
-| ------------------------ | ------------ | ------- | ----------- | ----------------------- |
-| `oss_self_hosted`        | Self-hosted  | No      | No          | Default when no config  |
-| `free`                   | Managed SaaS | Yes     | No          | Entry tier              |
-| `pro`                    | Managed SaaS | Yes     | No          | Paid, some EE features  |
-| `business`               | Managed SaaS | Yes     | No          | Paid, advanced features |
-| `enterprise`             | Managed SaaS | Yes     | No          | Unlimited, all features |
-| `self_hosted_enterprise` | Self-hosted  | No      | Yes         | EE features via key     |
+Decided by Jose on 2026-11-03: hosted Verba is Free and Pro, which differ only by limits. Anything larger is "contact sales": a sales override in Nubisco's licenses service for a hosted account, or a licence key for a self-hosted one.
+
+| Plan ID                  | Mode        | Managed | License key | Notes                                  |
+| ------------------------ | ----------- | ------- | ----------- | -------------------------------------- |
+| `oss_self_hosted`        | Self-hosted | No      | No          | Default when no config                 |
+| `free`                   | Hosted      | Yes     | No          | Entry plan                             |
+| `pro`                    | Hosted      | Yes     | No          | Paid, the same features, higher limits |
+| `self_hosted_enterprise` | Self-hosted | No      | Yes         | "Contact us": enterprise features      |
 
 ## Entitlement features
 
-| Feature                 | Description                                                                                             | Available from                         |
-| ----------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------- |
-| `sso`                   | SAML/SSO authentication                                                                                 | `enterprise`, `self_hosted_enterprise` |
-| `advanced_audit_export` | Export audit logs as CSV/JSON                                                                           | `business`+                            |
-| `multi_tenancy`         | Per-account plans, limits, billing and self-serve account creation (accounts, members and roles are CE) | `enterprise`, `self_hosted_enterprise` |
-| `ai_suggestions`        | AI translation suggestions                                                                              | `pro`+                                 |
-| `webhooks`              | Outbound webhooks                                                                                       | `pro`+                                 |
-| `api_tokens`            | Personal API token generation                                                                           | `pro`+                                 |
-| `custom_roles`          | Custom member roles                                                                                     | `business`+                            |
-| `priority_support`      | SLA-backed support                                                                                      | `enterprise`, `self_hosted_enterprise` |
+Plans limit usage, they do not lock features. AI suggestions, API tokens and webhooks are on every plan. Only the enterprise features need a licence key (or a sales deal).
+
+| Feature                 | Description                                                                                             | Available on             |
+| ----------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------ |
+| `ai_suggestions`        | AI translation suggestions, on the customer's own key                                                   | every plan               |
+| `webhooks`              | Outbound webhooks                                                                                       | every plan               |
+| `api_tokens`            | Personal API token generation                                                                           | every plan               |
+| `sso`                   | SAML/SSO authentication                                                                                 | `self_hosted_enterprise` |
+| `advanced_audit_export` | Export audit logs as CSV/JSON                                                                           | `self_hosted_enterprise` |
+| `multi_tenancy`         | Per-account plans, limits, billing and self-serve account creation (accounts, members and roles are CE) | `self_hosted_enterprise` |
+| `custom_roles`          | Custom member roles                                                                                     | `self_hosted_enterprise` |
+| `priority_support`      | SLA-backed support                                                                                      | `self_hosted_enterprise` |
 
 ## Resource limits by plan
 
-| Limit                 | `free` | `pro`  | `business` | `enterprise` / EE |
-| --------------------- | ------ | ------ | ---------- | ----------------- |
-| Max projects          | 3      | 10     | 50         | unlimited         |
-| Max seats / project   | 5      | 20     | 100        | unlimited         |
-| Max keys / project    | 500    | 5,000  | unlimited  | unlimited         |
-| Max locales / project | 5      | 20     | unlimited  | unlimited         |
-| Max monthly API calls | n/a    | 10,000 | 100,000    | unlimited         |
+All limits are account totals. `null` is unlimited.
 
-All limits are `null` (unlimited) for `oss_self_hosted`.
+| Limit    | `free` | `pro`     | `oss_self_hosted` / `self_hosted_enterprise` |
+| -------- | ------ | --------- | -------------------------------------------- |
+| Projects | 3      | 10        | unlimited                                    |
+| Members  | 5      | 25        | unlimited                                    |
+| Keys     | 1,500  | 15,000    | unlimited                                    |
+| Locales  | 5      | unlimited | unlimited                                    |
 
-On an instance that sells hosted plans (billing configured, see docs/plans-and-billing.md), the table above does not apply to an account. Its plan and its limits come from the entitlement Nubisco's licenses service sends, which is built from the Paddle product for a paid plan. Those limits are account-wide: projects, members, keys and locales. The per-project and API-call caps are not set for a hosted account.
+Pro's numbers are the Paddle product Verba Pro's. Free's are the earlier per-project caps (5 seats, 500 keys and 5 locales in each of 3 projects) expressed as account totals. The per-project and API-call caps are no longer set on any plan.
+
+For a hosted account (billing configured, see docs/plans-and-billing.md), the numbers in force are the ones in the entitlement Nubisco's licenses service sends: the Paddle product's for Pro, licenses' own Free row for Free, or a sales override.
 
 ## Entitlement resolution order
 

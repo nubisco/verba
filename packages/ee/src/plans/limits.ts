@@ -24,12 +24,13 @@ export type LimitKey = (typeof LIMIT_KEYS)[number]
  */
 export const FREE_LIMITS: Record<LimitKey, number | null> = { projects: 1, keys: 1000, members: 3, locales: null }
 
-/** The plan ids licenses may name for Verba. Anything else is held as Free. */
-const HOSTED_PLANS = new Set<PlanId>(['free', 'pro', 'business', 'enterprise'])
-
+/**
+ * The plan in Verba's table for a hosted account: Free, or Pro for any paid
+ * access. A sales deal (licenses names it `enterprise`) has the same features
+ * as Pro, and its limits come from its override in the entitlement.
+ */
 export function hostedPlanId(row: PlanRow | null): PlanId {
-  const plan = (row?.plan ?? 'free') as PlanId
-  return HOSTED_PLANS.has(plan) ? plan : 'free'
+  return (row?.plan ?? 'free') === 'free' ? 'free' : 'pro'
 }
 
 /** The limits in force: the entitlement's, or Free's with no entitlement held. */

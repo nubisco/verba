@@ -283,6 +283,23 @@ describe('the plan an account is held to', () => {
     expect(ctx.billing?.source).toBe('subscription')
   })
 
+  it('holds a sales deal to its own limits, with the features of Pro', async () => {
+    entitlements.set(
+      ACCOUNT,
+      entitlement({
+        plan: 'enterprise',
+        state: 'active',
+        source: 'override',
+        limits: { projects: null, keys: null, members: 120, locales: null },
+        version: 2,
+      }),
+    )
+    const ctx = await resolveEntitlements(mem.db, ACCOUNT)
+    expect(ctx.plan.id).toBe('pro')
+    expect(ctx.entitlements.maxMembers).toBe(120)
+    expect(ctx.entitlements.maxProjects).toBeNull()
+  })
+
   it('a licence key on a self-hosted instance still decides the plan', async () => {
     const db: EntitlementsDb = {
       ...mem.db,
@@ -388,6 +405,7 @@ describe('the billing routes', () => {
     expect(body.plan).toBe('pro')
     expect(body.limits).toEqual({ projects: 10, keys: 15000, members: 25, locales: null })
     expect(body.usage).toEqual({ projects: 1, members: 2, keys: 340, locales: 4 })
+    expect(body.proLimits).toEqual({ projects: 10, members: 25, keys: 15000, locales: null })
     // Fetched even though nothing was cached as stale: the page always asks.
     await app.inject({ method: 'GET', url: `/accounts/${ACCOUNT}/billing`, headers: as('admin') })
     expect(calls.filter((c) => c.path.startsWith('/v1/entitlements/'))).toHaveLength(2)

@@ -9,12 +9,10 @@
 
 /** All possible plan identifiers. */
 export type PlanId =
-  | 'oss_self_hosted' // Self-hosted OSS: free, no limits, no EE features
-  | 'free' // Managed SaaS free tier: limited, no EE features
-  | 'pro' // Managed SaaS Pro: higher limits, some EE features
-  | 'business' // Managed SaaS Business: high limits, more EE features
-  | 'enterprise' // Managed SaaS Enterprise: unlimited, all EE features
-  | 'self_hosted_enterprise' // Self-hosted with active EE license key
+  | 'oss_self_hosted' // Self-hosted OSS: free, no limits
+  | 'free' // Hosted Free
+  | 'pro' // Hosted Pro: the same features, higher limits
+  | 'self_hosted_enterprise' // Self-hosted with an active EE licence key ("contact us")
 
 export interface Plan {
   id: PlanId
