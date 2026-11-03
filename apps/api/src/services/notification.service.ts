@@ -1,5 +1,5 @@
 import { prisma } from '../prisma.js'
-import { wsManager } from '../ws/index.js'
+import { live } from '../live.js'
 
 export async function createNotification(data: {
   userId: string
@@ -10,7 +10,7 @@ export async function createNotification(data: {
   commentId?: string
 }) {
   const notif = await prisma.notification.create({ data })
-  wsManager.notifyUser(data.userId, {
+  live().notifyUser(data.userId, data.projectId, {
     type: 'notification.new',
     notification: notif,
   })

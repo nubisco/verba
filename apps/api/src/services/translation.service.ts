@@ -3,7 +3,7 @@ import { canTransitionStatus } from './acl.service.js'
 import * as audit from './audit.service.js'
 import { emit } from '../events.js'
 import { Status, Role } from '../types.js'
-import { wsManager } from '../ws/index.js'
+import { live } from '../live.js'
 import type { UpsertTranslationInput, TranslationQueryInput } from '../schemas/translation.schema.js'
 import { serializeKeyRecord } from './key-identity.service.js'
 
@@ -86,7 +86,7 @@ export async function upsertTranslation(
           before: existing.text,
           after: data.text,
         })
-        wsManager.broadcast(key.projectId, {
+        live().broadcast(key.projectId, {
           type: 'translation.updated',
           translationId: result.id,
           keyId,
@@ -102,7 +102,7 @@ export async function upsertTranslation(
   })
   const createdKey = await prisma.key.findUnique({ where: { id: keyId } })
   if (createdKey) {
-    wsManager.broadcast(createdKey.projectId, {
+    live().broadcast(createdKey.projectId, {
       type: 'translation.updated',
       translationId: created.id,
       keyId,
@@ -253,7 +253,7 @@ export async function updateStatus(
         after: newStatus,
       })
     }
-    wsManager.broadcast(key.projectId, {
+    live().broadcast(key.projectId, {
       type: 'translation.moved',
       translationId: id,
       status: newStatus,
@@ -308,7 +308,7 @@ export async function assignTranslation(
     include: { assignedTo: { select: { id: true, email: true, name: true } } },
   })
 
-  wsManager.broadcast(projectId, {
+  live().broadcast(projectId, {
     type: 'translation.assigned',
     translationId,
     projectId,

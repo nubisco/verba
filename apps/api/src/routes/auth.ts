@@ -11,7 +11,7 @@ import * as ssoService from '../services/sso.service.js'
 import { prisma } from '../prisma.js'
 import { getAuthConfig } from '../services/instance-config.service.js'
 import { randomBytes } from 'node:crypto'
-import { authRateLimits } from '../rate-limits.js'
+import { authRateLimits, type RateLimiterSource } from '../rate-limits.js'
 import {
   authenticate,
   clearCookie,
@@ -61,8 +61,8 @@ function setBundleKeyCookie(c: Ctx, key: string): void {
   })
 }
 
-export function authRoutes(app: Api) {
-  const limits = authRateLimits()
+export function authRoutes(app: Api, rateLimiters?: RateLimiterSource) {
+  const limits = authRateLimits(rateLimiters)
 
   app.post('/auth/register', async (c) => {
     const authConfig = getAuthConfig()

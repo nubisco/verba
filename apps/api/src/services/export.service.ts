@@ -1,6 +1,6 @@
 import { prisma } from '../prisma.js'
-import ExcelJS from 'exceljs'
-import archiver from 'archiver'
+import { strToU8, zipSync } from 'fflate'
+import * as XLSX from 'xlsx'
 import { buildFullKey } from './key-identity.service.js'
 
 function notFound(): never {
@@ -77,26 +77,18 @@ export async function exportTranslations(
       tree[row.locale][ns][row.key] = row.text
     }
 
-    // Build a ZIP: locale/namespace.json for each combination
-    const archive = archiver('zip', { zlib: { level: 9 } })
-    const chunks: Buffer[] = []
-    archive.on('data', (chunk: Buffer) => chunks.push(chunk))
-    const done = new Promise<void>((resolve, reject) => {
-      archive.on('end', resolve)
-      archive.on('error', reject)
-    })
-
+    // Build a ZIP: locale/namespace.json for each combination. fflate is plain
+    // JavaScript, so this runs the same on Node and on a Worker.
+    const files: Record<string, Uint8Array> = {}
     for (const [locale, namespaces] of Object.entries(tree)) {
       for (const [ns, keys] of Object.entries(namespaces)) {
         const sorted = Object.fromEntries(Object.entries(keys).sort(([a], [b]) => a.localeCompare(b)))
-        archive.append(JSON.stringify(sorted, null, 2), { name: `${locale}/${ns}.json` })
+        files[`${locale}/${ns}.json`] = strToU8(JSON.stringify(sorted, null, 2))
       }
     }
-    await archive.finalize()
-    await done
 
     return {
-      data: Buffer.concat(chunks),
+      data: Buffer.from(zipSync(files, { level: 9 })),
       contentType: 'application/zip',
       filename: 'translations.zip',
     }
@@ -129,17 +121,18 @@ export async function exportTranslations(
     }
   }
 
-  // XLSX
-  const workbook = new ExcelJS.Workbook()
+  // XLSX: one sheet per locale. SheetJS, which import already uses, is plain
+  // JavaScript, so this runs the same on Node and on a Worker.
+  const workbook = XLSX.utils.book_new()
+  const header = ['namespace', 'key', 'text', 'status']
   const locales = Array.from(new Set(flat.map((r: { locale: string }) => String(r.locale))))
   for (const locale of locales) {
-    const sheet = workbook.addWorksheet(locale)
-    sheet.addRow(['namespace', 'key', 'text', 'status'])
-    for (const row of flat.filter((r) => r.locale === locale)) {
-      sheet.addRow([row.namespace, row.key, row.text, row.status])
-    }
+    const rows = flat.filter((r) => r.locale === locale).map((r) => [r.namespace, r.key, r.text, r.status])
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([header, ...rows]), locale)
   }
-  const buffer = await workbook.xlsx.writeBuffer()
+  // A workbook needs a sheet, even when nothing matched.
+  if (locales.length === 0) XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([header]), 'translations')
+  const buffer = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer
   return {
     data: Buffer.from(buffer),
     contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

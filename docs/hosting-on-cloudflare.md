@@ -189,6 +189,18 @@ The API moved from Fastify 5 to Hono 4, served on Node by `@hono/node-server`, i
 
 Why this first: it is the largest change that is independent of Cloudflare, it is the precondition for everything after it (Fastify does not run on Workers), and it ships through the normal deploy with no data, DNS or infrastructure change.
 
+### Stage 2, as shipped
+
+Still Node, still the same Docker image, and nothing anyone using the NAS can see:
+
+- **The Prisma client is chosen by the entry point.** `src/prisma.ts` holds it, the Node entry creates it with `src/prisma-node.ts` (PostgreSQL or SQLite from `DATABASE_URL`), and no other module imports a driver.
+- **`dotenv` and `package.json`** are read by the Node entry only. `buildApp()` takes the version as an option.
+- **`defer()`** (`src/defer.ts`) carries analytics events, and is where a Worker plugs in `waitUntil`.
+- **`live()`** (`src/live.ts`) delivers live updates. On Node it is the in-process rooms, as before. A notification now names its project, so a Worker can find the account's Durable Object.
+- **Rate limits** take a source: this process (unchanged on Node) or a Worker's bindings, with the per-minute numbers in `WORKER_RATE_LIMITS`.
+- **Exports** are built with SheetJS (XLSX) and fflate (the split-by-namespace zip). The files hold the same sheets, rows and paths. `exceljs` and `archiver` are gone.
+- **A D1 migration history**, `prisma/d1`, generated from the schema (`pnpm db:d1:new`), and checked against it in CI (`pnpm db:d1:check`) beside the PostgreSQL check.
+
 ## Risks
 
 - **Prisma on Workers.** The D1 adapter and the workerd build of the Prisma 7 client are newer than the PostgreSQL path. Stage 3 runs the whole app against them locally before anything depends on it.

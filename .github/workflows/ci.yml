@@ -58,6 +58,11 @@ jobs:
           SHADOW_DATABASE_URL: postgresql://postgres:shadow@localhost:5432/postgres
         run: pnpm --filter @nubisco/verba-api db:migration:check
 
+      - name: Verify the D1 migrations match the schema
+        # Hosted Verba runs on Cloudflare D1, which applies prisma/d1 with
+        # wrangler. A schema change without a D1 migration would never reach it.
+        run: pnpm --filter @nubisco/verba-api db:d1:check
+
       - name: Verify forbidden EE imports in CE code
         run: |
           # ESLint already enforces this, but a grep backstop catches it even

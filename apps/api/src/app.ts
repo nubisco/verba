@@ -1,5 +1,3 @@
-import 'dotenv/config'
-import { readFileSync } from 'node:fs'
 import { Hono } from 'hono'
 import type { UpgradeWebSocket } from 'hono/ws'
 import { bodyLimit } from 'hono/body-limit'
@@ -28,11 +26,7 @@ import { configRoutes } from './routes/config.js'
 import { billingRoutes } from './routes/billing.js'
 import type { Api, AppEnv } from './http.js'
 import { guardEveryWrite } from './read-only.js'
-
-const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8')) as {
-  name: string
-  version: string
-}
+import type { RateLimiterSource } from './rate-limits.js'
 
 /** The largest request body, as Fastify's default bodyLimit had it: 1 MiB. */
 export const BODY_LIMIT_BYTES = 1024 * 1024
@@ -46,6 +40,10 @@ export interface BuildOptions {
   websocket?: (app: Api) => UpgradeWebSocket
   /** Log each request. On by default, as Fastify's `logger: true` was. */
   logRequests?: boolean
+  /** Where the sign-in rate limits count. This process unless given (a Worker's bindings). */
+  rateLimiters?: RateLimiterSource
+  /** What GET /version reports. The entry point reads it from package.json. */
+  version?: { name: string; version: string }
 }
 
 export async function buildApp(options: BuildOptions = {}): Promise<Api> {
@@ -124,14 +122,14 @@ export async function buildApp(options: BuildOptions = {}): Promise<Api> {
 
   app.get('/version', (c) =>
     c.json({
-      name: pkg.name,
-      version: pkg.version,
+      name: options.version?.name ?? '@nubisco/verba-api',
+      version: options.version?.version ?? null,
       commit: process.env.VERBA_GIT_SHA ?? null,
       environment: process.env.NODE_ENV ?? null,
     }),
   )
 
-  authRoutes(app)
+  authRoutes(app, options.rateLimiters)
   memberRoutes(app)
   projectRoutes(app)
   namespaceRoutes(app)
