@@ -1,5 +1,6 @@
 import { prisma } from '../prisma.js'
 import type { CreateLocaleInput, UpdateLocaleInput } from '../schemas/locale.schema.js'
+import { assertLocalesFit } from './plan-limits.service.js'
 
 function notFound(): never {
   throw Object.assign(new Error('Locale not found'), { statusCode: 404 })
@@ -26,6 +27,7 @@ export async function createLocale(projectId: string, data: CreateLocaleInput) {
     throw Object.assign(new Error('Locale code already exists in this project'), {
       statusCode: 409,
     })
+  await assertLocalesFit(projectId, [data.code])
   return prisma.locale.create({ data: { ...data, projectId } })
 }
 

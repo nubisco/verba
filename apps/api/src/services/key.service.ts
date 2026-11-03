@@ -3,6 +3,7 @@ import type { CreateKeyInput, UpdateKeyInput, KeyQueryInput } from '../schemas/k
 import * as audit from './audit.service.js'
 import { emit } from '../events.js'
 import { serializeKeyRecord } from './key-identity.service.js'
+import { assertProjectWithinLimit } from './plan-limits.service.js'
 
 function notFound(): never {
   throw Object.assign(new Error('Key not found'), { statusCode: 404 })
@@ -107,6 +108,7 @@ export async function createKey(projectId: string, data: CreateKeyInput, userId?
     throw Object.assign(new Error('Key name already exists in this namespace'), {
       statusCode: 409,
     })
+  await assertProjectWithinLimit(projectId, 'keys')
   const key = await prisma.key.create({ data: { ...data, projectId } })
 
   // Auto-create TODO translations for every active locale in this project

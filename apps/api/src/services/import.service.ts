@@ -5,6 +5,7 @@ import { upsertTranslation } from './translation.service.js'
 import { Role } from '../types.js'
 import { updateImportRun } from './import-run.service.js'
 import { emit } from '../events.js'
+import { assertKeysFit } from './plan-limits.service.js'
 
 export interface ImportRow {
   keyName: string
@@ -215,6 +216,11 @@ export async function previewImport(
   return result
 }
 
+/** The namespace an import row goes into, as applyImport finds or creates it. */
+function namespaceSlugOf(namespaceName: string | undefined): string {
+  return (namespaceName || 'default').toLowerCase().replace(/[^a-z0-9]+/g, '-')
+}
+
 export async function applyImport(
   projectId: string,
   rows: ImportRow[],
@@ -223,6 +229,13 @@ export async function applyImport(
   importRunId: string,
 ): Promise<Stats> {
   const stats: Stats = { created: 0, updated: 0, skipped: 0, errors: [] }
+
+  // On a hosted plan, an import that would create more keys than the account
+  // may hold is refused before it writes anything.
+  await assertKeysFit(
+    projectId,
+    rows.filter((r) => r.keyName).map((r) => ({ namespaceSlug: namespaceSlugOf(r.namespaceName), name: r.keyName })),
+  )
 
   const localeCodes = Object.keys(mapping.localeColumns)
   const locales = (await prisma.locale.findMany({
@@ -239,7 +252,7 @@ export async function applyImport(
 
     try {
       const nsName = row.namespaceName || 'default'
-      const nsSlug = nsName.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+      const nsSlug = namespaceSlugOf(row.namespaceName)
 
       // Find or create namespace
       let namespace = await prisma.namespace.findUnique({

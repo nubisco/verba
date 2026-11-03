@@ -26,3 +26,4 @@ export { FREE_LIMITS, LIMIT_KEYS, hostedLimits, hostedPlanId, type LimitKey } fr
 export { hmacSha256Hex, signatureMatches } from './signature.js'
 export { STALE_MS, applyEntitlement, cachedPlan, planFor, type PlanRow, type PlansDb } from './store.js'
 export { checkoutPage, plansPlugin, type PlansDeps } from './routes.js'
+export { accountLimits, type EnforcedResource } from './enforce.js'

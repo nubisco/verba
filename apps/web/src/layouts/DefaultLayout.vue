@@ -137,6 +137,7 @@
     </template>
 
     <!-- ═══ Main content ═══ -->
+    <AccountReadOnlyBanner />
     <RouterView />
   </NbShell>
 </template>
@@ -156,6 +157,7 @@ import { setLocale } from '../i18n/index'
 import { useLayoutSlots } from '../composables/useLayoutSlots'
 import NotificationBell from '../components/NotificationBell.vue'
 import AppBreadcrumbs from '../components/AppBreadcrumbs.vue'
+import AccountReadOnlyBanner from '../components/AccountReadOnlyBanner.vue'
 
 const router = useRouter()
 const route = useRoute()

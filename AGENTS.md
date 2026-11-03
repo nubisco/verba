@@ -97,7 +97,7 @@ Every project belongs to one **account** (the tenant, fleet standard "Every rail
 - Routes that are not about one project resolve the account with `resolveAccount(userId, accountSelector(req))`: the `X-Verba-Account` header or `?account=` (id or slug), else the person's only account. Several and none named is a 400 listing them, someone else's is a 404.
 - Only Platform admins of this app (`User.platformRole === 'admin'`, the app-level `role` claim stored at sign-in) and instance operators create accounts. Account owners and admins add people. Only owners touch owners, and the last owner cannot leave.
 - Accounts are Community Edition code: access control cannot depend on the EE package. Plans, limits and billing per account stay in `packages/ee`.
-- Hosted plans come from Nubisco's licenses service (Paddle as merchant of record), cached per account in `AccountPlan` (`packages/ee/src/plans`, docs/plans-and-billing.md). They switch on only with `ENABLE_EE=true`, `VERBA_LICENSES_URL` and `VERBA_LICENSES_SERVICE_TOKEN`. Verba never calls Paddle and never opens a checkout itself: checkout runs on nubisco.io. There is no Stripe code, and the old `Subscription` table is not read.
+- Hosted plans come from Nubisco's licenses service (Paddle as merchant of record), cached per account in `AccountPlan` (`packages/ee/src/plans`, docs/plans-and-billing.md). They switch on only with `ENABLE_EE=true`, `VERBA_LICENSES_URL` and `VERBA_LICENSES_SERVICE_TOKEN`. Verba never calls Paddle and never opens a checkout itself: checkout runs on nubisco.io. There is no Stripe code, and the old `Subscription` table is not read. A service that creates a project, adds a person to an account, creates keys or adds a locale calls `assertWithinLimit` (`plan-limits.service.ts`) first, which refuses nothing unless hosted plans are on. An account over its plan is read-only except for deleting, removing people and billing (`read-only.ts`, an `onRoute` hook). A self-hosted instance has no plan limits.
 
 ## Workflow State Machine
 
@@ -200,6 +200,6 @@ Do not implement unless explicitly requested:
 
 - Real-time collaboration (WebSockets, SSE)
 - Machine translation integration
-- Self-serve account creation (accounts exist, but only admins create them). Hosted billing exists (docs/plans-and-billing.md), limit enforcement does not yet
+- Self-serve account creation (accounts exist, but only admins create them). Hosted billing and its limits exist (docs/plans-and-billing.md)
 - Native mobile apps
 - GraphQL API
