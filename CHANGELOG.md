@@ -1,3 +1,15 @@
+# [1.23.0](https://github.com/nubisco/verba/compare/v1.22.1...v1.23.0) (2026-11-03)
+
+
+### Features
+
+* **api:** enforce locales on hosted plans ([7d3d31c](https://github.com/nubisco/verba/commit/7d3d31cddc3f384a98ead2ac1c346dd369307304))
+* **api:** read-only while over a hosted plan, and no per-person project cap ([d4a7c46](https://github.com/nubisco/verba/commit/d4a7c462b09c77e9d321cb81911acd2aeafb0309))
+* **api:** refuse creating past a hosted plan's limit ([481aa99](https://github.com/nubisco/verba/commit/481aa99ffaf4762297d33ed360413c53f71f0946))
+* **ee:** Free is 3 projects, 5 members, 1,500 keys and 5 locales ([8b352d5](https://github.com/nubisco/verba/commit/8b352d52c89c14c461cb1a429771f9faa884ef08))
+* **ee:** hosted plans are Free and Pro, differing only by limits ([4621fd5](https://github.com/nubisco/verba/commit/4621fd567699a43924dfcaa85c80210218fc61dd))
+* **ee:** hosted plans from the licenses service, with Paddle as merchant of record ([6b5df73](https://github.com/nubisco/verba/commit/6b5df7375941a0e37b7d1c3893bffa21d4cdd2dc))
+
 ## [1.22.1](https://github.com/nubisco/verba/compare/v1.22.0...v1.22.1) (2026-10-28)
 
 
