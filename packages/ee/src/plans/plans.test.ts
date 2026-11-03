@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { resolveEntitlements, type EntitlementsDb } from '../entitlements/entitlement.service.js'
 import type { LicensesEntitlement } from './client.js'
 import { configFromEnv, configurePlans, plansConfig } from './config.js'
+import { PLANS } from '../entitlements/plans.js'
 import { FREE_LIMITS } from './limits.js'
 import { plansPlugin, type PlansDeps } from './routes.js'
 import { hmacSha256Hex } from './signature.js'
@@ -72,7 +73,7 @@ function entitlement(over: Partial<LicensesEntitlement> = {}): LicensesEntitleme
     plan: 'free',
     state: 'free',
     source: 'free',
-    limits: { projects: 1, keys: 1000, members: 3, locales: null },
+    limits: { projects: 3, keys: 1500, members: 5, locales: 5 },
     subscription: null,
     override: null,
     version: 0,
@@ -238,6 +239,16 @@ describe('config gating', () => {
 // ── The plan an account is held to ──────────────────────────────────────────
 
 describe('the plan an account is held to', () => {
+  it('holds Free to the same numbers as the plan table when licenses cannot be asked', async () => {
+    expect(FREE_LIMITS).toEqual({
+      projects: PLANS.free.baseEntitlements.maxProjects,
+      members: PLANS.free.baseEntitlements.maxMembers,
+      keys: PLANS.free.baseEntitlements.maxKeys,
+      locales: PLANS.free.baseEntitlements.maxLocales,
+    })
+    expect(FREE_LIMITS).toEqual({ projects: 3, members: 5, keys: 1500, locales: 5 })
+  })
+
   it('is Free with no row and licenses unreachable', async () => {
     licensesDown = true
     const ctx = await resolveEntitlements(mem.db, ACCOUNT)
