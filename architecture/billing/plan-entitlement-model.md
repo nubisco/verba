@@ -7,7 +7,7 @@ This document describes the internal product model that powers Verba's feature g
 1. **Entitlements are the source of truth.** Plans map to a base set of entitlements. Guards check entitlements, never plan IDs directly.
 2. **Overrides take precedence.** An `EntitlementOverride` on an org replaces or augments its resolved entitlements, regardless of plan.
 3. **OSS mode is first-class.** Without any license key or billing config, Verba runs as `oss_self_hosted` with unlimited resources and no EE features.
-4. **No billing provider required for OSS.** The entitlement resolution service works without Stripe or a license key.
+4. **No billing provider required for OSS.** The entitlement resolution service works without the licenses service or a license key.
 
 ## Plan tiers
 
@@ -45,12 +45,16 @@ This document describes the internal product model that powers Verba's feature g
 
 All limits are `null` (unlimited) for `oss_self_hosted`.
 
+On an instance that sells hosted plans (billing configured, see docs/plans-and-billing.md), the table above does not apply to an account. Its plan and its limits come from the entitlement Nubisco's licenses service sends, which is built from the Paddle product for a paid plan. Those limits are account-wide: projects, members, keys and locales. The per-project and API-call caps are not set for a hosted account.
+
 ## Entitlement resolution order
 
 ```
 1. Determine active plan
-   a. OSS: plan = oss_self_hosted (no Stripe, no license key)
-   b. Managed SaaS: read active Subscription from DB → planId
+   a. OSS: plan = oss_self_hosted (no billing, no license key)
+   b. Managed SaaS: the account's AccountPlan, the cached entitlement from
+      Nubisco's licenses service → planId and limits (packages/ee/src/plans,
+      docs/plans-and-billing.md). Only when billing is configured.
    c. Self-hosted EE: validate LICENSE_KEY → planId from key payload
 
 2. Load base entitlements for plan

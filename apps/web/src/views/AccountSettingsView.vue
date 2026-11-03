@@ -1,7 +1,9 @@
 <template>
   <!-- The account's Settings, behind the gear at the foot of the rail (fleet
        standard, "Every rail has the same anatomy"): the account's name, its
-       people and their roles, and, for instance operators, its plan. A
+       people and their roles, its billing for owners and admins on an
+       instance that sells hosted plans, and, for instance operators, its
+       resolved plan. A
        project's own configuration is that project's Settings, and personal
        settings are in the user menu. -->
   <div class="tab-content settings-tab">
@@ -19,6 +21,14 @@
         @click="go('members')"
       >
         <NbIcon name="users" :size="16" /> Members
+      </NbButton>
+      <NbButton
+        v-if="showBilling"
+        :variant="section === 'billing' ? 'secondary' : 'ghost'"
+        :outlined="section === 'billing'"
+        @click="go('billing')"
+      >
+        <NbIcon name="credit-card" :size="16" /> Billing
       </NbButton>
       <NbButton
         v-if="isOperator"
@@ -121,6 +131,9 @@
           <p v-if="actionError" class="field-error">{{ actionError }}</p>
         </template>
 
+        <!-- ── Billing (account owners and admins, hosted plans only) ── -->
+        <AccountBilling v-else-if="section === 'billing' && showBilling" :account-id="account.id" />
+
         <!-- ── Plan & Entitlements (operators) ── -->
         <AccountPlan v-else-if="section === 'plan' && isOperator" :account-id="account.id" />
       </template>
@@ -136,6 +149,8 @@ import { apiFetch } from '../api'
 import { useAuthStore } from '../stores/auth'
 import { useAccountsStore, type AccountRole } from '../stores/accounts'
 import AccountPlan from '../components/settings/AccountPlan.vue'
+import AccountBilling from '../components/settings/AccountBilling.vue'
+import { useInstanceConfigStore } from '../stores/instanceConfig'
 
 interface AccountMember {
   userId: string
@@ -146,7 +161,7 @@ interface AccountMember {
   deactivated: boolean
 }
 
-type Section = 'general' | 'members' | 'plan'
+type Section = 'general' | 'members' | 'billing' | 'plan'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -156,11 +171,17 @@ const accountsStore = useAccountsStore()
 
 const account = computed(() => accountsStore.current)
 const isOperator = computed(() => Boolean(auth.user?.isGlobalAdmin))
+const instanceConfig = useInstanceConfigStore()
+// Billing is there only on an instance that sells hosted plans (the API says
+// so in /config), and only for the account's owners and admins, who are the
+// ones the API lets see it.
+const showBilling = computed(() => instanceConfig.hasFeature('billing') && accountsStore.canManage)
 const myRole = computed(() => account.value?.role)
 
 const section = computed<Section>(() => {
   const s = route.query.section
   if (s === 'members') return 'members'
+  if (s === 'billing' && showBilling.value) return 'billing'
   if (s === 'plan' && isOperator.value) return 'plan'
   return 'general'
 })

@@ -41,7 +41,7 @@ verba/
 │           ├── sso/            # SAML / OAuth SSO
 │           ├── audit/          # Advanced audit log export
 │           ├── organizations/  # Multi-tenancy / org management
-│           ├── billing/        # Stripe subscription management
+│           ├── plans/          # Hosted plans and billing via Nubisco's licenses service
 │           ├── licensing/      # Signed license key validation
 │           ├── limits/         # Plan-based resource limits
 │           ├── emails/         # Transactional email adapters

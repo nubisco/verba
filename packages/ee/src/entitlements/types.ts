@@ -19,7 +19,7 @@ export type PlanId =
 export interface Plan {
   id: PlanId
   name: string
-  /** Whether this plan is a managed SaaS plan (requires Stripe). */
+  /** Whether this plan is a hosted (managed SaaS) plan, billed through Nubisco's licenses service. */
   managed: boolean
   /** Whether this plan requires a signed license key (self-hosted EE). */
   requiresLicenseKey: boolean
@@ -48,6 +48,12 @@ export interface EntitlementSet {
   features: Set<EntitlementFeature>
   // Resource limits (null = unlimited)
   maxProjects: number | null
+  /** People in the account, across its projects. */
+  maxMembers: number | null
+  /** Translation keys across the account's projects. */
+  maxKeys: number | null
+  /** Distinct locales across the account's projects. */
+  maxLocales: number | null
   maxSeatsPerProject: number | null
   maxKeysPerProject: number | null
   maxLocalesPerProject: number | null
@@ -58,6 +64,9 @@ export interface EntitlementSet {
 export interface EntitlementSetJson {
   features: EntitlementFeature[]
   maxProjects: number | null
+  maxMembers: number | null
+  maxKeys: number | null
+  maxLocales: number | null
   maxSeatsPerProject: number | null
   maxKeysPerProject: number | null
   maxLocalesPerProject: number | null
@@ -79,23 +88,32 @@ export interface EntitlementOverride {
 }
 
 // ---------------------------------------------------------------------------
-// Subscriptions (managed SaaS)
+// Subscriptions (hosted, from the licenses service)
 // ---------------------------------------------------------------------------
 
-export type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused' | 'incomplete'
-
+/**
+ * The account's subscription as licenses reports it (Paddle is merchant of
+ * record). Verba holds no billing provider ids: licenses owns them.
+ */
 export interface Subscription {
-  id: string
-  orgId: string
-  planId: PlanId
-  status: SubscriptionStatus
-  stripeSubscriptionId: string | null
-  stripeCustomerId: string | null
-  currentPeriodStart: Date | null
+  planId: string
+  /** Paddle's status: trialing, active, past_due, paused, canceled. */
+  status: string
+  billing: 'monthly' | 'yearly' | null
   currentPeriodEnd: Date | null
+  /** True when a cancel is scheduled (endsAt is set). */
   cancelAtPeriodEnd: boolean
-  createdAt: Date
-  updatedAt: Date
+  endsAt: Date | null
+  graceUntil: Date | null
+}
+
+/** Where a hosted account's plan came from, when billing is configured. */
+export interface HostedBillingState {
+  state: 'trialing' | 'active' | 'grace' | 'restricted' | 'free'
+  source: 'subscription' | 'override' | 'free'
+  /** The entitlement version held, or null when none could be fetched yet. */
+  version: number | null
+  fetchedAt: Date | null
 }
 
 // ---------------------------------------------------------------------------
@@ -136,4 +154,6 @@ export interface EntitlementContext {
   entitlements: EntitlementSet
   /** True when entitlements come from an active override. */
   hasOverride: boolean
+  /** Set when the plan comes from the licenses service (hosted billing). */
+  billing: HostedBillingState | null
 }

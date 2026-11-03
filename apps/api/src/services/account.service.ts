@@ -313,3 +313,18 @@ export async function ensureMemberForProject(actorId: string, projectId: string,
     detail: { accountId: project.accountId, role: AccountRole.MEMBER, via: 'project', projectId },
   })
 }
+
+/**
+ * What an account holds now, counted the way hosted plans limit it: projects,
+ * the people in the account, translation keys across its projects, and the
+ * distinct locales its projects translate into. Read by the billing page.
+ */
+export async function accountUsage(accountId: string) {
+  const [projects, members, keys, locales] = await Promise.all([
+    prisma.project.count({ where: { accountId } }),
+    prisma.accountMember.count({ where: { accountId } }),
+    prisma.key.count({ where: { project: { accountId } } }),
+    prisma.locale.findMany({ where: { project: { accountId } }, select: { code: true }, distinct: ['code'] }),
+  ])
+  return { projects, members, keys, locales: locales.length }
+}

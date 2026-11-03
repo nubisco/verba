@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { getPublicInstanceConfig } from '../services/instance-config.service.js'
 import { getSsoPublicConfig } from '../services/sso.service.js'
+import { hostedBillingEnabled } from '../services/billing.service.js'
 
 /**
  * Public instance configuration endpoint.
@@ -14,6 +15,9 @@ export async function configRoutes(app: FastifyInstance) {
     // runtime is loaded lazily from the EE package, so it is not knowable at
     // module load. It is cached after the first call.
     const sso = await getSsoPublicConfig()
-    return { ...config, auth: { ...config.auth, sso } }
+    // Hosted billing is EE and switched on by configuration, so it is
+    // resolved here for the same reason as SSO.
+    const billing = await hostedBillingEnabled()
+    return { ...config, features: { ...config.features, billing }, auth: { ...config.auth, sso } }
   })
 }

@@ -16,7 +16,7 @@ ongoing development while keeping the core tool free and open.
 
 Two commercial deployment models are planned:
 
-1. **Managed SaaS**, hosted by Nubisco, billed via Stripe.
+1. **Managed SaaS**, hosted by Nubisco, billed through Nubisco's licenses service with Paddle as merchant of record (Stripe was planned first and never connected).
 2. **Self-hosted EE**, customer-operated, activated by a signed license key.
 
 Both models require features (billing, SSO, advanced audit, resource limits, background

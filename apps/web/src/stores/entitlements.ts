@@ -5,6 +5,10 @@ import { apiFetch } from '../api'
 export interface EntitlementSetJson {
   features: string[]
   maxProjects: number | null
+  /** Account-wide limits, set by hosted plans from the licenses service. */
+  maxMembers?: number | null
+  maxKeys?: number | null
+  maxLocales?: number | null
   maxSeatsPerProject: number | null
   maxKeysPerProject: number | null
   maxLocalesPerProject: number | null
@@ -31,8 +35,17 @@ export interface LicenseStateSummary {
 export interface SubscriptionSummary {
   planId: string
   status: string
+  billing?: 'monthly' | 'yearly' | null
   currentPeriodEnd: string | null
   cancelAtPeriodEnd: boolean
+}
+
+/** Where a hosted account's plan came from: Nubisco's licenses service. */
+export interface HostedBillingSummary {
+  state: 'trialing' | 'active' | 'grace' | 'restricted' | 'free'
+  source: 'subscription' | 'override' | 'free'
+  version: number | null
+  fetchedAt: string | null
 }
 
 export interface EntitlementsResponse {
@@ -41,6 +54,7 @@ export interface EntitlementsResponse {
   licenseState: LicenseStateSummary
   subscription: SubscriptionSummary | null
   hasOverride: boolean
+  billing?: HostedBillingSummary | null
 }
 
 export const useEntitlementsStore = defineStore('entitlements', () => {
