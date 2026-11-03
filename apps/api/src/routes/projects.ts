@@ -1,4 +1,5 @@
-import type { FastifyInstance } from 'fastify'
+import { readBody, type Api } from '../http.js'
+import { authenticate } from '../session.js'
 import { CreateProjectSchema, UpdateProjectSchema } from '../schemas/project.schema.js'
 import * as svc from '../services/project.service.js'
 import * as membershipService from '../services/membership.service.js'
@@ -8,43 +9,43 @@ import { resolveAccount } from '../services/account.service.js'
 import { accountSelector } from '../account-selector.js'
 import { Role } from '../types.js'
 
-export async function projectRoutes(app: FastifyInstance) {
+export function projectRoutes(app: Api) {
   // The project list and project creation work in one account: the one the
   // request names, or the person's only account (account.service.ts).
-  app.get('/projects', { preHandler: [app.authenticate] }, async (req) => {
-    const account = await resolveAccount(req.user.userId, accountSelector(req))
-    return svc.listProjects(req.user.userId, account.id)
+  app.get('/projects', authenticate, async (c) => {
+    const account = await resolveAccount(c.var.user.userId, accountSelector(c))
+    return c.json(await svc.listProjects(c.var.user.userId, account.id))
   })
 
-  app.post('/projects', { preHandler: [app.authenticate] }, async (req, reply) => {
-    const body = CreateProjectSchema.parse(req.body)
-    const account = await resolveAccount(req.user.userId, accountSelector(req))
+  app.post('/projects', authenticate, async (c) => {
+    const body = CreateProjectSchema.parse(await readBody(c))
+    const account = await resolveAccount(c.var.user.userId, accountSelector(c))
     const project = await svc.createProject(account.id, body)
     await membershipService.addMember(project.id, {
-      userId: req.user.userId,
+      userId: c.var.user.userId,
       role: Role.ADMIN,
     })
     analytics.track('project_created', {
-      userId: req.user.userId,
+      userId: c.var.user.userId,
       props: { project_id: project.id },
     })
-    return reply.status(201).send(project)
+    return c.json(project, 201)
   })
 
-  app.get<{ Params: { id: string } }>('/projects/:id', { preHandler: [app.authenticate] }, async (req) => {
-    await requireProjectRole(req.user.userId, req.params.id, Role.READER)
-    return svc.getProject(req.params.id)
+  app.get('/projects/:id', authenticate, async (c) => {
+    await requireProjectRole(c.var.user.userId, c.req.param('id'), Role.READER)
+    return c.json(await svc.getProject(c.req.param('id')))
   })
 
-  app.patch<{ Params: { id: string } }>('/projects/:id', { preHandler: [app.authenticate] }, async (req) => {
-    await requireProjectRole(req.user.userId, req.params.id, Role.MAINTAINER)
-    const body = UpdateProjectSchema.parse(req.body)
-    return svc.updateProject(req.params.id, body)
+  app.patch('/projects/:id', authenticate, async (c) => {
+    await requireProjectRole(c.var.user.userId, c.req.param('id'), Role.MAINTAINER)
+    const body = UpdateProjectSchema.parse(await readBody(c))
+    return c.json(await svc.updateProject(c.req.param('id'), body))
   })
 
-  app.delete<{ Params: { id: string } }>('/projects/:id', { preHandler: [app.authenticate] }, async (req, reply) => {
-    await requireProjectRole(req.user.userId, req.params.id, Role.ADMIN)
-    await svc.deleteProject(req.params.id)
-    return reply.status(204).send()
+  app.delete('/projects/:id', authenticate, async (c) => {
+    await requireProjectRole(c.var.user.userId, c.req.param('id'), Role.ADMIN)
+    await svc.deleteProject(c.req.param('id'))
+    return c.body(null, 204)
   })
 }

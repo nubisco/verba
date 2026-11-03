@@ -28,14 +28,14 @@ vi.mock('@nubisco/verba-ee', () => ({
   plansConfig: undefined,
 }))
 
-import type { RouteOptions } from 'fastify'
 import { buildApp } from '../app.js'
+import { inject, signToken } from './inject.js'
 import { prisma } from '../prisma.js'
-import { guardReadOnlyWrites } from '../read-only.js'
+import { readOnlyGuardFor } from '../read-only.js'
 
 const ACCOUNT = { id: 'acc1', name: 'Example', slug: 'example', createdAt: new Date() }
 
-let app: ReturnType<typeof buildApp>
+let app: Awaited<ReturnType<typeof buildApp>>
 let cookies: Record<string, string>
 
 beforeEach(async () => {
@@ -56,18 +56,16 @@ beforeEach(async () => {
   vi.mocked(prisma.accountMember.findFirst).mockResolvedValue({ role: 'OWNER', account: ACCOUNT } as never)
   vi.mocked(prisma.membership.findFirst).mockImplementation((async (args: { where: { projectId: string } }) =>
     args.where.projectId === 'p1' ? { role: 'ADMIN', namespaces: null, assignedLocales: null } : null) as never)
-  app = buildApp()
-  await app.ready()
-  cookies = { token: app.jwt.sign({ userId: 'u1', email: 'owner@example.com' }) }
+  app = await buildApp()
+  cookies = { token: await signToken({ userId: 'u1', email: 'owner@example.com' }) }
 })
 
 afterEach(async () => {
-  await app.close()
   vi.unstubAllEnvs()
 })
 
 const write = (method: 'POST' | 'PUT' | 'PATCH' | 'DELETE', url: string, payload: unknown = {}) =>
-  app.inject({ method, url, cookies, payload: payload as never, headers: { 'x-verba-account': 'acc1' } })
+  inject(app, { method, url, cookies, payload: payload as never, headers: { 'x-verba-account': 'acc1' } })
 
 /** Writes in the account, one of each kind the decision names. */
 const BLOCKED: [string, 'POST' | 'PUT' | 'PATCH', string][] = [
@@ -134,7 +132,7 @@ describe('an account over its hosted plan', () => {
   })
 
   it('still reads, and says why it is read-only to any member', async () => {
-    const res = await app.inject({ method: 'GET', url: '/accounts/acc1/plan-status', cookies })
+    const res = await inject(app, { method: 'GET', url: '/accounts/acc1/plan-status', cookies })
     expect(res.statusCode).toBe(200)
     expect(res.json()).toEqual({
       readOnly: true,
@@ -147,7 +145,7 @@ describe('an account over its hosted plan', () => {
     vi.mocked(prisma.project.count).mockResolvedValue(1)
     const res = await write('POST', '/projects/p1/translations/t1/comments')
     expect(res.statusCode).not.toBe(402)
-    const status = await app.inject({ method: 'GET', url: '/accounts/acc1/plan-status', cookies })
+    const status = await inject(app, { method: 'GET', url: '/accounts/acc1/plan-status', cookies })
     expect(status.json().readOnly).toBe(false)
   })
 
@@ -163,20 +161,15 @@ describe('an account over its hosted plan', () => {
   })
 
   it('keeps billing and import preview open', () => {
-    const noop = async () => {}
     for (const url of [
       '/accounts/:accountId/billing/checkout',
       '/accounts/:accountId/billing/portal',
       '/billing/entitlement',
       '/projects/:projectId/import/preview',
     ]) {
-      const route = { method: 'POST', url, preHandler: [noop], handler: noop } as unknown as RouteOptions
-      guardReadOnlyWrites(route)
-      expect(route.preHandler, url).toEqual([noop])
+      expect(readOnlyGuardFor('POST', url), url).toBeNull()
     }
-    const guarded = { method: 'POST', url: '/projects/:projectId/keys', handler: noop } as unknown as RouteOptions
-    guardReadOnlyWrites(guarded)
-    expect(([] as unknown[]).concat(guarded.preHandler)).toHaveLength(1)
+    expect(readOnlyGuardFor('POST', '/projects/:projectId/keys')).toBeTypeOf('function')
   })
 })
 
@@ -194,7 +187,7 @@ describe('without hosted plans', () => {
   it('refuses nothing with EE on but no hosted plan', async () => {
     accountLimits.mockResolvedValue(null)
     expect((await write('POST', '/projects/p1/keys')).statusCode).not.toBe(402)
-    const status = await app.inject({ method: 'GET', url: '/accounts/acc1/plan-status', cookies })
+    const status = await inject(app, { method: 'GET', url: '/accounts/acc1/plan-status', cookies })
     expect(status.json()).toEqual({ readOnly: false, over: [], summary: null })
   })
 })

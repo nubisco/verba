@@ -1,4 +1,5 @@
-import type { FastifyInstance } from 'fastify'
+import { readBody, type Api } from '../http.js'
+import { authenticate } from '../session.js'
 import {
   AddAccountMemberSchema,
   CreateAccountSchema,
@@ -9,63 +10,46 @@ import * as svc from '../services/account.service.js'
 
 // Accounts and their people. Every check is in account.service.ts: the routes
 // only parse and delegate.
-export async function accountRoutes(app: FastifyInstance) {
-  app.get('/accounts', { preHandler: [app.authenticate] }, async (req) => {
-    return svc.listAccounts(req.user.userId)
+export function accountRoutes(app: Api) {
+  app.get('/accounts', authenticate, async (c) => {
+    return c.json(await svc.listAccounts(c.var.user.userId))
   })
 
-  app.post('/accounts', { preHandler: [app.authenticate] }, async (req, reply) => {
-    const body = CreateAccountSchema.parse(req.body)
-    return reply.status(201).send(await svc.createAccount(req.user.userId, body))
+  app.post('/accounts', authenticate, async (c) => {
+    const body = CreateAccountSchema.parse(await readBody(c))
+    return c.json(await svc.createAccount(c.var.user.userId, body), 201)
   })
 
-  app.get<{ Params: { accountId: string } }>('/accounts/:accountId', { preHandler: [app.authenticate] }, async (req) =>
-    svc.getAccount(req.user.userId, req.params.accountId),
+  app.get('/accounts/:accountId', authenticate, async (c) =>
+    c.json(await svc.getAccount(c.var.user.userId, c.req.param('accountId'))),
   )
 
   // Read-only because the account is over its hosted plan? Any member may ask.
-  app.get<{ Params: { accountId: string } }>(
-    '/accounts/:accountId/plan-status',
-    { preHandler: [app.authenticate] },
-    async (req) => svc.accountPlanStatus(req.user.userId, req.params.accountId),
+  app.get('/accounts/:accountId/plan-status', authenticate, async (c) =>
+    c.json(await svc.accountPlanStatus(c.var.user.userId, c.req.param('accountId'))),
   )
 
-  app.patch<{ Params: { accountId: string } }>(
-    '/accounts/:accountId',
-    { preHandler: [app.authenticate] },
-    async (req) => svc.updateAccount(req.user.userId, req.params.accountId, UpdateAccountSchema.parse(req.body)),
+  app.patch('/accounts/:accountId', authenticate, async (c) => {
+    const body = UpdateAccountSchema.parse(await readBody(c))
+    return c.json(await svc.updateAccount(c.var.user.userId, c.req.param('accountId'), body))
+  })
+
+  app.get('/accounts/:accountId/members', authenticate, async (c) =>
+    c.json(await svc.listMembers(c.var.user.userId, c.req.param('accountId'))),
   )
 
-  app.get<{ Params: { accountId: string } }>(
-    '/accounts/:accountId/members',
-    { preHandler: [app.authenticate] },
-    async (req) => svc.listMembers(req.user.userId, req.params.accountId),
-  )
+  app.post('/accounts/:accountId/members', authenticate, async (c) => {
+    const body = AddAccountMemberSchema.parse(await readBody(c))
+    return c.json(await svc.addMember(c.var.user.userId, c.req.param('accountId'), body), 201)
+  })
 
-  app.post<{ Params: { accountId: string } }>(
-    '/accounts/:accountId/members',
-    { preHandler: [app.authenticate] },
-    async (req, reply) => {
-      const body = AddAccountMemberSchema.parse(req.body)
-      return reply.status(201).send(await svc.addMember(req.user.userId, req.params.accountId, body))
-    },
-  )
+  app.patch('/accounts/:accountId/members/:userId', authenticate, async (c) => {
+    const { role } = UpdateAccountMemberSchema.parse(await readBody(c))
+    return c.json(await svc.updateMemberRole(c.var.user.userId, c.req.param('accountId'), c.req.param('userId'), role))
+  })
 
-  app.patch<{ Params: { accountId: string; userId: string } }>(
-    '/accounts/:accountId/members/:userId',
-    { preHandler: [app.authenticate] },
-    async (req) => {
-      const { role } = UpdateAccountMemberSchema.parse(req.body)
-      return svc.updateMemberRole(req.user.userId, req.params.accountId, req.params.userId, role)
-    },
-  )
-
-  app.delete<{ Params: { accountId: string; userId: string } }>(
-    '/accounts/:accountId/members/:userId',
-    { preHandler: [app.authenticate] },
-    async (req, reply) => {
-      await svc.removeMember(req.user.userId, req.params.accountId, req.params.userId)
-      return reply.status(204).send()
-    },
-  )
+  app.delete('/accounts/:accountId/members/:userId', authenticate, async (c) => {
+    await svc.removeMember(c.var.user.userId, c.req.param('accountId'), c.req.param('userId'))
+    return c.body(null, 204)
+  })
 }

@@ -14,8 +14,9 @@
 //   - VERBA_LICENSES_URL and VERBA_LICENSES_SERVICE_TOKEN are set (checked by
 //     the plugin itself).
 
-import type { FastifyInstance } from 'fastify'
+import type { Api } from '../http.js'
 import { prisma } from '../prisma.js'
+import { authenticate } from '../session.js'
 import { AccountRole } from '../types.js'
 import { accountUsage, requireAccountRole } from './account.service.js'
 import { eeEnabled, loadEE } from './edition.service.js'
@@ -23,18 +24,18 @@ import { eeEnabled, loadEE } from './edition.service.js'
 export { eeEnabled }
 
 /** Mounts the EE billing routes when this instance sells hosted plans. */
-export async function registerHostedBilling(app: FastifyInstance): Promise<void> {
+export async function registerHostedBilling(app: Api): Promise<void> {
   if (!eeEnabled()) return
   const ee = await loadEE()
   if (typeof ee?.plansPlugin !== 'function') return
-  await app.register(ee.plansPlugin, {
+  ee.plansPlugin(app, {
     db: prisma,
-    authenticate: app.authenticate,
+    authenticate,
     requireAccountAdmin: (userId: string, accountId: string) =>
       requireAccountRole(userId, accountId, AccountRole.ADMIN),
     accountUsage,
   })
-  if (ee.plansConfig?.()) app.log.info('[boot] Hosted billing: plans come from the licenses service')
+  if (ee.plansConfig?.()) console.log('[boot] Hosted billing: plans come from the licenses service')
 }
 
 /** Whether hosted billing is on, for the web app's /config. */

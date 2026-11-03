@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import type { FastifyRequest, FastifyReply } from 'fastify'
+import type { Ctx } from '../http.js'
 
 // Mock prisma (entitlement.service imports it)
 vi.mock('../prisma.js', () => ({
@@ -21,25 +21,23 @@ import { requireEntitlement, requireWithinLimit, orgHasFeature } from '../servic
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeReply() {
+// A request context that records what was answered, and the `next` a guard
+// calls to let the request through. Status 0 means nothing was answered.
+function makeReply(params: Record<string, string> = {}) {
   const reply = {
     _status: 0,
     _body: undefined as unknown,
-    status(code: number) {
-      this._status = code
-      return this
-    },
-    send(body: unknown) {
+    req: { param: (name: string) => params[name] },
+    json(body: unknown, status: number) {
+      this._status = status
       this._body = body
-      return this
+      return new Response(JSON.stringify(body), { status })
     },
   }
-  return reply as unknown as FastifyReply & { _status: number; _body: unknown }
+  return reply as unknown as Ctx & { _status: number; _body: unknown }
 }
 
-function makeRequest(extras: Partial<FastifyRequest> = {}) {
-  return extras as FastifyRequest
-}
+const next = vi.fn(async () => {})
 
 // ---------------------------------------------------------------------------
 // orgHasFeature
@@ -60,7 +58,7 @@ describe('orgHasFeature', () => {
 })
 
 // ---------------------------------------------------------------------------
-// requireEntitlement preHandler
+// requireEntitlement middleware
 // ---------------------------------------------------------------------------
 
 describe('requireEntitlement', () => {
@@ -68,36 +66,33 @@ describe('requireEntitlement', () => {
 
   it('does not send a reply when feature is entitled', async () => {
     mockHasFeature.mockResolvedValue(true)
-    const req = makeRequest()
     const reply = makeReply()
     const guard = requireEntitlement('sso')
-    await guard(req, reply)
+    await guard(reply, next)
     expect(reply._status).toBe(0) // not called
   })
 
   it('returns 402 when feature is not entitled', async () => {
     mockHasFeature.mockResolvedValue(false)
-    const req = makeRequest()
     const reply = makeReply()
     const guard = requireEntitlement('sso')
-    await guard(req, reply)
+    await guard(reply, next)
     expect(reply._status).toBe(402)
     expect((reply._body as { feature: string }).feature).toBe('sso')
   })
 
   it('uses custom orgId resolver', async () => {
     mockHasFeature.mockResolvedValue(false)
-    const req = makeRequest({ params: { orgId: 'org_custom' } } as Partial<FastifyRequest>)
-    const reply = makeReply()
-    const guard = requireEntitlement('webhooks', (r) => (r.params as { orgId: string }).orgId)
-    await guard(req, reply)
+    const reply = makeReply({ orgId: 'org_custom' })
+    const guard = requireEntitlement('webhooks', (c) => c.req.param('orgId') as string)
+    await guard(reply, next)
     // hasFeature should have been called with 'org_custom'
     expect(mockHasFeature).toHaveBeenCalledWith(expect.anything(), 'org_custom', 'webhooks')
   })
 })
 
 // ---------------------------------------------------------------------------
-// requireWithinLimit preHandler
+// requireWithinLimit middleware
 // ---------------------------------------------------------------------------
 
 describe('requireWithinLimit', () => {
@@ -115,28 +110,25 @@ describe('requireWithinLimit', () => {
 
   it('passes through when limit is null (unlimited)', async () => {
     mockResolveEntitlements.mockResolvedValue(makeCtx(null))
-    const req = makeRequest()
     const reply = makeReply()
     const guard = requireWithinLimit('maxProjects', () => 999)
-    await guard(req, reply)
+    await guard(reply, next)
     expect(reply._status).toBe(0)
   })
 
   it('passes through when current count is below limit', async () => {
     mockResolveEntitlements.mockResolvedValue(makeCtx(10))
-    const req = makeRequest()
     const reply = makeReply()
     const guard = requireWithinLimit('maxProjects', () => 5)
-    await guard(req, reply)
+    await guard(reply, next)
     expect(reply._status).toBe(0)
   })
 
   it('returns 402 when current count meets the limit', async () => {
     mockResolveEntitlements.mockResolvedValue(makeCtx(3))
-    const req = makeRequest()
     const reply = makeReply()
     const guard = requireWithinLimit('maxProjects', () => 3)
-    await guard(req, reply)
+    await guard(reply, next)
     expect(reply._status).toBe(402)
     const body = reply._body as { limitKey: string; limit: number; current: number }
     expect(body.limitKey).toBe('maxProjects')
@@ -146,10 +138,9 @@ describe('requireWithinLimit', () => {
 
   it('returns 402 when current count exceeds the limit', async () => {
     mockResolveEntitlements.mockResolvedValue(makeCtx(3))
-    const req = makeRequest()
     const reply = makeReply()
     const guard = requireWithinLimit('maxProjects', () => 5)
-    await guard(req, reply)
+    await guard(reply, next)
     expect(reply._status).toBe(402)
   })
 })

@@ -19,18 +19,18 @@ vi.mock('../prisma.js', () => ({
 vi.mock('../services/analytics.service.js', () => ({ track: vi.fn() }))
 
 import { buildApp } from '../app.js'
+import { inject, signToken } from './inject.js'
 import { prisma } from '../prisma.js'
 
 describe('routes nested under a project only reach that project', () => {
-  let app: ReturnType<typeof buildApp>
+  let app: Awaited<ReturnType<typeof buildApp>>
   let cookies: Record<string, string>
 
   beforeEach(async () => {
     vi.clearAllMocks()
     vi.stubEnv('JWT_SECRET', 'test-secret')
-    app = buildApp()
-    await app.ready()
-    cookies = { token: app.jwt.sign({ userId: 'u-admin-p1', email: 'a@example.com' }) }
+    app = await buildApp()
+    cookies = { token: await signToken({ userId: 'u-admin-p1', email: 'a@example.com' }) }
     vi.mocked(prisma.user.findUnique).mockResolvedValue({ isGlobalAdmin: false } as never)
     vi.mocked(prisma.membership.findFirst).mockResolvedValue({
       id: 'm',
@@ -43,13 +43,12 @@ describe('routes nested under a project only reach that project', () => {
   })
 
   afterEach(async () => {
-    await app.close()
     vi.unstubAllEnvs()
   })
 
   it('PATCH status: a translation of another project is not found, and not changed', async () => {
     vi.mocked(prisma.translation.findFirst).mockResolvedValue(null)
-    const res = await app.inject({
+    const res = await inject(app, {
       method: 'PATCH',
       url: '/projects/p1/translations/t-of-p2/status',
       cookies,
@@ -64,7 +63,7 @@ describe('routes nested under a project only reach that project', () => {
 
   it("GET translation: another project's translation is not returned", async () => {
     vi.mocked(prisma.translation.findFirst).mockResolvedValue(null)
-    const res = await app.inject({ method: 'GET', url: '/projects/p1/translations/t-of-p2', cookies })
+    const res = await inject(app, { method: 'GET', url: '/projects/p1/translations/t-of-p2', cookies })
     expect(res.statusCode).toBe(404)
   })
 
@@ -77,7 +76,7 @@ describe('routes nested under a project only reach that project', () => {
       namespace: { id: 'ns1', slug: 'app' },
     } as never)
     vi.mocked(prisma.locale.findFirst).mockResolvedValue(null)
-    const res = await app.inject({
+    const res = await inject(app, {
       method: 'PUT',
       url: '/projects/p1/keys/k1/translations/l-of-p2',
       cookies,
@@ -91,7 +90,7 @@ describe('routes nested under a project only reach that project', () => {
 
   it('GET key history: a key of another project leaks no comments or authors', async () => {
     vi.mocked(prisma.key.findFirst).mockResolvedValue(null)
-    const res = await app.inject({ method: 'GET', url: '/projects/p1/keys/k-of-p2/history', cookies })
+    const res = await inject(app, { method: 'GET', url: '/projects/p1/keys/k-of-p2/history', cookies })
     expect(res.statusCode).toBe(404)
     expect(prisma.key.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: 'k-of-p2', projectId: 'p1' } }),
@@ -102,7 +101,7 @@ describe('routes nested under a project only reach that project', () => {
 
   it("GET comments: the thread of another project's translation is not returned", async () => {
     vi.mocked(prisma.translation.findFirst).mockResolvedValue(null)
-    const res = await app.inject({ method: 'GET', url: '/projects/p1/translations/t-of-p2/comments', cookies })
+    const res = await inject(app, { method: 'GET', url: '/projects/p1/translations/t-of-p2/comments', cookies })
     expect(res.statusCode).toBe(404)
     expect(prisma.comment.findMany).not.toHaveBeenCalled()
   })
@@ -124,7 +123,7 @@ describe('routes nested under a project only reach that project', () => {
       namespace: { id: 'ns1', slug: 'app' },
     } as never)
     vi.mocked(prisma.locale.findFirst).mockResolvedValue({ id: 'l1', projectId: 'p1' } as never)
-    const res = await app.inject({
+    const res = await inject(app, {
       method: 'PUT',
       url: '/projects/p1/keys/k1/translations/l1',
       cookies,

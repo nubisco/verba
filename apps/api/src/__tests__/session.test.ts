@@ -11,6 +11,7 @@ vi.mock('../services/auth.service.js', () => ({
 }))
 
 import { buildApp } from '../app.js'
+import { inject, signToken } from './inject.js'
 import { prisma } from '../prisma.js'
 import { issueSession, sessionTtlSeconds } from '../session.js'
 
@@ -34,20 +35,18 @@ describe('sessions', () => {
   })
 
   async function appWithRoute() {
-    const app = buildApp()
-    app.get('/test/issue', async (_req, reply) => {
-      issueSession(app, reply, { userId: 'u1', email: 'a@example.com' })
-      return { ok: true }
+    const app = await buildApp()
+    app.get('/test/issue', async (c) => {
+      await issueSession(c, { userId: 'u1', email: 'a@example.com' })
+      return c.json({ ok: true })
     })
-    await app.ready()
     return app
   }
 
   it('sets the session cookie httpOnly, sameSite=lax, secure in production, with an expiry', async () => {
     vi.stubEnv('NODE_ENV', 'production')
     const app = await appWithRoute()
-    const res = await app.inject({ method: 'GET', url: '/test/issue' })
-    await app.close()
+    const res = await inject(app, { method: 'GET', url: '/test/issue' })
     const cookie = cookieNamed(res, 'token')
     expect(cookie).toMatchObject({ httpOnly: true, sameSite: 'Lax', secure: true, path: '/' })
     expect(cookie?.maxAge).toBe(sessionTtlSeconds())
@@ -59,43 +58,39 @@ describe('sessions', () => {
     vi.stubEnv('NODE_ENV', 'production')
     vi.stubEnv('COOKIE_SECURE', 'false')
     const app = await appWithRoute()
-    const res = await app.inject({ method: 'GET', url: '/test/issue' })
-    await app.close()
+    const res = await inject(app, { method: 'GET', url: '/test/issue' })
     expect(cookieNamed(res, 'token')?.secure).toBeFalsy()
   })
 
   it('refuses a session past its expiry', async () => {
     const app = await appWithRoute()
-    const issued = await app.inject({ method: 'GET', url: '/test/issue' })
+    const issued = await inject(app, { method: 'GET', url: '/test/issue' })
     const token = String(cookieNamed(issued, 'token')?.value)
     vi.setSystemTime(Date.now() + sessionTtlSeconds() * 1000 + 1000)
-    const res = await app.inject({ method: 'GET', url: '/auth/me', cookies: { token } })
-    await app.close()
+    const res = await inject(app, { method: 'GET', url: '/auth/me', cookies: { token } })
     expect(res.statusCode).toBe(401)
   })
 
   it('retires a session signed before sessions expired, once it is older than the TTL', async () => {
     const app = await appWithRoute()
     // What every release before this one issued: no exp claim at all.
-    const legacy = app.jwt.sign({ userId: 'u1', email: 'a@example.com' })
+    const legacy = await signToken({ userId: 'u1', email: 'a@example.com' })
     vi.setSystemTime(Date.now() + sessionTtlSeconds() * 1000 + 1000)
-    const res = await app.inject({ method: 'GET', url: '/auth/me', cookies: { token: legacy } })
-    await app.close()
+    const res = await inject(app, { method: 'GET', url: '/auth/me', cookies: { token: legacy } })
     expect(res.statusCode).toBe(401)
   })
 
   it('renews an active session once it is a day old', async () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValue({ deactivatedAt: null } as never)
     const app = await appWithRoute()
-    const issued = await app.inject({ method: 'GET', url: '/test/issue' })
+    const issued = await inject(app, { method: 'GET', url: '/test/issue' })
     const token = String(cookieNamed(issued, 'token')?.value)
 
-    const fresh = await app.inject({ method: 'GET', url: '/auth/me', cookies: { token } })
+    const fresh = await inject(app, { method: 'GET', url: '/auth/me', cookies: { token } })
     expect(cookieNamed(fresh, 'token')).toBeUndefined()
 
     vi.setSystemTime(Date.now() + DAY + 1000)
-    const renewed = await app.inject({ method: 'GET', url: '/auth/me', cookies: { token } })
-    await app.close()
+    const renewed = await inject(app, { method: 'GET', url: '/auth/me', cookies: { token } })
     expect(renewed.statusCode).toBe(200)
     const next = cookieNamed(renewed, 'token')
     expect(next?.value).toBeTruthy()
@@ -105,11 +100,10 @@ describe('sessions', () => {
   it('ends the session of a deactivated account at renewal', async () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValue({ deactivatedAt: new Date() } as never)
     const app = await appWithRoute()
-    const issued = await app.inject({ method: 'GET', url: '/test/issue' })
+    const issued = await inject(app, { method: 'GET', url: '/test/issue' })
     const token = String(cookieNamed(issued, 'token')?.value)
     vi.setSystemTime(Date.now() + DAY + 1000)
-    const res = await app.inject({ method: 'GET', url: '/auth/me', cookies: { token } })
-    await app.close()
+    const res = await inject(app, { method: 'GET', url: '/auth/me', cookies: { token } })
     expect(res.statusCode).toBe(401)
   })
 })

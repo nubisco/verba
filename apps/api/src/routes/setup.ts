@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (c) 2024 Nubisco
-import { FastifyInstance } from 'fastify'
+import { readBody, type Api } from '../http.js'
 import { prisma } from '../prisma.js'
 import { createOtpOnlyUser, register } from '../services/auth.service.js'
 import { getAuthConfig } from '../services/instance-config.service.js'
@@ -15,23 +15,23 @@ const setupSchema = z.object({
   instanceName: z.string().min(1).max(100).optional(),
 })
 
-export async function setupRoutes(app: FastifyInstance) {
+export function setupRoutes(app: Api) {
   /** Returns whether the instance still needs first-time setup */
-  app.get('/setup/status', async (_req, reply) => {
+  app.get('/setup/status', async (c) => {
     const count = await prisma.user.count()
-    return reply.send({ needsSetup: count === 0 })
+    return c.json({ needsSetup: count === 0 })
   })
 
   /** First-time setup: creates the admin user. Only works when no users exist. */
-  app.post('/setup', async (req, reply) => {
+  app.post('/setup', async (c) => {
     const count = await prisma.user.count()
     if (count > 0) {
-      return reply.status(409).send({ error: 'Instance is already set up' })
+      return c.json({ error: 'Instance is already set up' }, 409)
     }
 
-    const body = setupSchema.safeParse(req.body)
+    const body = setupSchema.safeParse(await readBody(c))
     if (!body.success) {
-      return reply.status(400).send({ error: body.error.issues[0]?.message ?? 'Invalid input' })
+      return c.json({ error: body.error.issues[0]?.message ?? 'Invalid input' }, 400)
     }
 
     const { adminEmail, adminPassword } = body.data
@@ -39,13 +39,16 @@ export async function setupRoutes(app: FastifyInstance) {
     // creates the operator's account, so the address must already be named
     // in the configuration, which only whoever runs the server can change.
     if (!isOperatorEmail(adminEmail)) {
-      return reply.status(403).send({
-        error: 'Add this address to VERBA_OPERATORS in the server configuration, restart, then run setup again',
-      })
+      return c.json(
+        {
+          error: 'Add this address to VERBA_OPERATORS in the server configuration, restart, then run setup again',
+        },
+        403,
+      )
     }
     const authConfig = getAuthConfig()
     if (authConfig.localPasswordEnabled && !adminPassword) {
-      return reply.status(400).send({ error: 'adminPassword is required when password auth is enabled' })
+      return c.json({ error: 'adminPassword is required when password auth is enabled' }, 400)
     }
     const user = authConfig.localPasswordEnabled
       ? await register(adminEmail, adminPassword ?? '')
@@ -57,8 +60,8 @@ export async function setupRoutes(app: FastifyInstance) {
     await createOwnedAccount(user.id, { name: body.data.instanceName?.trim() || 'My account' })
 
     // Sign the user in straight away
-    await startSession(app, reply, { userId: user.id, email: user.email })
+    await startSession(c, { userId: user.id, email: user.email })
 
-    return reply.status(201).send({ id: user.id, email: user.email })
+    return c.json({ id: user.id, email: user.email }, 201)
   })
 }

@@ -1,56 +1,37 @@
-import type { FastifyInstance } from 'fastify'
+import { readBody, type Api } from '../http.js'
+import { authenticate } from '../session.js'
 import { CreateNamespaceSchema, UpdateNamespaceSchema } from '../schemas/namespace.schema.js'
 import * as svc from '../services/namespace.service.js'
 import { requireProjectRole } from '../services/acl.service.js'
 import { Role } from '../types.js'
 
-export async function namespaceRoutes(app: FastifyInstance) {
-  app.get<{ Params: { projectId: string } }>(
-    '/projects/:projectId/namespaces',
-    { preHandler: [app.authenticate] },
-    async (req) => {
-      await requireProjectRole(req.user.userId, req.params.projectId, Role.READER)
-      return svc.listNamespaces(req.params.projectId)
-    },
-  )
+export function namespaceRoutes(app: Api) {
+  app.get('/projects/:projectId/namespaces', authenticate, async (c) => {
+    await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.READER)
+    return c.json(await svc.listNamespaces(c.req.param('projectId')))
+  })
 
-  app.post<{ Params: { projectId: string } }>(
-    '/projects/:projectId/namespaces',
-    { preHandler: [app.authenticate] },
-    async (req, reply) => {
-      await requireProjectRole(req.user.userId, req.params.projectId, Role.MAINTAINER)
-      const body = CreateNamespaceSchema.parse(req.body)
-      const ns = await svc.createNamespace(req.params.projectId, body)
-      return reply.status(201).send(ns)
-    },
-  )
+  app.post('/projects/:projectId/namespaces', authenticate, async (c) => {
+    await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.MAINTAINER)
+    const body = CreateNamespaceSchema.parse(await readBody(c))
+    const ns = await svc.createNamespace(c.req.param('projectId'), body)
+    return c.json(ns, 201)
+  })
 
-  app.get<{ Params: { projectId: string; id: string } }>(
-    '/projects/:projectId/namespaces/:id',
-    { preHandler: [app.authenticate] },
-    async (req) => {
-      await requireProjectRole(req.user.userId, req.params.projectId, Role.READER)
-      return svc.getNamespace(req.params.projectId, req.params.id)
-    },
-  )
+  app.get('/projects/:projectId/namespaces/:id', authenticate, async (c) => {
+    await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.READER)
+    return c.json(await svc.getNamespace(c.req.param('projectId'), c.req.param('id')))
+  })
 
-  app.patch<{ Params: { projectId: string; id: string } }>(
-    '/projects/:projectId/namespaces/:id',
-    { preHandler: [app.authenticate] },
-    async (req) => {
-      await requireProjectRole(req.user.userId, req.params.projectId, Role.MAINTAINER)
-      const body = UpdateNamespaceSchema.parse(req.body)
-      return svc.updateNamespace(req.params.projectId, req.params.id, body)
-    },
-  )
+  app.patch('/projects/:projectId/namespaces/:id', authenticate, async (c) => {
+    await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.MAINTAINER)
+    const body = UpdateNamespaceSchema.parse(await readBody(c))
+    return c.json(await svc.updateNamespace(c.req.param('projectId'), c.req.param('id'), body))
+  })
 
-  app.delete<{ Params: { projectId: string; id: string } }>(
-    '/projects/:projectId/namespaces/:id',
-    { preHandler: [app.authenticate] },
-    async (req, reply) => {
-      await requireProjectRole(req.user.userId, req.params.projectId, Role.MAINTAINER)
-      await svc.deleteNamespace(req.params.projectId, req.params.id)
-      return reply.status(204).send()
-    },
-  )
+  app.delete('/projects/:projectId/namespaces/:id', authenticate, async (c) => {
+    await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.MAINTAINER)
+    await svc.deleteNamespace(c.req.param('projectId'), c.req.param('id'))
+    return c.body(null, 204)
+  })
 }

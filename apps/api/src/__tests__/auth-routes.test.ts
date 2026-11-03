@@ -53,6 +53,7 @@ vi.mock('../prisma.js', () => ({
 }))
 
 import { buildApp } from '../app.js'
+import { inject } from './inject.js'
 import { prisma } from '../prisma.js'
 import * as authService from '../services/auth.service.js'
 import * as accountService from '../services/account.service.js'
@@ -114,9 +115,8 @@ describe('auth and setup routes', () => {
   })
 
   it('exposes OTP-first CE config by default', async () => {
-    const app = buildApp()
-    const res = await app.inject({ method: 'GET', url: '/config' })
-    await app.close()
+    const app = await buildApp()
+    const res = await inject(app, { method: 'GET', url: '/config' })
 
     expect(res.statusCode).toBe(200)
     expect(res.json()).toMatchObject({
@@ -136,9 +136,8 @@ describe('auth and setup routes', () => {
     process.env.PLATFORM_ISSUER = 'https://platform.example.com'
     process.env.PLATFORM_APP_ID = 'nubisco-verba'
 
-    const app = buildApp()
-    const res = await app.inject({ method: 'GET', url: '/config' })
-    await app.close()
+    const app = await buildApp()
+    const res = await inject(app, { method: 'GET', url: '/config' })
 
     expect(res.statusCode).toBe(200)
     expect(res.json()).toMatchObject({
@@ -161,9 +160,8 @@ describe('auth and setup routes', () => {
     process.env.PLATFORM_APP_ID = 'nubisco-verba'
     process.env.PLATFORM_AUTH_ORIGIN = 'https://auth.example.com/'
 
-    const app = buildApp()
-    const res = await app.inject({ method: 'GET', url: '/config' })
-    await app.close()
+    const app = await buildApp()
+    const res = await inject(app, { method: 'GET', url: '/config' })
 
     expect(res.json().auth).toMatchObject({
       platformIssuer: 'https://platform.example.com',
@@ -177,9 +175,8 @@ describe('auth and setup routes', () => {
     process.env.PLATFORM_APP_ID = 'nubisco-verba'
     process.env.PLATFORM_AUTH_ORIGIN = ''
 
-    const app = buildApp()
-    const res = await app.inject({ method: 'GET', url: '/config' })
-    await app.close()
+    const app = await buildApp()
+    const res = await inject(app, { method: 'GET', url: '/config' })
 
     expect(res.json().auth.platformAuthOrigin).toBe('https://platform.example.com')
   })
@@ -191,9 +188,8 @@ describe('auth and setup routes', () => {
   it('does not enable platform auth when the app id is missing', async () => {
     process.env.PLATFORM_ISSUER = 'https://platform.example.com'
 
-    const app = buildApp()
-    const res = await app.inject({ method: 'GET', url: '/config' })
-    await app.close()
+    const app = await buildApp()
+    const res = await inject(app, { method: 'GET', url: '/config' })
 
     expect(res.statusCode).toBe(200)
     expect(res.json().auth).toMatchObject({
@@ -204,39 +200,36 @@ describe('auth and setup routes', () => {
   })
 
   it('blocks password registration when local password auth is disabled', async () => {
-    const app = buildApp()
-    const res = await app.inject({
+    const app = await buildApp()
+    const res = await inject(app, {
       method: 'POST',
       url: '/auth/register',
       payload: { email: 'admin@example.com', password: 'password123' },
     })
-    await app.close()
 
     expect(res.statusCode).toBe(404)
     expect(vi.mocked(authService.register)).not.toHaveBeenCalled()
   })
 
   it('blocks password login when local password auth is disabled', async () => {
-    const app = buildApp()
-    const res = await app.inject({
+    const app = await buildApp()
+    const res = await inject(app, {
       method: 'POST',
       url: '/auth/login',
       payload: { email: 'admin@example.com', password: 'password123' },
     })
-    await app.close()
 
     expect(res.statusCode).toBe(404)
     expect(vi.mocked(authService.login)).not.toHaveBeenCalled()
   })
 
   it('rejects SQL-like OTP request emails with validation error', async () => {
-    const app = buildApp()
-    const res = await app.inject({
+    const app = await buildApp()
+    const res = await inject(app, {
       method: 'POST',
       url: '/auth/otp/request',
       payload: { email: "admin@example.com' OR 1=1 --" },
     })
-    await app.close()
 
     expect(res.statusCode).toBe(400)
     expect(res.json()).toMatchObject({ error: 'Validation error' })
@@ -244,13 +237,12 @@ describe('auth and setup routes', () => {
   })
 
   it('rejects malformed or injected OTP codes with validation error', async () => {
-    const app = buildApp()
-    const res = await app.inject({
+    const app = await buildApp()
+    const res = await inject(app, {
       method: 'POST',
       url: '/auth/otp/verify',
       payload: { email: 'admin@example.com', code: "123456' OR 1=1 --" },
     })
-    await app.close()
 
     expect(res.statusCode).toBe(400)
     expect(res.json()).toMatchObject({ error: 'Validation error' })
@@ -260,13 +252,12 @@ describe('auth and setup routes', () => {
   it('blocks OTP routes when local OTP is disabled', async () => {
     process.env.DISABLE_LOCAL_OTP = 'true'
 
-    const app = buildApp()
-    const res = await app.inject({
+    const app = await buildApp()
+    const res = await inject(app, {
       method: 'POST',
       url: '/auth/otp/request',
       payload: { email: 'admin@example.com' },
     })
-    await app.close()
 
     expect(res.statusCode).toBe(404)
     expect(vi.mocked(otpService.requestOtp)).not.toHaveBeenCalled()
@@ -275,13 +266,12 @@ describe('auth and setup routes', () => {
   it('requires adminPassword during setup when password auth is enabled', async () => {
     process.env.ENABLE_LOCAL_PASSWORD = 'true'
 
-    const app = buildApp()
-    const res = await app.inject({
+    const app = await buildApp()
+    const res = await inject(app, {
       method: 'POST',
       url: '/setup',
       payload: { adminEmail: 'admin@example.com' },
     })
-    await app.close()
 
     expect(res.statusCode).toBe(400)
     expect(res.json()).toMatchObject({
@@ -290,13 +280,12 @@ describe('auth and setup routes', () => {
   })
 
   it('refuses to set up an operator account for an address not in VERBA_OPERATORS', async () => {
-    const app = buildApp()
-    const res = await app.inject({
+    const app = await buildApp()
+    const res = await inject(app, {
       method: 'POST',
       url: '/setup',
       payload: { adminEmail: 'first-stranger@example.com' },
     })
-    await app.close()
 
     expect(res.statusCode).toBe(403)
     expect(res.json().error).toMatch(/VERBA_OPERATORS/)
@@ -304,13 +293,12 @@ describe('auth and setup routes', () => {
   })
 
   it('bootstraps an OTP-only CE admin without requiring a password', async () => {
-    const app = buildApp()
-    const res = await app.inject({
+    const app = await buildApp()
+    const res = await inject(app, {
       method: 'POST',
       url: '/setup',
       payload: { adminEmail: 'admin@example.com' },
     })
-    await app.close()
 
     expect(res.statusCode).toBe(201)
     expect(vi.mocked(authService.createOtpOnlyUser)).toHaveBeenCalledWith('admin@example.com')
@@ -334,8 +322,8 @@ describe('auth and setup routes', () => {
       email: 'jose@nubisco.io',
     } as unknown as Awaited<ReturnType<typeof authService.getMe>>)
 
-    const app = buildApp()
-    const callback = await app.inject({
+    const app = await buildApp()
+    const callback = await inject(app, {
       method: 'POST',
       url: '/auth/platform/callback',
       payload: { token: 'platform-jwt' },
@@ -346,12 +334,11 @@ describe('auth and setup routes', () => {
     const session = callback.cookies.find((cookie) => cookie.name === 'token')
     expect(session).toBeDefined()
 
-    const me = await app.inject({
+    const me = await inject(app, {
       method: 'GET',
       url: '/auth/me',
       cookies: { token: session!.value },
     })
-    await app.close()
 
     expect(me.statusCode).toBe(200)
     expect(me.json()).toMatchObject({ platformSub: 'u-jose' })
@@ -359,9 +346,9 @@ describe('auth and setup routes', () => {
 
   describe('rate limits on the sign-in doors', () => {
     it('stops OTP requests for one address after the per-email limit', async () => {
-      const app = buildApp()
+      const app = await buildApp()
       const send = (ip: string) =>
-        app.inject({
+        inject(app, {
           method: 'POST',
           url: '/auth/otp/request',
           remoteAddress: ip,
@@ -372,17 +359,16 @@ describe('auth and setup routes', () => {
         expect((await send(`203.0.113.${i + 1}`)).statusCode).toBe(200)
       }
       const blocked = await send('203.0.113.99')
-      await app.close()
 
       expect(blocked.statusCode).toBe(429)
       expect(vi.mocked(otpService.requestOtp)).toHaveBeenCalledTimes(AUTH_LIMITS.otpRequest.perEmail)
     })
 
     it('stops OTP requests from one machine after the per-IP limit, whatever the address', async () => {
-      const app = buildApp()
+      const app = await buildApp()
       let last = 0
       for (let i = 0; i <= AUTH_LIMITS.otpRequest.perIp; i++) {
-        const res = await app.inject({
+        const res = await inject(app, {
           method: 'POST',
           url: '/auth/otp/request',
           remoteAddress: '198.51.100.7',
@@ -390,7 +376,6 @@ describe('auth and setup routes', () => {
         })
         last = res.statusCode
       }
-      await app.close()
       expect(last).toBe(429)
     })
 
@@ -398,10 +383,10 @@ describe('auth and setup routes', () => {
       vi.mocked(otpService.verifyOtp).mockRejectedValue(
         Object.assign(new Error('Invalid or expired code'), { statusCode: 401 }),
       )
-      const app = buildApp()
+      const app = await buildApp()
       const codes: number[] = []
       for (let i = 0; i <= AUTH_LIMITS.otpVerify.perEmail; i++) {
-        const res = await app.inject({
+        const res = await inject(app, {
           method: 'POST',
           url: '/auth/otp/verify',
           remoteAddress: `192.0.2.${i + 1}`,
@@ -409,16 +394,15 @@ describe('auth and setup routes', () => {
         })
         codes.push(res.statusCode)
       }
-      await app.close()
       expect(codes.slice(0, -1).every((c) => c === 401)).toBe(true)
       expect(codes.at(-1)).toBe(429)
     })
 
     it('does not let a client choose its own address with X-Forwarded-For', async () => {
-      const app = buildApp()
+      const app = await buildApp()
       let last = 0
       for (let i = 0; i <= AUTH_LIMITS.otpRequest.perIp; i++) {
-        const res = await app.inject({
+        const res = await inject(app, {
           method: 'POST',
           url: '/auth/otp/request',
           remoteAddress: '198.51.100.8',
@@ -427,7 +411,6 @@ describe('auth and setup routes', () => {
         })
         last = res.statusCode
       }
-      await app.close()
       // The forged header comes from an untrusted public peer, so it is ignored.
       expect(last).toBe(429)
     })

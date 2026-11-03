@@ -1,65 +1,46 @@
-import type { FastifyInstance } from 'fastify'
+import { readBody, type Api } from '../http.js'
+import { authenticate } from '../session.js'
 import { CreateLocaleSchema, UpdateLocaleSchema } from '../schemas/locale.schema.js'
 import * as svc from '../services/locale.service.js'
 import * as analytics from '../services/analytics.service.js'
 import { requireProjectRole } from '../services/acl.service.js'
 import { Role } from '../types.js'
 
-export async function localeRoutes(app: FastifyInstance) {
-  app.get<{ Params: { projectId: string } }>(
-    '/projects/:projectId/locales',
-    { preHandler: [app.authenticate] },
-    async (req) => {
-      await requireProjectRole(req.user.userId, req.params.projectId, Role.READER)
-      return svc.listLocales(req.params.projectId)
-    },
-  )
+export function localeRoutes(app: Api) {
+  app.get('/projects/:projectId/locales', authenticate, async (c) => {
+    await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.READER)
+    return c.json(await svc.listLocales(c.req.param('projectId')))
+  })
 
-  app.post<{ Params: { projectId: string } }>(
-    '/projects/:projectId/locales',
-    { preHandler: [app.authenticate] },
-    async (req, reply) => {
-      await requireProjectRole(req.user.userId, req.params.projectId, Role.MAINTAINER)
-      const body = CreateLocaleSchema.parse(req.body)
-      const locale = await svc.createLocale(req.params.projectId, body)
-      analytics.track('locale_added', {
-        userId: req.user.userId,
-        props: { project_id: req.params.projectId, locale: locale.code },
-      })
-      return reply.status(201).send(locale)
-    },
-  )
+  app.post('/projects/:projectId/locales', authenticate, async (c) => {
+    await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.MAINTAINER)
+    const body = CreateLocaleSchema.parse(await readBody(c))
+    const locale = await svc.createLocale(c.req.param('projectId'), body)
+    analytics.track('locale_added', {
+      userId: c.var.user.userId,
+      props: { project_id: c.req.param('projectId'), locale: locale.code },
+    })
+    return c.json(locale, 201)
+  })
 
-  app.get<{ Params: { projectId: string; id: string } }>(
-    '/projects/:projectId/locales/:id',
-    { preHandler: [app.authenticate] },
-    async (req) => {
-      await requireProjectRole(req.user.userId, req.params.projectId, Role.READER)
-      return svc.getLocale(req.params.projectId, req.params.id)
-    },
-  )
+  app.get('/projects/:projectId/locales/:id', authenticate, async (c) => {
+    await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.READER)
+    return c.json(await svc.getLocale(c.req.param('projectId'), c.req.param('id')))
+  })
 
-  app.patch<{ Params: { projectId: string; id: string } }>(
-    '/projects/:projectId/locales/:id',
-    { preHandler: [app.authenticate] },
-    async (req) => {
-      await requireProjectRole(req.user.userId, req.params.projectId, Role.MAINTAINER)
-      const body = UpdateLocaleSchema.parse(req.body)
-      return svc.updateLocale(req.params.projectId, req.params.id, body)
-    },
-  )
+  app.patch('/projects/:projectId/locales/:id', authenticate, async (c) => {
+    await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.MAINTAINER)
+    const body = UpdateLocaleSchema.parse(await readBody(c))
+    return c.json(await svc.updateLocale(c.req.param('projectId'), c.req.param('id'), body))
+  })
 
-  app.delete<{ Params: { projectId: string; id: string } }>(
-    '/projects/:projectId/locales/:id',
-    { preHandler: [app.authenticate] },
-    async (req, reply) => {
-      await requireProjectRole(req.user.userId, req.params.projectId, Role.MAINTAINER)
-      await svc.deleteLocale(req.params.projectId, req.params.id)
-      analytics.track('locale_removed', {
-        userId: req.user.userId,
-        props: { project_id: req.params.projectId },
-      })
-      return reply.status(204).send()
-    },
-  )
+  app.delete('/projects/:projectId/locales/:id', authenticate, async (c) => {
+    await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.MAINTAINER)
+    await svc.deleteLocale(c.req.param('projectId'), c.req.param('id'))
+    analytics.track('locale_removed', {
+      userId: c.var.user.userId,
+      props: { project_id: c.req.param('projectId') },
+    })
+    return c.body(null, 204)
+  })
 }

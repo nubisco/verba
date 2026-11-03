@@ -13,6 +13,7 @@ vi.mock('../prisma.js', () => ({
 vi.mock('../services/analytics.service.js', () => ({ track: vi.fn() }))
 
 import { buildApp } from '../app.js'
+import { inject, signToken } from './inject.js'
 import { prisma } from '../prisma.js'
 import { findActiveUserByEmail, searchCoMembers } from '../services/auth.service.js'
 
@@ -68,9 +69,8 @@ describe('adding a member', () => {
   })
 
   async function asProjectAdmin() {
-    const app = buildApp()
-    await app.ready()
-    const token = app.jwt.sign({ userId: 'admin', email: 'admin@example.com' })
+    const app = await buildApp()
+    const token = await signToken({ userId: 'admin', email: 'admin@example.com' })
     vi.mocked(prisma.project.findUnique).mockResolvedValue({ accountId: 'acc1' } as never)
     vi.mocked(prisma.membership.findFirst).mockResolvedValue({
       id: 'm',
@@ -96,13 +96,12 @@ describe('adding a member', () => {
       namespaces: '[]',
       assignedLocales: '[]',
     } as never)
-    const res = await app.inject({
+    const res = await inject(app, {
       method: 'POST',
       url: '/projects/p1/members',
       cookies,
       payload: { email: 'bob@example.com', role: 'READER' },
     })
-    await app.close()
     expect(res.statusCode).toBe(201)
     expect(prisma.membership.upsert).toHaveBeenCalledWith(
       expect.objectContaining({ where: { userId_projectId: { userId: 'u9', projectId: 'p1' } } }),
@@ -111,13 +110,12 @@ describe('adding a member', () => {
 
   it('no longer accepts a raw user id', async () => {
     const { app, cookies } = await asProjectAdmin()
-    const res = await app.inject({
+    const res = await inject(app, {
       method: 'POST',
       url: '/projects/p1/members',
       cookies,
       payload: { userId: 'u9', role: 'ADMIN' },
     })
-    await app.close()
     expect(res.statusCode).toBe(400)
     expect(prisma.membership.upsert).not.toHaveBeenCalled()
   })
@@ -125,13 +123,12 @@ describe('adding a member', () => {
   it('answers 404 when no active account uses the address', async () => {
     const { app, cookies } = await asProjectAdmin()
     vi.mocked(prisma.user.findUnique).mockResolvedValue(null)
-    const res = await app.inject({
+    const res = await inject(app, {
       method: 'POST',
       url: '/projects/p1/members',
       cookies,
       payload: { email: 'nobody@example.com', role: 'READER' },
     })
-    await app.close()
     expect(res.statusCode).toBe(404)
   })
 
@@ -141,13 +138,12 @@ describe('adding a member', () => {
     vi.mocked(prisma.accountMember.findUnique)
       .mockResolvedValueOnce(null) // the person being added
       .mockResolvedValueOnce({ role: 'MEMBER' } as never) // the project admin
-    const res = await app.inject({
+    const res = await inject(app, {
       method: 'POST',
       url: '/projects/p1/members',
       cookies,
       payload: { email: 'outsider@example.com', role: 'READER' },
     })
-    await app.close()
     expect(res.statusCode).toBe(403)
     expect(prisma.accountMember.create).not.toHaveBeenCalled()
     expect(prisma.membership.upsert).not.toHaveBeenCalled()
@@ -167,13 +163,12 @@ describe('adding a member', () => {
       namespaces: '[]',
       assignedLocales: '[]',
     } as never)
-    const res = await app.inject({
+    const res = await inject(app, {
       method: 'POST',
       url: '/projects/p1/members',
       cookies,
       payload: { email: 'newcomer@example.com', role: 'READER' },
     })
-    await app.close()
     expect(res.statusCode).toBe(201)
     expect(prisma.accountMember.create).toHaveBeenCalledWith({
       data: { userId: 'u9', accountId: 'acc1', role: 'MEMBER' },

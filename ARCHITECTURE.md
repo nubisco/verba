@@ -43,7 +43,7 @@ This document defines:
 
 # 2. High-Level Architecture
 
-Vue 3 Frontend → Fastify API → Prisma → SQLite/Postgres
+Vue 3 Frontend → Hono API → Prisma → SQLite/Postgres
 ↓
 Event Bus
 ↓

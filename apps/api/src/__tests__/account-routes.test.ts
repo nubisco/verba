@@ -18,21 +18,21 @@ vi.mock('../prisma.js', () => ({
 vi.mock('../services/analytics.service.js', () => ({ track: vi.fn() }))
 
 import { buildApp } from '../app.js'
+import { inject, signToken } from './inject.js'
 import { prisma } from '../prisma.js'
 
 const ACCOUNT_A = { id: 'acc-a', name: 'A', slug: 'a', createdAt: new Date() }
 const ACCOUNT_B = { id: 'acc-b', name: 'B', slug: 'b', createdAt: new Date() }
 
 describe('one account cannot reach another', () => {
-  let app: ReturnType<typeof buildApp>
+  let app: Awaited<ReturnType<typeof buildApp>>
   let cookies: Record<string, string>
 
   beforeEach(async () => {
     vi.clearAllMocks()
     vi.stubEnv('JWT_SECRET', 'test-secret')
-    app = buildApp()
-    await app.ready()
-    cookies = { token: app.jwt.sign({ userId: 'u-a', email: 'a@example.com' }) }
+    app = await buildApp()
+    cookies = { token: await signToken({ userId: 'u-a', email: 'a@example.com' }) }
     // The caller is a member of A and of nothing in B.
     vi.mocked(prisma.accountMember.findFirst).mockImplementation((async (args: {
       where: { account: { OR: Array<{ id?: string; slug?: string }> } }
@@ -48,12 +48,11 @@ describe('one account cannot reach another', () => {
   })
 
   afterEach(async () => {
-    await app.close()
     vi.unstubAllEnvs()
   })
 
   it("lists A's projects when the request names no account and the person is only in A", async () => {
-    const res = await app.inject({ method: 'GET', url: '/projects', cookies })
+    const res = await inject(app, { method: 'GET', url: '/projects', cookies })
     expect(res.statusCode).toBe(200)
     expect(prisma.project.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { accountId: 'acc-a', memberships: { some: { userId: 'u-a' } } } }),
@@ -61,21 +60,21 @@ describe('one account cannot reach another', () => {
   })
 
   it("answers 404 to a request that names B, and never queries B's projects", async () => {
-    const res = await app.inject({ method: 'GET', url: '/projects', cookies, headers: { 'x-verba-account': 'acc-b' } })
+    const res = await inject(app, { method: 'GET', url: '/projects', cookies, headers: { 'x-verba-account': 'acc-b' } })
     expect(res.statusCode).toBe(404)
     expect(prisma.project.findMany).not.toHaveBeenCalled()
   })
 
   it('accepts the account as a query parameter too', async () => {
-    const res = await app.inject({ method: 'GET', url: '/projects?account=b', cookies })
+    const res = await inject(app, { method: 'GET', url: '/projects?account=b', cookies })
     expect(res.statusCode).toBe(404)
-    const ok = await app.inject({ method: 'GET', url: '/projects?account=a', cookies })
+    const ok = await inject(app, { method: 'GET', url: '/projects?account=a', cookies })
     expect(ok.statusCode).toBe(200)
   })
 
   it("refuses a B project asked for by id: the membership lookup requires the project's account", async () => {
     vi.mocked(prisma.membership.findFirst).mockResolvedValue(null)
-    const res = await app.inject({ method: 'GET', url: '/projects/p-of-b', cookies })
+    const res = await inject(app, { method: 'GET', url: '/projects/p-of-b', cookies })
     expect(res.statusCode).toBe(403)
     expect(prisma.membership.findFirst).toHaveBeenCalledWith({
       where: { userId: 'u-a', projectId: 'p-of-b', project: { account: { members: { some: { userId: 'u-a' } } } } },
@@ -84,9 +83,9 @@ describe('one account cannot reach another', () => {
   })
 
   it('does not show B or its members to someone outside it', async () => {
-    const res = await app.inject({ method: 'GET', url: '/accounts/acc-b', cookies })
+    const res = await inject(app, { method: 'GET', url: '/accounts/acc-b', cookies })
     expect(res.statusCode).toBe(404)
-    const members = await app.inject({ method: 'GET', url: '/accounts/acc-b/members', cookies })
+    const members = await inject(app, { method: 'GET', url: '/accounts/acc-b/members', cookies })
     expect(members.statusCode).toBe(404)
   })
 
@@ -95,7 +94,7 @@ describe('one account cannot reach another', () => {
       { role: 'MEMBER', account: ACCOUNT_A },
       { role: 'MEMBER', account: ACCOUNT_B },
     ] as never)
-    const res = await app.inject({ method: 'GET', url: '/projects', cookies })
+    const res = await inject(app, { method: 'GET', url: '/projects', cookies })
     expect(res.statusCode).toBe(400)
     expect(res.json().accounts.map((a: { id: string }) => a.id)).toEqual(['acc-a', 'acc-b'])
   })
@@ -106,7 +105,7 @@ describe('one account cannot reach another', () => {
       deactivatedAt: null,
       email: 'a@example.com',
     } as never)
-    const res = await app.inject({ method: 'POST', url: '/accounts', cookies, payload: { name: 'Mine' } })
+    const res = await inject(app, { method: 'POST', url: '/accounts', cookies, payload: { name: 'Mine' } })
     expect(res.statusCode).toBe(403)
     expect(prisma.account.create).not.toHaveBeenCalled()
   })

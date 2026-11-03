@@ -39,6 +39,7 @@ export default defineNubiscoDocs({
       text: 'Development',
       items: [
         { text: 'Architecture', link: '/architecture' },
+        { text: 'Hosting on Cloudflare', link: '/hosting-on-cloudflare' },
         { text: 'Contributing', link: '/contributing' },
       ],
     },

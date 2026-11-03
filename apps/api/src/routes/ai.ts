@@ -1,4 +1,5 @@
-import type { FastifyInstance } from 'fastify'
+import { readBody, type Api } from '../http.js'
+import { authenticate } from '../session.js'
 import { requireProjectRole } from '../services/acl.service.js'
 import * as analytics from '../services/analytics.service.js'
 import { Role } from '../types.js'
@@ -11,98 +12,74 @@ import {
 import { getAiSettings, getUsageSummary, saveAiSettings } from '../services/ai-settings.service.js'
 import { fillLocale, previewTranslation, suggestTranslation } from '../services/ai-translation.service.js'
 
-export async function aiRoutes(app: FastifyInstance) {
+export function aiRoutes(app: Api) {
   // ─── Settings: admin only (AGENTS.md, "AI briefings") ──────────────────────
 
-  app.get<{ Params: { projectId: string } }>(
-    '/projects/:projectId/ai/settings',
-    { preHandler: [app.authenticate] },
-    async (req) => {
-      await requireProjectRole(req.user.userId, req.params.projectId, Role.ADMIN)
-      return { settings: await getAiSettings(req.params.projectId) }
-    },
-  )
+  app.get('/projects/:projectId/ai/settings', authenticate, async (c) => {
+    await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.ADMIN)
+    return c.json({ settings: await getAiSettings(c.req.param('projectId')) })
+  })
 
-  app.put<{ Params: { projectId: string } }>(
-    '/projects/:projectId/ai/settings',
-    { preHandler: [app.authenticate] },
-    async (req) => {
-      await requireProjectRole(req.user.userId, req.params.projectId, Role.ADMIN)
-      const body = SaveAiSettingsSchema.parse(req.body)
-      return { settings: await saveAiSettings(req.params.projectId, body, req.user.userId) }
-    },
-  )
+  app.put('/projects/:projectId/ai/settings', authenticate, async (c) => {
+    await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.ADMIN)
+    const body = SaveAiSettingsSchema.parse(await readBody(c))
+    return c.json({ settings: await saveAiSettings(c.req.param('projectId'), body, c.var.user.userId) })
+  })
 
-  app.get<{ Params: { projectId: string } }>(
-    '/projects/:projectId/ai/usage',
-    { preHandler: [app.authenticate] },
-    async (req) => {
-      await requireProjectRole(req.user.userId, req.params.projectId, Role.ADMIN)
-      return { usage: await getUsageSummary(req.params.projectId) }
-    },
-  )
+  app.get('/projects/:projectId/ai/usage', authenticate, async (c) => {
+    await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.ADMIN)
+    return c.json({ usage: await getUsageSummary(c.req.param('projectId')) })
+  })
 
   // One string translated and checked as a suggestion would be. Writes nothing.
-  app.post<{ Params: { projectId: string } }>(
-    '/projects/:projectId/ai/preview',
-    { preHandler: [app.authenticate] },
-    async (req) => {
-      await requireProjectRole(req.user.userId, req.params.projectId, Role.ADMIN)
-      const { source, localeCode } = PreviewBodySchema.parse(req.body)
-      const result = await previewTranslation(req.params.projectId, source, localeCode)
-      return result.suggestion === null
-        ? { suggestion: null, rejected: result.rejected }
-        : { suggestion: result.suggestion }
-    },
-  )
+  app.post('/projects/:projectId/ai/preview', authenticate, async (c) => {
+    await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.ADMIN)
+    const { source, localeCode } = PreviewBodySchema.parse(await readBody(c))
+    const result = await previewTranslation(c.req.param('projectId'), source, localeCode)
+    return c.json(
+      result.suggestion === null ? { suggestion: null, rejected: result.rejected } : { suggestion: result.suggestion },
+    )
+  })
 
   // ─── Suggestions ───────────────────────────────────────────────────────────
 
-  app.post<{ Params: { projectId: string } }>(
-    '/projects/:projectId/ai/suggest',
-    { preHandler: [app.authenticate] },
-    async (req) => {
-      await requireProjectRole(req.user.userId, req.params.projectId, Role.TRANSLATOR)
-      const { projectId } = req.params
-      const { keyId, localeCode } = SuggestBodySchema.parse(req.body)
-      const startedAt = Date.now()
-      analytics.track('ai_translation_requested', {
-        userId: req.user.userId,
-        props: { project_id: projectId, locale: localeCode },
-      })
+  app.post('/projects/:projectId/ai/suggest', authenticate, async (c) => {
+    await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.TRANSLATOR)
+    const projectId = c.req.param('projectId')
+    const { keyId, localeCode } = SuggestBodySchema.parse(await readBody(c))
+    const startedAt = Date.now()
+    analytics.track('ai_translation_requested', {
+      userId: c.var.user.userId,
+      props: { project_id: projectId, locale: localeCode },
+    })
 
-      const result = await suggestTranslation(projectId, keyId, localeCode)
+    const result = await suggestTranslation(projectId, keyId, localeCode)
 
-      analytics.track('ai_translation_completed', {
-        userId: req.user.userId,
-        props: {
-          project_id: projectId,
-          locale: localeCode,
-          provider: result.provider,
-          rejected: result.suggestion === null,
-          duration_ms: Date.now() - startedAt,
-        },
-      })
-      return result.suggestion === null
-        ? { suggestion: null, rejected: result.rejected }
-        : { suggestion: result.suggestion }
-    },
-  )
+    analytics.track('ai_translation_completed', {
+      userId: c.var.user.userId,
+      props: {
+        project_id: projectId,
+        locale: localeCode,
+        provider: result.provider,
+        rejected: result.suggestion === null,
+        duration_ms: Date.now() - startedAt,
+      },
+    })
+    return c.json(
+      result.suggestion === null ? { suggestion: null, rejected: result.rejected } : { suggestion: result.suggestion },
+    )
+  })
 
   // Batch-fill a whole locale from source strings. Every translation is checked before it is written.
-  app.post<{ Params: { projectId: string } }>(
-    '/projects/:projectId/ai/fill-locale',
-    { preHandler: [app.authenticate] },
-    async (req) => {
-      const membership = await requireProjectRole(req.user.userId, req.params.projectId, Role.TRANSLATOR)
-      const body = FillLocaleBodySchema.parse(req.body)
-      const { filled, skipped, warnings } = await fillLocale(
-        req.params.projectId,
-        body,
-        req.user.userId,
-        membership.role,
-      )
-      return { filled, skipped, warnings }
-    },
-  )
+  app.post('/projects/:projectId/ai/fill-locale', authenticate, async (c) => {
+    const membership = await requireProjectRole(c.var.user.userId, c.req.param('projectId'), Role.TRANSLATOR)
+    const body = FillLocaleBodySchema.parse(await readBody(c))
+    const { filled, skipped, warnings } = await fillLocale(
+      c.req.param('projectId'),
+      body,
+      c.var.user.userId,
+      membership.role,
+    )
+    return c.json({ filled, skipped, warnings })
+  })
 }

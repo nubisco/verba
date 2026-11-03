@@ -7,7 +7,7 @@ intro: "This page describes Verba's internal architecture for contributors and d
 ## High-Level Overview
 
 ```
-Vue 3 Frontend  →  Fastify API  →  Prisma ORM  →  SQLite / Postgres
+Vue 3 Frontend  →  Hono API  →  Prisma ORM  →  SQLite / Postgres
                         ↓
                    Event Bus
                         ↓
@@ -24,7 +24,7 @@ Vue 3 Frontend  →  Fastify API  →  Prisma ORM  →  SQLite / Postgres
 | Layer      | Technology                     |
 | ---------- | ------------------------------ |
 | Frontend   | Vue 3, TypeScript, SCSS, Vite  |
-| Backend    | Node.js, TypeScript, Fastify   |
+| Backend    | Node.js, TypeScript, Hono      |
 | ORM        | Prisma                         |
 | Database   | SQLite (dev) / Postgres (prod) |
 | Monorepo   | pnpm workspaces                |
@@ -35,9 +35,9 @@ Vue 3 Frontend  →  Fastify API  →  Prisma ORM  →  SQLite / Postgres
 ```
 verba/
 ├── apps/
-│   ├── api/              # Fastify backend
+│   ├── api/              # Hono backend, served by Node
 │   │   ├── src/
-│   │   │   ├── app.ts          # Fastify app factory
+│   │   │   ├── app.ts          # Hono app factory
 │   │   │   ├── routes/         # HTTP route handlers
 │   │   │   ├── services/       # Business logic (ACL, workflow, events)
 │   │   │   ├── schemas/        # Zod validation schemas

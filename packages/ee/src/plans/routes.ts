@@ -17,7 +17,7 @@
  * is configured (apps/api/src/services/billing.service.ts).
  */
 
-import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
+import type { Context, Hono, MiddlewareHandler } from 'hono'
 import { z } from 'zod'
 import { configFromEnv, configurePlans, plansConfig, type PlansConfig } from './config.js'
 import { LicensesError, openPortal, startCheckout, type LicensesEntitlement } from './client.js'
@@ -26,11 +26,16 @@ import { hostedLimits } from './limits.js'
 import { signatureMatches } from './signature.js'
 import { applyEntitlement, planFor, type ApplyOutcome, type PlansDb } from './store.js'
 
+/** What the routes read from a request: who is signed in, set by `authenticate`. */
+export interface PlansEnv {
+  Variables: { user: { userId: string } }
+}
+
 /** What the API hands the plugin: its database and its own account checks. */
 export interface PlansDeps {
   db: PlansDb
-  /** Fastify preHandler that sets req.user from the session (app.authenticate). */
-  authenticate: (req: FastifyRequest, reply: FastifyReply) => Promise<void>
+  /** Middleware that sets `user` from the session (the API's `authenticate`). */
+  authenticate: MiddlewareHandler<PlansEnv>
   /** Throws 404 for a non-member and 403 below account ADMIN. */
   requireAccountAdmin: (userId: string, accountId: string) => Promise<unknown>
   /** What the account holds now, in the licenses limit keys. */
@@ -93,32 +98,38 @@ export function checkoutPage(raw: string | null | undefined): string | null {
   }
 }
 
-/** The signed webhook, in its own scope so its body stays the exact bytes signed. */
-async function entitlementWebhook(app: FastifyInstance, deps: PlansDeps): Promise<void> {
-  app.addContentTypeParser('application/json', { parseAs: 'string' }, (_req, body, done) => done(null, body))
+/** A JSON body, or {} when there is none or it is not JSON (the schema then refuses it). */
+async function jsonBody(c: Context<PlansEnv>): Promise<unknown> {
+  try {
+    return (await c.req.json()) ?? {}
+  } catch {
+    return {}
+  }
+}
 
-  app.post('/billing/entitlement', async (req, reply) => {
+/** The signed webhook. Its body is read as the exact bytes that were signed. */
+function entitlementWebhook(app: Hono<PlansEnv>, deps: PlansDeps): void {
+  app.post('/billing/entitlement', async (c) => {
     const secret = plansConfig()?.webhookSecret
-    if (!secret) return reply.status(404).send({ error: 'Not found' })
+    if (!secret) return c.json({ error: 'Not found' }, 404)
     // There is no timestamp window: licenses retries a delivery for a day with
     // its first timestamp, and replaying an old one cannot do harm because a
     // version lower than or equal to the one held changes nothing.
-    const raw = typeof req.body === 'string' ? req.body : ''
-    const header = req.headers['x-nubisco-signature']
-    if (!signatureMatches(secret, raw, typeof header === 'string' ? header : undefined))
-      return reply.status(401).send({ error: 'Bad signature' })
+    const raw = await c.req.text()
+    if (!signatureMatches(secret, raw, c.req.header('x-nubisco-signature')))
+      return c.json({ error: 'Bad signature' }, 401)
     let delivery: z.infer<typeof zEntitlementDelivery>
     try {
       delivery = zEntitlementDelivery.parse(JSON.parse(raw))
     } catch {
-      return reply.status(400).send({ error: 'Malformed delivery' })
+      return c.json({ error: 'Malformed delivery' }, 400)
     }
-    if (delivery.data.app !== 'verba') return reply.status(400).send({ error: 'Not a Verba entitlement' })
+    if (delivery.data.app !== 'verba') return c.json({ error: 'Not a Verba entitlement' }, 400)
     const outcome: ApplyOutcome = (
       await applyEntitlement(deps.db, delivery.data as unknown as LicensesEntitlement, new Date())
     ).outcome
     // 2xx either way: an account deleted here must not be retried for a day.
-    return reply.send({ ok: true, outcome })
+    return c.json({ ok: true, outcome })
   })
 }
 
@@ -126,88 +137,76 @@ async function entitlementWebhook(app: FastifyInstance, deps: PlansDeps): Promis
  * The billing routes. Registers nothing (and leaves plans off) unless the
  * licenses service is configured.
  */
-export async function plansPlugin(app: FastifyInstance, deps: PlansDeps): Promise<void> {
+export function plansPlugin(app: Hono<PlansEnv>, deps: PlansDeps): void {
   const cfg = configFromEnv(deps.env ?? process.env, deps.fetchImpl ?? fetch)
   configurePlans(cfg)
   if (!cfg) return
 
-  await app.register(entitlementWebhook, deps)
+  entitlementWebhook(app, deps)
 
-  const admin = async (req: FastifyRequest<{ Params: { accountId: string } }>) => {
-    const user = (req as unknown as { user: { userId: string } }).user
-    await deps.requireAccountAdmin(user.userId, req.params.accountId)
-    return req.params.accountId
+  const admin = async (c: Context<PlansEnv>) => {
+    const accountId = c.req.param('accountId') as string
+    await deps.requireAccountAdmin(c.get('user').userId, accountId)
+    return accountId
   }
 
   /** The page: plan, state, limits and usage against them. */
-  app.get<{ Params: { accountId: string } }>(
-    '/accounts/:accountId/billing',
-    { preHandler: [deps.authenticate] },
-    async (req, reply) => {
-      const accountId = await admin(req)
-      const config = configured()
-      // Fetched on open, so someone back from checkout sees the new plan even
-      // when the webhook is late.
-      const row = await planFor(deps.db, accountId, { force: true })
-      reply.header('cache-control', 'no-store')
-      return {
-        // As licenses names it: free, pro, or enterprise for a sales deal.
-        plan: row?.plan ?? 'free',
-        state: row?.state ?? 'free',
-        source: row?.source ?? 'free',
-        subscription: row?.subscription ?? null,
-        limits: hostedLimits(row),
-        usage: await deps.accountUsage(accountId),
-        salesUrl: config.salesUrl,
-        // What Pro raises the limits to, for the upgrade panel. Verba's plan
-        // table matches the Paddle product (account totals).
-        proLimits: {
-          projects: PLANS.pro.baseEntitlements.maxProjects,
-          members: PLANS.pro.baseEntitlements.maxMembers,
-          keys: PLANS.pro.baseEntitlements.maxKeys,
-          locales: PLANS.pro.baseEntitlements.maxLocales,
-        },
-      }
-    },
-  )
+  app.get('/accounts/:accountId/billing', deps.authenticate, async (c) => {
+    const accountId = await admin(c)
+    const config = configured()
+    // Fetched on open, so someone back from checkout sees the new plan even
+    // when the webhook is late.
+    const row = await planFor(deps.db, accountId, { force: true })
+    c.header('cache-control', 'no-store')
+    return c.json({
+      // As licenses names it: free, pro, or enterprise for a sales deal.
+      plan: row?.plan ?? 'free',
+      state: row?.state ?? 'free',
+      source: row?.source ?? 'free',
+      subscription: row?.subscription ?? null,
+      limits: hostedLimits(row),
+      usage: await deps.accountUsage(accountId),
+      salesUrl: config.salesUrl,
+      // What Pro raises the limits to, for the upgrade panel. Verba's plan
+      // table matches the Paddle product (account totals).
+      proLimits: {
+        projects: PLANS.pro.baseEntitlements.maxProjects,
+        members: PLANS.pro.baseEntitlements.maxMembers,
+        keys: PLANS.pro.baseEntitlements.maxKeys,
+        locales: PLANS.pro.baseEntitlements.maxLocales,
+      },
+    })
+  })
 
-  app.post<{ Params: { accountId: string } }>(
-    '/accounts/:accountId/billing/checkout',
-    { preHandler: [deps.authenticate] },
-    async (req) => {
-      const accountId = await admin(req)
-      const config = configured()
-      const parsed = zCheckout.safeParse(req.body ?? {})
-      if (!parsed.success) throw httpError(400, 'billing must be monthly or yearly')
-      let res: Awaited<ReturnType<typeof startCheckout>>
-      try {
-        res = await startCheckout(config, { workspace_id: accountId, billing: parsed.data.billing })
-      } catch (err) {
-        fromLicenses(err)
-      }
-      // licenses sets the transaction's checkout to Verba's page on nubisco.io
-      // and answers with it, carrying ?_ptxn=. Paddle refuses checkout on any
-      // other domain, so without that page there is nowhere to send the buyer.
-      const url = checkoutPage(res.checkout_url)
-      if (!url) throw httpError(503, 'Checkout is not set up on this instance.')
-      return { transactionId: res.transaction_id, checkoutUrl: url }
-    },
-  )
+  app.post('/accounts/:accountId/billing/checkout', deps.authenticate, async (c) => {
+    const accountId = await admin(c)
+    const config = configured()
+    const parsed = zCheckout.safeParse(await jsonBody(c))
+    if (!parsed.success) throw httpError(400, 'billing must be monthly or yearly')
+    let res: Awaited<ReturnType<typeof startCheckout>>
+    try {
+      res = await startCheckout(config, { workspace_id: accountId, billing: parsed.data.billing })
+    } catch (err) {
+      fromLicenses(err)
+    }
+    // licenses sets the transaction's checkout to Verba's page on nubisco.io
+    // and answers with it, carrying ?_ptxn=. Paddle refuses checkout on any
+    // other domain, so without that page there is nowhere to send the buyer.
+    const url = checkoutPage(res.checkout_url)
+    if (!url) throw httpError(503, 'Checkout is not set up on this instance.')
+    return c.json({ transactionId: res.transaction_id, checkoutUrl: url })
+  })
 
-  app.post<{ Params: { accountId: string } }>(
-    '/accounts/:accountId/billing/portal',
-    { preHandler: [deps.authenticate] },
-    async (req) => {
-      const accountId = await admin(req)
-      const config = configured()
-      try {
-        const res = await openPortal(config, accountId)
-        return { url: res.url }
-      } catch (err) {
-        if (err instanceof LicensesError && err.status === 404)
-          throw httpError(404, 'This account has no subscription to manage yet.')
-        fromLicenses(err)
-      }
-    },
-  )
+  app.post('/accounts/:accountId/billing/portal', deps.authenticate, async (c) => {
+    const accountId = await admin(c)
+    const config = configured()
+    try {
+      const res = await openPortal(config, accountId)
+      return c.json({ url: res.url })
+    } catch (err) {
+      if (err instanceof LicensesError && err.status === 404)
+        throw httpError(404, 'This account has no subscription to manage yet.')
+      fromLicenses(err)
+    }
+  })
 }

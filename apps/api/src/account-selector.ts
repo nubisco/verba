@@ -1,4 +1,4 @@
-import type { FastifyRequest } from 'fastify'
+import type { Ctx } from './http.js'
 
 /**
  * The account a request names, by id or slug: the X-Verba-Account header, or
@@ -6,10 +6,9 @@ import type { FastifyRequest } from 'fastify'
  * names none, and account.service resolveAccount then picks the person's only
  * account.
  */
-export function accountSelector(req: FastifyRequest): string | undefined {
-  const header = req.headers['x-verba-account']
-  const fromHeader = Array.isArray(header) ? header[0] : header
+export function accountSelector(c: Ctx): string | undefined {
+  const fromHeader = c.req.header('x-verba-account')
   if (fromHeader?.trim()) return fromHeader.trim()
-  const query = (req.query as { account?: unknown } | undefined)?.account
+  const query = c.req.query('account')
   return typeof query === 'string' && query.trim() ? query.trim() : undefined
 }

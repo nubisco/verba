@@ -14,7 +14,7 @@
 // lazily so a Community Edition deployment boots without it and simply has no
 // provider. Local email one-time codes are never gated.
 
-import type { FastifyRequest } from 'fastify'
+import type { Ctx } from '../http.js'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type EeModule = any
@@ -139,7 +139,7 @@ export function safeLandingUrl(target: unknown): string {
 }
 
 /** Forwarded to the provider so a multi-account browser resolves the right person. */
-export function loginHintOf(req: FastifyRequest): string | undefined {
-  const hint = (req.query as { login_hint?: unknown })?.login_hint
+export function loginHintOf(c: Ctx): string | undefined {
+  const hint = c.req.query('login_hint')
   return typeof hint === 'string' && hint ? hint : undefined
 }

@@ -9,6 +9,7 @@ vi.mock('../prisma.js', () => ({
 }))
 
 import { buildApp } from '../app.js'
+import { inject, signToken } from './inject.js'
 import { prisma } from '../prisma.js'
 import { isOperator, isOperatorEmail, operatorEmails, syncOperatorFlag } from '../services/operator.service.js'
 import { deactivateUser, deleteUser } from '../services/auth.service.js'
@@ -105,15 +106,13 @@ describe('admin routes', () => {
   afterEach(() => vi.unstubAllEnvs())
 
   async function get(email: string) {
-    const app = buildApp()
-    await app.ready()
-    const token = app.jwt.sign({ userId: 'u1', email })
+    const app = await buildApp()
+    const token = await signToken({ userId: 'u1', email })
     vi.mocked(prisma.user.findUnique).mockResolvedValue({ email, deactivatedAt: null, isGlobalAdmin: true } as never)
     vi.mocked(prisma.user.findMany).mockResolvedValue([])
     vi.mocked(prisma.instanceAuditLog.findMany).mockResolvedValue([])
-    const users = await app.inject({ method: 'GET', url: '/admin/users', cookies: { token } })
-    const audit = await app.inject({ method: 'GET', url: '/admin/audit', cookies: { token } })
-    await app.close()
+    const users = await inject(app, { method: 'GET', url: '/admin/users', cookies: { token } })
+    const audit = await inject(app, { method: 'GET', url: '/admin/audit', cookies: { token } })
     return { users: users.statusCode, audit: audit.statusCode }
   }
 
