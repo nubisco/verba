@@ -1,0 +1,115 @@
+# Nubisco's hosted Verba (verba.nubisco.io) on Cloudflare Workers, with D1,
+# static assets and a Durable Object for live updates. See
+# docs/hosting-on-cloudflare.md. Self-hosters run the Docker image: this file
+# describes the hosted instance only, and self-hosting on Workers is not
+# supported.
+#
+# Local: `pnpm build` (the web app and the generated Prisma clients), copy
+# .dev.vars.example to .dev.vars, then from apps/api:
+#   pnpm exec wrangler d1 migrations apply verba --local
+#   pnpm worker:dev
+# Nothing here creates anything on Cloudflare until `wrangler deploy` and
+# `--remote` are run, which is the cutover's job.
+name = "verba"
+main = "src/worker.ts"
+compatibility_date = "2026-10-01"
+# Verba uses node:crypto, node:events and Buffer, and reads its settings from
+# process.env, which the Worker fills from the vars and secrets (src/worker.ts).
+compatibility_flags = ["nodejs_compat"]
+
+# The route is added at cutover, on the hostname Cloudflare already proxies:
+# routes = [{ pattern = "verba.nubisco.io/*", zone_name = "nubisco.io" }]
+
+# The web app. Only /api/* wakes the Worker. Any other path is a file from the
+# build, or index.html, so a deep link loads the app.
+[assets]
+directory = "../web/dist"
+binding = "ASSETS"
+run_worker_first = ["/api/*"]
+not_found_handling = "single-page-application"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "verba"
+# Replaced with the real id when the database is created at cutover
+# (`wrangler d1 create verba`). A local D1 does not need one.
+database_id = "00000000-0000-0000-0000-000000000000"
+# Generated from prisma/schema.prisma by `pnpm db:d1:new`, checked in CI.
+migrations_dir = "prisma/d1"
+
+# Live updates: one object per account holds that account's open tabs.
+[[durable_objects.bindings]]
+name = "LIVE"
+class_name = "LiveHub"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["LiveHub"]
+
+# hosted Verba never sends SMTP (no raw sockets on Workers): one-time codes
+# go through Resend. The stub keeps nodemailer out of the bundle.
+[alias]
+"nodemailer" = "./src/worker/stubs/nodemailer.ts"
+
+[observability]
+enabled = true
+
+[vars]
+NODE_ENV = "production"
+ENABLE_EE = "true"
+# Plans switch on only once the secrets VERBA_LICENSES_SERVICE_TOKEN and
+# VERBA_ENTITLEMENT_WEBHOOK_SECRET are set too (docs/plans-and-billing.md).
+VERBA_LICENSES_URL = "https://licenses.nubisco.io"
+VERBA_SALES_URL = "https://nubisco.io/contact?product=verba&need=pre-sales"
+MAIL_FROM = "Verba <notifications@nubisco.io>"
+# Sign-in through Accord. Checked against the NAS settings at cutover.
+PLATFORM_ISSUER = "https://auth.nubisco.io"
+PLATFORM_AUTH_ORIGIN = "https://auth.nubisco.io"
+PLATFORM_APP_ID = "nubisco-verba"
+# Secrets, set with `wrangler secret put <NAME>`, never here:
+#   JWT_SECRET                        signs sessions (required)
+#   AI_ENCRYPTION_KEY                 seals projects' AI provider keys
+#   RESEND_API_KEY                    one-time codes by email
+#   VERBA_OPERATORS                   operator emails, comma separated
+#   VERBA_LICENSES_SERVICE_TOKEN      licenses' SERVICE_TOKEN_VERBA
+#   VERBA_ENTITLEMENT_WEBHOOK_SECRET  licenses' ENTITLEMENT_WEBHOOK_SECRET_VERBA
+#   OIDC_CLIENT_SECRET                if OIDC sign-in is used
+#   ANALYTICS_TOKEN                   server-side product analytics
+
+# The sign-in rate limits, per minute (decided by Jose, 2026-11-03). They must
+# match WORKER_RATE_LIMITS in src/rate-limits.ts, which a test compares with
+# this file. Verba's namespace ids are the 12xx range.
+[[ratelimits]]
+name = "VERBA_OTP_REQUEST_IP_LIMITER"
+namespace_id = "1201"
+simple = { limit = 5, period = 60 }
+
+[[ratelimits]]
+name = "VERBA_OTP_REQUEST_EMAIL_LIMITER"
+namespace_id = "1202"
+simple = { limit = 2, period = 60 }
+
+[[ratelimits]]
+name = "VERBA_OTP_VERIFY_IP_LIMITER"
+namespace_id = "1203"
+simple = { limit = 10, period = 60 }
+
+[[ratelimits]]
+name = "VERBA_OTP_VERIFY_EMAIL_LIMITER"
+namespace_id = "1204"
+simple = { limit = 5, period = 60 }
+
+[[ratelimits]]
+name = "VERBA_LOGIN_IP_LIMITER"
+namespace_id = "1205"
+simple = { limit = 5, period = 60 }
+
+[[ratelimits]]
+name = "VERBA_LOGIN_EMAIL_LIMITER"
+namespace_id = "1206"
+simple = { limit = 3, period = 60 }
+
+[[ratelimits]]
+name = "VERBA_FEDERATED_IP_LIMITER"
+namespace_id = "1207"
+simple = { limit = 10, period = 60 }

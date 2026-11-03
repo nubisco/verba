@@ -7,6 +7,17 @@ generator client {
   importFileExtension = "js"
 }
 
+// The same client for the Cloudflare Worker (src/worker.ts): built for
+// workerd, which loads the query compiler as a WebAssembly module instead of
+// decoding it at run time. Only the Worker imports it, with the D1 adapter.
+generator worker {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma-worker"
+  runtime             = "workerd"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
 datasource db {
   provider = "sqlite"
 }

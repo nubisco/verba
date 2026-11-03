@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import { serve } from '@hono/node-server'
 import { createNodeWebSocket } from '@hono/node-ws'
 import { buildApp } from './app.js'
+import { wsRoutes } from './routes/ws.js'
 import { setPrisma } from './prisma.js'
 import { createNodePrisma } from './prisma-node.js'
 import { loadPlugins } from './plugin-loader.js'
@@ -25,7 +26,7 @@ const app = await buildApp({
   websocket: (api) => {
     const nodeWs = createNodeWebSocket({ app: api })
     injectWebSocket = nodeWs.injectWebSocket
-    return nodeWs.upgradeWebSocket
+    wsRoutes(api, nodeWs.upgradeWebSocket)
   },
 })
 const port = Number(process.env.PORT) || 4000

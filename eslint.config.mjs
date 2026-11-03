@@ -16,6 +16,8 @@ export default defineConfig(
       'apps/api/src/generated/**',
       'docs/.vitepress/cache/**',
       'docs/.vitepress/dist/**',
+      // wrangler dev's local state and bundles (apps/api/wrangler.toml)
+      '**/.wrangler/**',
     ],
   },
 

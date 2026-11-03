@@ -151,9 +151,9 @@ All set with `wrangler secret put` (secrets) or `[vars]` in `wrangler.toml` (set
 
 verba.nubisco.io is already proxied by Cloudflare, so the switch is a **Worker route on the existing hostname**, not a DNS change. A route takes effect in seconds, and no record, certificate or cached address is involved.
 
-1. Create the D1 database and apply its migrations (`wrangler d1 migrations apply verba --remote`).
+1. Create the D1 database (`wrangler d1 create verba`), put its id in `apps/api/wrangler.toml` in place of the placeholder, and apply its migrations (`wrangler d1 migrations apply verba --remote`). The deploy job applies them before every deploy from then on.
 2. Set the secrets above with `wrangler secret put`.
-3. Deploy the Worker with the route `verba.nubisco.io/*`, from a `worker` job in the deploy workflow.
+3. Uncomment the route `verba.nubisco.io/*` in `wrangler.toml`, and deploy from a new `worker` job in the deploy workflow (with a `CLOUDFLARE_API_TOKEN` secret), as Acta's does. Check the `PLATFORM_*` vars against the NAS settings and set `VERBA_OPERATORS`.
 4. Smoke test: sign in, a project, keys, a translation through the workflow, comments, notifications, an import, every export, a live update between two browsers, the account pages.
 5. In the same change, remove the `build-ee` and `nas` jobs from `docker.yml`. The public images keep building. On the NAS, hosted Verba's containers can be stopped.
 
@@ -200,6 +200,30 @@ Still Node, still the same Docker image, and nothing anyone using the NAS can se
 - **Rate limits** take a source: this process (unchanged on Node) or a Worker's bindings, with the per-minute numbers in `WORKER_RATE_LIMITS`.
 - **Exports** are built with SheetJS (XLSX) and fflate (the split-by-namespace zip). The files hold the same sheets, rows and paths. `exceljs` and `archiver` are gone.
 - **A D1 migration history**, `prisma/d1`, generated from the schema (`pnpm db:d1:new`), and checked against it in CI (`pnpm db:d1:check`) beside the PostgreSQL check.
+
+### Stage 3, as shipped
+
+The Worker runs hosted Verba end to end in local `wrangler dev`, against a local D1, with nothing created on Cloudflare:
+
+- **`src/worker.ts`** copies the Worker's vars and secrets into `process.env` (the services read their settings there, as on Node), sets the workerd Prisma client with the D1 adapter, live delivery through the hub and the rate limiting bindings, and serves `/api` with the prefix removed, as nginx does in Docker. Everything else is the static web app.
+- **A second Prisma generator** in `prisma/schema.prisma` builds the same client for workerd (`src/generated/prisma-worker`), which loads its query compiler as a WebAssembly module. Only the Worker imports it.
+- **`LiveHub`** (`src/worker/live-hub.ts`), one Durable Object per account, holds every tab through the hibernation API, tagged by project and by person. It sends the frames the Node server sends, so the web app does not change. It closes a socket older than 30 minutes with 4001 the next time it would send to it, and the tab reconnects through the sign-in check. The Worker refuses a socket from another origin (403) and answers a plain GET with 426, as the fleet standard asks.
+- **`wrangler.toml`** (`apps/api`): D1 with `migrations_dir = "prisma/d1"`, the assets with only `/api/*` waking the Worker, the hub, the seven rate limiting bindings (1201 to 1207, compared with the code by a test), `nodejs_compat`, the vars, and the secrets listed by name only. The D1 id is a placeholder and the route is commented out until the cutover.
+- **CI** typechecks the Worker and bundles it with `wrangler deploy --dry-run`, which needs no credentials. The bundle is 1.7 MB gzipped.
+
+Proved against the local Worker with a stand-in for the licenses service: the web app and a deep link, setup and password sign-in, two people in one account and project, presence and live edits between two sockets through the hub, a comment and a mention reaching the other person as a live notification, a refused socket without a session (1008) and from another origin (403), an import of 150 keys in two locales (past D1's 100 bound parameters, about two seconds), listing, search, history and kanban, every export, an XLIFF import and export, the billing page, checkout sent to nubisco.io, Free refusing a second project, a signed entitlement webhook moving the account to Pro and an unsigned one refused, removing someone from the account, and the one-time code limit refusing the third request in a minute.
+
+**One known difference on D1:** Prisma's D1 adapter runs a transaction as separate statements (D1 has no transactions in this sense). Verba has one, removing a person from an account, which deletes their project memberships and then their account membership. If the second statement failed, the person would have lost the projects and kept the account, which a retry finishes. It is the safe direction, and the run above exercised it.
+
+## Running the Worker locally
+
+From `apps/api`, with `pnpm install` and `pnpm build` done at the root:
+
+1. `cp .dev.vars.example .dev.vars` (local settings, never committed).
+2. `pnpm exec wrangler d1 migrations apply verba --local`
+3. `pnpm worker:dev`, then open http://localhost:8787 and run setup with an address in `VERBA_OPERATORS`.
+
+To try plans locally, point `VERBA_LICENSES_URL` in `.dev.vars` at a stand-in for licenses that answers `GET /v1/entitlements/verba/:accountId`, and set the two other licenses lines. Everything stays in `.wrangler/` in the working copy. `--local` and `wrangler dev` never touch Cloudflare.
 
 ## Risks
 

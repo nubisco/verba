@@ -63,6 +63,16 @@ jobs:
         # wrangler. A schema change without a D1 migration would never reach it.
         run: pnpm --filter @nubisco/verba-api db:d1:check
 
+      - name: Typecheck and bundle the Cloudflare Worker
+        # Hosted Verba's Worker (apps/api/src/worker.ts) is outside the Node
+        # build. A dry run bundles it as a deploy would, offline and without
+        # credentials, so a module that cannot run on Workers fails here.
+        run: |
+          pnpm --filter @nubisco/verba-api types:check
+          pnpm --filter @nubisco/verba-api exec wrangler deploy --dry-run --outdir "$RUNNER_TEMP/verba-worker"
+        env:
+          WRANGLER_SEND_METRICS: 'false'
+
       - name: Verify forbidden EE imports in CE code
         run: |
           # ESLint already enforces this, but a grep backstop catches it even
