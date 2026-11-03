@@ -10,9 +10,11 @@ import { readBody } from './http.js'
 // Per email stops many machines hammering one address (guessing its code from
 // a botnet). The per-code attempt cap in otp.service.ts sits underneath both.
 //
-// In memory, which is right for the single API process Verba runs as. A
-// second process would need a shared store, and so does a Cloudflare Worker
-// (docs/hosting-on-cloudflare.md).
+// In memory on Node, which is right for the single API process the Docker
+// image runs. A Cloudflare Worker runs as many instances, so there each check
+// is Cloudflare's rate limiting binding instead, which only counts per 10 or 60
+// seconds: WORKER_RATE_LIMITS below has its per-minute numbers (decided by
+// Jose, 2026-11-03), and wrangler.toml must match them.
 
 const WINDOW_MS = 15 * 60 * 1000
 
@@ -22,6 +24,33 @@ export const AUTH_LIMITS = {
   passwordLogin: { perIp: 20, perEmail: 10 },
   federatedCallback: { perIp: 30 },
 } as const
+
+/** The checks, one counter each. */
+export type RateCheck =
+  | 'otp-request:ip'
+  | 'otp-request:email'
+  | 'otp-verify:ip'
+  | 'otp-verify:email'
+  | 'login:ip'
+  | 'login:email'
+  | 'federated:ip'
+
+/**
+ * The same checks on a Worker, per minute, each its own `[[ratelimits]]`
+ * binding. They allow more over 15 minutes than AUTH_LIMITS. What stops a
+ * one-time code being guessed is the per-code attempt cap in otp.service.ts,
+ * which is in the database and the same everywhere. Verba's namespace ids are
+ * the 12xx range (Acta uses 11xx, Accord 10xx).
+ */
+export const WORKER_RATE_LIMITS: Record<RateCheck, { binding: string; namespaceId: string; limit: number }> = {
+  'otp-request:ip': { binding: 'VERBA_OTP_REQUEST_IP_LIMITER', namespaceId: '1201', limit: 5 },
+  'otp-request:email': { binding: 'VERBA_OTP_REQUEST_EMAIL_LIMITER', namespaceId: '1202', limit: 2 },
+  'otp-verify:ip': { binding: 'VERBA_OTP_VERIFY_IP_LIMITER', namespaceId: '1203', limit: 10 },
+  'otp-verify:email': { binding: 'VERBA_OTP_VERIFY_EMAIL_LIMITER', namespaceId: '1204', limit: 5 },
+  'login:ip': { binding: 'VERBA_LOGIN_IP_LIMITER', namespaceId: '1205', limit: 5 },
+  'login:email': { binding: 'VERBA_LOGIN_EMAIL_LIMITER', namespaceId: '1206', limit: 3 },
+  'federated:ip': { binding: 'VERBA_FEDERATED_IP_LIMITER', namespaceId: '1207', limit: 10 },
+}
 
 /** Whether one more call fits, and if not, how long until it does. */
 export interface RateLimiter {
@@ -75,19 +104,40 @@ async function emailOf(c: Ctx): Promise<string> {
 }
 
 interface Check {
+  name: RateCheck
   limiter: RateLimiter
   key: (c: Ctx) => string | Promise<string>
 }
 
-function check(max: number, key: (c: Ctx) => string | Promise<string>): Check {
-  return { limiter: new MemoryRateLimiter(max), key }
+/** Where a check's counter lives, when it is not this process (a Worker's bindings). */
+export type RateLimiterSource = (check: RateCheck) => RateLimiter | undefined
+
+/** What a Cloudflare rate limiting binding exposes. */
+export interface RateLimitBinding {
+  limit(options: { key: string }): Promise<{ success: boolean }>
+}
+
+/**
+ * The Worker's limiters, from its `[[ratelimits]]` bindings by name. A check
+ * whose binding is missing falls back to this isolate's own counter, which is
+ * a weaker limit and better than none.
+ */
+export function bindingRateLimiters(env: Record<string, unknown>): RateLimiterSource {
+  return (check) => {
+    const binding = env[WORKER_RATE_LIMITS[check].binding] as RateLimitBinding | undefined
+    if (!binding || typeof binding.limit !== 'function') return undefined
+    return {
+      // The binding says only yes or no, so a refusal asks for the whole minute.
+      limit: async (key) => ({ success: (await binding.limit({ key })).success, retryAfterSeconds: 60 }),
+    }
+  }
 }
 
 /** One middleware that applies several limits, each counted on every request. */
 function limits(...checks: Check[]): MiddlewareHandler<AppEnv> {
   return async (c, next) => {
-    for (const { limiter, key } of checks) {
-      const result = await limiter.limit(await key(c))
+    for (const { name, limiter, key } of checks) {
+      const result = await limiter.limit(`${name}:${await key(c)}`)
       if (!result.success) {
         c.header('retry-after', String(result.retryAfterSeconds))
         return c.json({ error: 'Too many attempts. Wait a few minutes and try again.' }, 429)
@@ -97,16 +147,30 @@ function limits(...checks: Check[]): MiddlewareHandler<AppEnv> {
   }
 }
 
-/** The sign-in limits, with their own counters (one set per app). */
-export function authRateLimits() {
+/**
+ * The sign-in limits, with their own counters (one set per app): in this
+ * process with AUTH_LIMITS, or wherever `source` keeps them.
+ */
+export function authRateLimits(source: RateLimiterSource = () => undefined) {
+  const check = (name: RateCheck, max: number, key: (c: Ctx) => string | Promise<string>): Check => ({
+    name,
+    limiter: source(name) ?? new MemoryRateLimiter(max),
+    key,
+  })
   return {
-    otpRequest: limits(check(AUTH_LIMITS.otpRequest.perIp, clientIp), check(AUTH_LIMITS.otpRequest.perEmail, emailOf)),
-    otpVerify: limits(check(AUTH_LIMITS.otpVerify.perIp, clientIp), check(AUTH_LIMITS.otpVerify.perEmail, emailOf)),
-    passwordLogin: limits(
-      check(AUTH_LIMITS.passwordLogin.perIp, clientIp),
-      check(AUTH_LIMITS.passwordLogin.perEmail, emailOf),
+    otpRequest: limits(
+      check('otp-request:ip', AUTH_LIMITS.otpRequest.perIp, clientIp),
+      check('otp-request:email', AUTH_LIMITS.otpRequest.perEmail, emailOf),
     ),
-    federatedCallback: limits(check(AUTH_LIMITS.federatedCallback.perIp, clientIp)),
+    otpVerify: limits(
+      check('otp-verify:ip', AUTH_LIMITS.otpVerify.perIp, clientIp),
+      check('otp-verify:email', AUTH_LIMITS.otpVerify.perEmail, emailOf),
+    ),
+    passwordLogin: limits(
+      check('login:ip', AUTH_LIMITS.passwordLogin.perIp, clientIp),
+      check('login:email', AUTH_LIMITS.passwordLogin.perEmail, emailOf),
+    ),
+    federatedCallback: limits(check('federated:ip', AUTH_LIMITS.federatedCallback.perIp, clientIp)),
   }
 }
 

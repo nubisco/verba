@@ -1,5 +1,5 @@
 import { prisma } from '../prisma.js'
-import { wsManager } from '../ws/index.js'
+import { live } from '../live.js'
 import * as audit from './audit.service.js'
 import * as notifSvc from './notification.service.js'
 
@@ -67,7 +67,7 @@ export async function addComment(
     entityType: 'translation',
     entityId: translationId,
   })
-  wsManager.broadcast(projectId, {
+  live().broadcast(projectId, {
     type: 'comment.added',
     translationId,
     comment,

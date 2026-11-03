@@ -1,14 +1,27 @@
+// First, so .env is in process.env before any other module reads it.
+import 'dotenv/config'
+import { readFileSync } from 'node:fs'
 import { serve } from '@hono/node-server'
 import { createNodeWebSocket } from '@hono/node-ws'
 import { buildApp } from './app.js'
+import { setPrisma } from './prisma.js'
+import { createNodePrisma } from './prisma-node.js'
 import { loadPlugins } from './plugin-loader.js'
 import { migrateStoredAiKeys } from './services/ai-settings.service.js'
 import { aiEncryptionConfigured } from './services/encryption.service.js'
 
 // The Node server: what the Docker image runs. The app itself (app.ts) knows
 // nothing of Node's HTTP server. Node's WebSockets are added here.
+setPrisma(await createNodePrisma())
+
+const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8')) as {
+  name: string
+  version: string
+}
+
 let injectWebSocket: ReturnType<typeof createNodeWebSocket>['injectWebSocket'] | undefined
 const app = await buildApp({
+  version: { name: pkg.name, version: pkg.version },
   websocket: (api) => {
     const nodeWs = createNodeWebSocket({ app: api })
     injectWebSocket = nodeWs.injectWebSocket

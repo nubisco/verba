@@ -13,7 +13,9 @@
     "db:push": "prisma db push",
     "db:migrate:deploy": "node scripts/migrations.mjs deploy",
     "db:migration:new": "node scripts/migrations.mjs new",
-    "db:migration:check": "node scripts/migrations.mjs check"
+    "db:migration:check": "node scripts/migrations.mjs check",
+    "db:d1:new": "node scripts/d1-migrations.mjs new",
+    "db:d1:check": "node scripts/d1-migrations.mjs check"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.18",
@@ -21,10 +23,9 @@
     "@nubisco/verba-shared": "workspace:*",
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
-    "archiver": "^7.0.1",
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.3.1",
-    "exceljs": "^4.4.0",
+    "fflate": "^0.8.2",
     "hono": "^4.13.16",
     "prisma": "^7.10.1",
     "proxy-addr": "^2.0.7",
@@ -36,7 +37,6 @@
   },
   "devDependencies": {
     "@prisma/adapter-better-sqlite3": "^7.10.1",
-    "@types/archiver": "^7.0.0",
     "@types/bcryptjs": "^3.0.0",
     "@types/node": "^25.5.0",
     "@types/nodemailer": "^7.0.11",

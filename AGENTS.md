@@ -127,6 +127,7 @@ Invalid transitions return HTTP 422. Implemented in `canTransitionStatus()` in `
 - The frontend uses `credentials: 'include'` on every fetch (see `api.ts`).
 - Routes that need auth put the `authenticate` middleware from `src/session.ts` before the handler: `app.get(path, authenticate, async (c) => ...)`.
 - `c.var.user` contains `{ userId, email }` after authentication.
+- Work that may finish after the response (an analytics event, a live update) goes through `defer()` (`src/defer.ts`), and live updates through `live()` (`src/live.ts`), never straight to `wsManager`: on a Worker both are different (docs/hosting-on-cloudflare.md).
 - Handlers return `c.json(...)`, read bodies with `readBody(c)` (`src/http.ts`) and throw `httpError(status, message)` for a refusal. Every POST, PUT and PATCH route gets the read-only guard automatically (`guardEveryWrite`, `src/read-only.ts`).
 
 ## Database
@@ -136,9 +137,9 @@ Invalid transitions return HTTP 422. Implemented in `canTransitionStatus()` in `
 - Prisma enums are stored as **string constants** (not native DB enums) for SQLite compatibility. Types are in `src/types.ts`.
 - **Production (PostgreSQL) applies a reviewed migration history, never `db push`.** `prisma/migrations` holds PostgreSQL SQL, starting from `20261024000000_baseline`. The API image runs `prisma migrate deploy` on every start, and `verba migrate` does the same for a PostgreSQL `.env`. `db push --accept-data-loss` at start-up was removed (VE-77) because a schema change could silently drop customer columns.
 - **Development (SQLite) uses `db push`.** After a schema change: `pnpm db:push` then `pnpm prisma:generate` from `apps/api/`.
-- **Every schema change ships a migration in the same commit.** Start a scratch Postgres, then from `apps/api/`: `SHADOW_DATABASE_URL=postgresql://... pnpm db:migration:new <snake_case_name>`. Read the SQL it writes (it runs unattended in production), and run `pnpm db:migration:check` to confirm the history matches the schema. Never edit a migration that has shipped.
+- **Every schema change ships a migration in the same commit, for PostgreSQL and for D1.** Start a scratch Postgres, then from `apps/api/`: `SHADOW_DATABASE_URL=postgresql://... pnpm db:migration:new <snake_case_name>`, and `pnpm db:d1:new <snake_case_name>` for hosted Verba's D1 history in `prisma/d1` (docs/hosting-on-cloudflare.md). Read the SQL both write (it runs unattended in production), and run `pnpm db:migration:check` and `pnpm db:d1:check` to confirm both histories match the schema. Never edit a migration that has shipped.
 - A database created by the old `db push` start-up has no history. It is baselined once by hand (`prisma migrate resolve --applied 20261024000000_baseline`) before the first image with `migrate deploy` runs against it. See docs/self-hosting.md, "Moving an existing database onto migrations".
-- Prisma 7: `prisma generate` writes the client to `apps/api/src/generated/prisma` (gitignored, compiled into `dist`). Import it only through `src/prisma.ts`, which picks the driver adapter from `DATABASE_URL` (`@prisma/adapter-pg` for Postgres, `@prisma/adapter-better-sqlite3` for `file:` URLs). The CLI reads the connection from `apps/api/prisma.config.ts`, not from the schema.
+- Prisma 7: `prisma generate` writes the client to `apps/api/src/generated/prisma` (gitignored, compiled into `dist`). Services import `prisma` only from `src/prisma.ts`, which holds whichever client the entry point set. The Node entry creates it with `src/prisma-node.ts`, which picks the driver adapter from `DATABASE_URL` (`@prisma/adapter-pg` for Postgres, `@prisma/adapter-better-sqlite3` for `file:` URLs). Never import a driver anywhere else: a Worker bundle must not carry one. The CLI reads the connection from `apps/api/prisma.config.ts`, not from the schema.
 
 ## Frontend Conventions
 

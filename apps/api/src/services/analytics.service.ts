@@ -8,6 +8,8 @@
 //   ANALYTICS_DOMAIN       domain registered in analytics (e.g. verba.nubisco.io)
 //   ANALYTICS_PROPERTY_ID  optional, takes precedence over ANALYTICS_DOMAIN
 
+import { defer } from '../defer.js'
+
 const APP_ID = 'verba'
 const SYNTHETIC_HOST = 'https://verba.nubisco.io'
 
@@ -48,15 +50,18 @@ export function track(eventName: string, opts: TrackOptions): void {
   else if (cfg.domain) payload.domain = cfg.domain
 
   // Intentionally not awaited. We don't want analytics latency or failure to
-  // affect API response times. Errors are logged but never re-raised.
-  void fetch(cfg.url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${cfg.token}`,
-    },
-    body: JSON.stringify(payload),
-  }).catch((err) => {
-    console.warn(`[analytics] ${eventName} dispatch failed:`, err?.message ?? err)
-  })
+  // affect API response times. Errors are logged but never re-raised. Deferred,
+  // so a Worker keeps it alive past the response (defer.ts).
+  defer(
+    fetch(cfg.url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${cfg.token}`,
+      },
+      body: JSON.stringify(payload),
+    }).catch((err) => {
+      console.warn(`[analytics] ${eventName} dispatch failed:`, err?.message ?? err)
+    }),
+  )
 }

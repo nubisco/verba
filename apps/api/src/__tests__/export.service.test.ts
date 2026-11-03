@@ -11,8 +11,10 @@ vi.mock('../prisma.js', () => ({
   },
 }))
 
+import { unzipSync, strFromU8 } from 'fflate'
+import * as XLSX from 'xlsx'
 import { prisma } from '../prisma.js'
-import { exportLocale } from '../services/export.service.js'
+import { exportLocale, exportTranslations } from '../services/export.service.js'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -226,5 +228,45 @@ describe('exportLocale', () => {
         where: expect.objectContaining({ status: 'APPROVED' }),
       }),
     )
+  })
+})
+
+// The files are built with SheetJS and fflate, which run on Node and on a
+// Worker alike, so read them back with the same libraries.
+describe('exportTranslations files', () => {
+  const rows = [
+    { text: 'Hello', status: 'APPROVED', key: { name: 'title', namespace: { slug: 'app' } }, locale: { code: 'en' } },
+    { text: 'Olá', status: 'TODO', key: { name: 'title', namespace: { slug: 'app' } }, locale: { code: 'pt-PT' } },
+    { text: 'Bye', status: 'APPROVED', key: { name: 'bye', namespace: { slug: 'app' } }, locale: { code: 'en' } },
+  ]
+
+  beforeEach(() => {
+    vi.mocked(prisma.translation.findMany).mockResolvedValue(rows as never)
+  })
+
+  it('writes one XLSX sheet per locale', async () => {
+    const result = await exportTranslations('p1', { format: 'xlsx' })
+    expect(result.filename).toBe('translations.xlsx')
+    const book = XLSX.read(result.data, { type: 'buffer' })
+    expect(book.SheetNames).toEqual(['en', 'pt-PT'])
+    expect(XLSX.utils.sheet_to_json(book.Sheets['en'], { header: 1 })).toEqual([
+      ['namespace', 'key', 'text', 'status'],
+      ['app', 'title', 'Hello', 'APPROVED'],
+      ['app', 'bye', 'Bye', 'APPROVED'],
+    ])
+  })
+
+  it('writes a workbook even when nothing matches', async () => {
+    vi.mocked(prisma.translation.findMany).mockResolvedValue([])
+    const result = await exportTranslations('p1', { format: 'xlsx' })
+    expect(XLSX.read(result.data, { type: 'buffer' }).SheetNames).toEqual(['translations'])
+  })
+
+  it('zips one JSON file per locale and namespace, keys sorted', async () => {
+    const result = await exportTranslations('p1', { format: 'json', splitByNamespace: true })
+    expect(result.contentType).toBe('application/zip')
+    const files = unzipSync(new Uint8Array(result.data as Buffer))
+    expect(Object.keys(files).sort()).toEqual(['en/app.json', 'pt-PT/app.json'])
+    expect(strFromU8(files['en/app.json'])).toBe(JSON.stringify({ bye: 'Bye', title: 'Hello' }, null, 2))
   })
 })
