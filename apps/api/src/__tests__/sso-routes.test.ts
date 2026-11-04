@@ -202,6 +202,45 @@ describe('federated sign-in routes', () => {
 
     expect(res.headers.location).toBe(`${WEB}/login?error=not_a_member`)
     expect(cookiesOf(res).token).toBeUndefined()
+    // The address travels in an httpOnly cookie, never in the URL.
+    expect(res.headers.location).not.toContain('stranger')
+    const refused = (res.headers['set-cookie'] as string[]).find((c) => c.startsWith('verba_sso_refused='))
+    expect(refused).toContain('HttpOnly')
+    expect(refused).toContain('Max-Age=120')
+  })
+
+  it('hands the refused address to the sign-in page once, then forgets it', async () => {
+    ssoRuntimeFromEnv.mockReturnValue(handoverRuntime(async () => ({ sub: 'p-2', email: 'stranger@example.com' })))
+    vi.mocked(platformAuthService.upsertUserFromClaims).mockResolvedValue(null)
+
+    const app = await buildApp()
+    const callback = await inject(app, {
+      method: 'GET',
+      url: '/auth/sso/callback?token=tok&state=st',
+      cookies: { verba_sso_state: 'st' },
+    })
+    const cookie = callback.cookies.find((c) => c.name === 'verba_sso_refused')!
+
+    const read = await inject(app, {
+      method: 'GET',
+      url: '/auth/sso/refused',
+      cookies: { verba_sso_refused: cookie.value },
+    })
+    expect(read.json()).toEqual({ email: 'stranger@example.com' })
+    expect((read.headers['set-cookie'] as string | string[]).toString()).toContain('verba_sso_refused=;')
+
+    const again = await inject(app, { method: 'GET', url: '/auth/sso/refused' })
+    expect(again.json()).toEqual({ email: null })
+  })
+
+  it('ignores a refusal cookie that is not an address', async () => {
+    const app = await buildApp()
+    const read = await inject(app, {
+      method: 'GET',
+      url: '/auth/sso/refused',
+      cookies: { verba_sso_refused: '<script>' },
+    })
+    expect(read.json()).toEqual({ email: null })
   })
 
   it('tells someone new that sign-up is closed, and starts no session', async () => {
@@ -219,6 +258,7 @@ describe('federated sign-in routes', () => {
 
     expect(res.headers.location).toBe(`${WEB}/login?error=signup_closed`)
     expect(cookiesOf(res).token).toBeUndefined()
+    expect(decodeURIComponent(cookiesOf(res).verba_sso_refused)).toBe('new@example.com')
   })
 
   it('advertises the provider and its name on the public config', async () => {

@@ -6,10 +6,39 @@
         <span v-if="platformOnly" class="auth-logo-name">Verba</span>
       </div>
 
+      <!-- The provider signed someone in and Verba turned them away. Name the
+           identity it sent, say why once, and make switching the main action:
+           signing in again without a prompt replays the same identity. -->
+      <template v-if="platformOnly && refusal">
+        <p v-if="refusal.email" class="subtitle refused-identity">
+          {{ t('auth.login.refused.signedInAs', { provider: ssoLabel }) }}
+          <strong>{{ refusal.email }}</strong>
+        </p>
+        <p class="error">{{ refusalReason }}</p>
+        <NbButton
+          variant="primary"
+          size="lg"
+          class="platform-btn"
+          :disabled="loading || auth.loading"
+          @click="startSignIn({ prompt: 'select_account' })"
+        >
+          {{ t('auth.login.refused.useAnotherAccount') }}
+        </NbButton>
+        <p class="toggle">
+          <NbButton
+            type="button"
+            variant="link"
+            :disabled="loading || auth.loading"
+            @click="startSignIn({ prompt: 'login' })"
+          >
+            {{ t('auth.login.refused.addAnotherAccount') }}
+          </NbButton>
+        </p>
+      </template>
+
       <!-- Platform-only login (like Analytics) -->
-      <template v-if="platformOnly">
+      <template v-else-if="platformOnly">
         <p class="subtitle">Sign in to continue.</p>
-        <p v-if="!instanceConfig.signup.open" class="closed-note">{{ SIGNUP_CLOSED_NOTE }}</p>
         <p v-if="error" class="error">{{ error }}</p>
         <NbButton
           variant="primary"
@@ -113,7 +142,7 @@
             <TermsConsent v-model="termsAccepted" :terms="termsAsked" />
           </div>
 
-          <p v-if="error" class="error">{{ error }}</p>
+          <p v-if="error || refusal" class="error">{{ error || refusalReason }}</p>
 
           <NbButton
             variant="primary"
@@ -199,6 +228,18 @@ const termsAsked = computed<TermsConfig | null>(() => {
   return null
 })
 const acceptedVersion = computed(() => (termsAccepted.value ? termsAsked.value?.version : undefined))
+/**
+ * A sign-in the provider vouched for and Verba refused. `email` is the
+ * identity the provider sent, when the server could tell: in the callback's
+ * answer on the browser flow, or read once from GET /auth/sso/refused on the
+ * server flow. Never from the address bar.
+ */
+type RefusalCode = 'signup_closed' | 'not_a_member'
+const REFUSAL_CODES: readonly string[] = ['signup_closed', 'not_a_member']
+const refusal = ref<{ code: RefusalCode; email: string | null } | null>(null)
+const refusalReason = computed(() =>
+  refusal.value?.code === 'signup_closed' ? t('auth.login.refused.signupClosed') : t('auth.login.refused.notAMember'),
+)
 const email = ref('')
 const password = ref('')
 const otpCode = ref('')
@@ -360,19 +401,20 @@ async function handlePlatformCallback() {
   const platformError = route.query.error
 
   if (typeof platformError === 'string') {
+    clearPlatformCallbackQuery()
+    if (REFUSAL_CODES.includes(platformError)) {
+      refusal.value = { code: platformError as RefusalCode, email: await readRefusedEmail() }
+      return
+    }
     // The server never says which half of a check failed, because telling an
     // attacker that is telling them how to pass it. These are the codes it
     // does emit, turned into something a person can act on.
     const messages: Record<string, string> = {
-      not_a_member: 'That account cannot sign in to this instance',
       sso_state: 'The sign-in attempt expired; try again',
       sso_token: 'Single sign-on failed; try again',
       sso_discovery: 'The identity provider could not be reached; try again shortly',
-      signup_closed:
-        'This Verba instance is not open for new accounts yet. If you already have an account, sign in with the address it uses.',
     }
     error.value = messages[platformError] ?? `Sign-in failed: ${platformError}`
-    clearPlatformCallbackQuery()
     return
   }
 
@@ -400,10 +442,25 @@ async function handlePlatformCallback() {
     sessionStorage.removeItem(PLATFORM_REDIRECT_KEY)
     await router.replace(nextRedirect)
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Platform login failed'
+    if (e instanceof ApiError && e.code && REFUSAL_CODES.includes(e.code)) {
+      const refused = e.body?.email
+      refusal.value = { code: e.code as RefusalCode, email: typeof refused === 'string' ? refused : null }
+    } else {
+      error.value = e instanceof Error ? e.message : 'Platform login failed'
+    }
     clearPlatformCallbackQuery()
   } finally {
     loading.value = false
+  }
+}
+
+/** The identity a server-flow refusal named, read once (the API clears it). */
+async function readRefusedEmail(): Promise<string | null> {
+  try {
+    const { email } = await apiFetch<{ email: string | null }>('/auth/sso/refused')
+    return email
+  } catch {
+    return null
   }
 }
 
@@ -525,6 +582,14 @@ function clearPlatformCallbackQuery() {
     font-size: 0.78rem;
     color: var(--nb-c-text-subtle);
     margin: 0.25rem 0 0;
+  }
+}
+
+.refused-identity {
+  overflow-wrap: anywhere;
+
+  strong {
+    color: var(--nb-c-text);
   }
 }
 

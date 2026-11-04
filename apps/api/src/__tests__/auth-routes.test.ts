@@ -407,6 +407,28 @@ describe('auth and setup routes', () => {
     expect(me.json()).toMatchObject({ platformSub: 'u-jose' })
   })
 
+  // The browser posted the token that carries this address, so the answer
+  // may name it back: the page shows who the provider signed them in as.
+  it('names the refused identity in the callback answer, and starts no session', async () => {
+    vi.mocked(platformAuthService.isPlatformAuthEnabled).mockReturnValueOnce(true)
+    vi.mocked(platformAuthService.verifyPlatformToken).mockRejectedValueOnce(
+      Object.assign(new Error('closed'), {
+        statusCode: 403,
+        details: { code: 'signup_closed', email: 'other@example.com' },
+      }),
+    )
+
+    const app = await buildApp()
+    const res = await inject(app, {
+      method: 'POST',
+      url: '/auth/platform/callback',
+      payload: { token: 'platform-jwt' },
+    })
+    expect(res.statusCode).toBe(403)
+    expect(res.json()).toMatchObject({ code: 'signup_closed', email: 'other@example.com' })
+    expect(res.cookies.some((cookie) => cookie.name === 'token')).toBe(false)
+  })
+
   describe('rate limits on the sign-in doors', () => {
     it('stops OTP requests for one address after the per-email limit', async () => {
       const app = await buildApp()
