@@ -301,7 +301,7 @@ describe('auth and setup routes', () => {
     })
 
     expect(res.statusCode).toBe(201)
-    expect(vi.mocked(authService.createOtpOnlyUser)).toHaveBeenCalledWith('admin@example.com')
+    expect(vi.mocked(authService.createOtpOnlyUser)).toHaveBeenCalledWith('admin@example.com', { skipTerms: true })
     // The operator owns the instance's first account, so the first project has a home.
     expect(vi.mocked(accountService.createOwnedAccount)).toHaveBeenCalledWith('u1', { name: 'My account' })
     expect(res.cookies.some((cookie) => cookie.name === 'token')).toBe(true)

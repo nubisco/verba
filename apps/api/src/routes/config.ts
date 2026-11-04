@@ -1,7 +1,8 @@
 import type { Api } from '../http.js'
 import { getPublicInstanceConfig } from '../services/instance-config.service.js'
 import { getSsoPublicConfig } from '../services/sso.service.js'
-import { hostedBillingEnabled } from '../services/billing.service.js'
+import { hostedBillingEnabled, hostedCheckoutOpen, hostedSalesUrl } from '../services/billing.service.js'
+import { signupOpen, termsConfig } from '../services/signup.service.js'
 
 /**
  * Public instance configuration endpoint.
@@ -18,6 +19,17 @@ export function configRoutes(app: Api) {
     // Hosted billing is EE and switched on by configuration, so it is
     // resolved here for the same reason as SSO.
     const billing = await hostedBillingEnabled()
-    return c.json({ ...config, features: { ...config.features, billing }, auth: { ...config.auth, sso } })
+    // Checkout is a separate switch (VERBA_CHECKOUT_OPEN): with billing on and
+    // checkout off, limits apply and the plan shows, but nothing offers to buy.
+    const checkout = billing && (await hostedCheckoutOpen())
+    return c.json({
+      ...config,
+      features: { ...config.features, billing, checkout },
+      auth: { ...config.auth, sso },
+      // Whether a new address may create an account, and the terms it accepts
+      // (signup.service.ts). Read before sign-in, so the page can show both.
+      signup: { open: signupOpen(), terms: termsConfig() },
+      salesUrl: billing ? await hostedSalesUrl() : null,
+    })
   })
 }

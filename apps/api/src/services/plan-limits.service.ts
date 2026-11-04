@@ -44,11 +44,27 @@ function count(n: number, resource: LimitedResource): string {
   return `${n.toLocaleString('en')} ${n === 1 ? one : many}`
 }
 
-/** The words of the refusal, the same wherever it is shown. */
-export function planLimitMessage(resource: LimitedResource, limit: number, current: number, adding: number): string {
+/**
+ * The words of the refusal, the same wherever it is shown. While checkout is
+ * closed (VERBA_CHECKOUT_OPEN) they point at sales, never at an upgrade
+ * nobody can buy.
+ */
+export function planLimitMessage(
+  resource: LimitedResource,
+  limit: number,
+  current: number,
+  adding: number,
+  checkout = true,
+): string {
   const has = `This account's plan allows ${count(limit, resource)}, and it has ${current.toLocaleString('en')}.`
   const would = adding > 1 ? ` This would add ${adding.toLocaleString('en')} more.` : ''
-  return `${has}${would} Upgrade the plan to add more.`
+  return `${has}${would} ${checkout ? 'Upgrade the plan to add more.' : 'Contact sales to raise the limit.'}`
+}
+
+/** Whether accounts may buy a plan here, from the EE plans config (VERBA_CHECKOUT_OPEN). */
+async function checkoutOpen(): Promise<boolean> {
+  const ee = await loadEE()
+  return Boolean(typeof ee?.plansConfig === 'function' && ee.plansConfig()?.checkoutOpen)
 }
 
 /** The account's limits when hosted plans are on, else null (nothing to enforce). */
@@ -93,7 +109,10 @@ export async function assertWithinLimit(accountId: string, resource: LimitedReso
   const current = await currentCount(accountId, resource)
   if (current + adding <= limit) return
   const details: PlanLimitDetail = { code: 'plan_limit', resource, limit, current, adding }
-  throw Object.assign(new Error(planLimitMessage(resource, limit, current, adding)), { statusCode: 402, details })
+  throw Object.assign(new Error(planLimitMessage(resource, limit, current, adding, await checkoutOpen())), {
+    statusCode: 402,
+    details,
+  })
 }
 
 /** The same check for a project's account. */
@@ -174,8 +193,11 @@ export function overLimitSummary(over: OverLimit[]): string {
   return `It has ${has}, and the plan allows ${allows}.`
 }
 
-export function readOnlyMessage(over: OverLimit[]): string {
-  return `This account is read-only. ${overLimitSummary(over)} Nothing was deleted, and everyone can still read and export. Delete some, or upgrade the plan, to make changes again.`
+export function readOnlyMessage(over: OverLimit[], checkout = true): string {
+  const way = checkout
+    ? 'Delete some, or upgrade the plan, to make changes again.'
+    : 'Delete some to make changes again, or contact sales to raise the limits.'
+  return `This account is read-only. ${overLimitSummary(over)} Nothing was deleted, and everyone can still read and export. ${way}`
 }
 
 /** Refuses a write in an account that is over its plan. */
@@ -184,7 +206,7 @@ export async function assertWritable(accountId: string): Promise<void> {
   const over = await overLimits(accountId)
   if (over.length === 0) return
   const first = over[0]!
-  throw Object.assign(new Error(readOnlyMessage(over)), {
+  throw Object.assign(new Error(readOnlyMessage(over, await checkoutOpen())), {
     statusCode: 402,
     details: {
       code: 'plan_limit',

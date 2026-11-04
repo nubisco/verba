@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { apiFetch } from '../api'
+import type { TermsConfig } from './instanceConfig'
 import router from '../router'
 import { identifyUser, resetUser, trackEvent } from '../composables/useAnalytics'
 
@@ -19,6 +20,9 @@ interface User {
   platformSub?: string | null
   // A Platform admin of this app or an instance operator: may create accounts.
   canCreateAccounts?: boolean
+  // The terms this instance asks for, and whether this person accepted the
+  // current version. Null on an instance without terms.
+  terms?: (TermsConfig & { accepted: boolean }) | null
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -54,12 +58,12 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function register(email: string, password: string) {
+  async function register(email: string, password: string, termsVersion?: string) {
     loading.value = true
     try {
       const me = await apiFetch<User>('/auth/register', {
         method: 'POST',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, termsVersion }),
       })
       user.value = me
       identifyUser(me.id)
@@ -67,6 +71,14 @@ export const useAuthStore = defineStore('auth', () => {
     } finally {
       loading.value = false
     }
+  }
+
+  /** Accept the current terms. The API reissues the session with them. */
+  async function acceptTerms(version: string) {
+    user.value = await apiFetch<User>('/auth/me/terms', {
+      method: 'POST',
+      body: JSON.stringify({ version }),
+    })
   }
 
   async function logout() {
@@ -82,5 +94,5 @@ export const useAuthStore = defineStore('auth', () => {
     router.push('/login')
   }
 
-  return { user, loading, fetchMe, login, register, logout }
+  return { user, loading, fetchMe, login, register, acceptTerms, logout }
 })

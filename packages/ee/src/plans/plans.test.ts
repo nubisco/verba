@@ -26,6 +26,7 @@ const ENV = {
   VERBA_LICENSES_URL: LICENSES,
   VERBA_LICENSES_SERVICE_TOKEN: 'svc-token',
   VERBA_ENTITLEMENT_WEBHOOK_SECRET: HOOK_SECRET,
+  VERBA_CHECKOUT_OPEN: 'true',
 }
 const ACCOUNT = 'acc_1'
 
@@ -523,6 +524,35 @@ describe('the billing routes', () => {
       payload: { billing: 'monthly' },
     })
     expect(res.statusCode).toBe(502)
+  })
+
+  it('refuses a checkout unless VERBA_CHECKOUT_OPEN is "true", and never asks licenses', async () => {
+    for (const value of [undefined, 'false', '']) {
+      app = await buildApp({ ...ENV, VERBA_CHECKOUT_OPEN: value, VERBA_SALES_URL: 'https://sales.test' })
+      const res = await app.inject({
+        method: 'POST',
+        url: `/accounts/${ACCOUNT}/billing/checkout`,
+        headers: as('admin'),
+        payload: { billing: 'monthly' },
+      })
+      expect(res.statusCode).toBe(403)
+      expect(res.json()).toMatchObject({ code: 'checkout_closed', salesUrl: 'https://sales.test' })
+    }
+    expect(calls.filter((c) => c.path === '/v1/billing/checkout')).toHaveLength(0)
+  })
+
+  it('still shows the plan and opens the portal while checkout is closed', async () => {
+    app = await buildApp({ ...ENV, VERBA_CHECKOUT_OPEN: undefined })
+    entitlements.set(ACCOUNT, pro())
+    const page = await app.inject({ method: 'GET', url: `/accounts/${ACCOUNT}/billing`, headers: as('admin') })
+    expect(page.statusCode).toBe(200)
+    expect(page.json()).toMatchObject({ plan: 'pro', checkoutOpen: false })
+    const portal = await app.inject({
+      method: 'POST',
+      url: `/accounts/${ACCOUNT}/billing/portal`,
+      headers: as('admin'),
+    })
+    expect(portal.statusCode).toBe(200)
   })
 
   it('opens the customer portal through licenses', async () => {

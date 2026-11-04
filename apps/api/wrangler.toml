@@ -74,6 +74,19 @@ ENABLE_EE = "true"
 # VERBA_ENTITLEMENT_WEBHOOK_SECRET are set too (docs/plans-and-billing.md).
 VERBA_LICENSES_URL = "https://licenses.nubisco.io"
 VERBA_SALES_URL = "https://nubisco.io/contact?product=verba&need=pre-sales"
+# No checkout until the terms and pricing are published: limits and the
+# read-only rules still apply, the billing page shows the plan, and nothing
+# offers to buy (docs/plans-and-billing.md, "Switching it on").
+VERBA_CHECKOUT_OPEN = "false"
+# Sign-up is closed until Verba's terms are published, as Acta's was (LA-402).
+# People who already have an account sign in as usual, and VERBA_OPERATORS
+# addresses always can. Set the three terms variables below and then
+# VERBA_SIGNUP_OPEN = "true" once nubisco.io/products/verba/terms and /privacy
+# are live. A new VERBA_TERMS_VERSION asks everyone to accept again.
+VERBA_SIGNUP_OPEN = "false"
+# VERBA_TERMS_VERSION = "<date of the published terms>"
+# VERBA_TERMS_URL = "https://nubisco.io/products/verba/terms"
+# VERBA_PRIVACY_URL = "https://nubisco.io/products/verba/privacy"
 # Sign-in codes come from auth@, kept apart from notification volume
 # (AGENTS.md, "Transactional email"). Sent through Resend (RESEND_API_KEY).
 MAIL_FROM = "Verba <auth@nubisco.io>"

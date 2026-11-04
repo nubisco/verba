@@ -50,7 +50,10 @@
         </ul>
       </NbPanel>
 
-      <NbPanel v-if="state.plan === 'free' && state.source !== 'override'" class="billing__section">
+      <NbPanel
+        v-if="state.plan === 'free' && state.source !== 'override' && state.checkoutOpen"
+        class="billing__section"
+      >
         <header>
           <h3 class="type-heading-01">Upgrade to Pro</h3>
           <p class="billing__lede">
@@ -65,6 +68,12 @@
           </div>
         </div>
       </NbPanel>
+      <!-- Checkout closed (VERBA_CHECKOUT_OPEN): the plan and its limits as
+           above, and no way to buy yet. -->
+      <p v-else-if="state.plan === 'free' && state.source !== 'override'" class="billing__lede">
+        Upgrading is not open yet.
+        <template v-if="state.salesUrl">To raise the limits sooner, contact sales.</template>
+      </p>
     </template>
   </div>
 </template>
@@ -92,6 +101,8 @@ interface BillingState {
   limits: Record<string, number | null>
   usage: Record<string, number>
   salesUrl: string | null
+  /** Whether the upgrade is offered (VERBA_CHECKOUT_OPEN). Absent means it is not. */
+  checkoutOpen?: boolean
   /** Pro's limits, account totals. Null is unlimited. */
   proLimits: Record<'projects' | 'members' | 'keys' | 'locales', number | null>
 }
@@ -153,7 +164,9 @@ const planLede = computed(() => {
   if (!s) return ''
   if (s.source === 'override') return 'This account is on an agreement with Nubisco. Contact sales to change it.'
   if (s.plan === 'free')
-    return 'Every feature, within the limits below. Nothing is deleted when a limit is reached: you are asked to upgrade before adding more.'
+    return s.checkoutOpen
+      ? 'Every feature, within the limits below. Nothing is deleted when a limit is reached: you are asked to upgrade before adding more.'
+      : 'Every feature, within the limits below. Nothing is deleted when a limit is reached.'
   const billed = `Billed ${s.subscription?.billing ?? 'monthly'}.`
   const renews = s.subscription?.current_period_end
   return renews && !s.subscription?.ends_at ? `${billed} Renews on ${day(renews)}.` : billed

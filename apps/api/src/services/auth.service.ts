@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs'
 import { prisma } from '../prisma.js'
 import { isOperatorEmail, recordInstanceAudit } from './operator.service.js'
+import { assertSignupAllowed, termsForNewAccount, termsStatus } from './signup.service.js'
 
 function unauthorized(): never {
   throw Object.assign(new Error('Invalid email or password'), {
@@ -12,22 +13,38 @@ function notFound(): never {
   throw Object.assign(new Error('User not found'), { statusCode: 404 })
 }
 
-export async function register(email: string, password: string) {
-  const existing = await prisma.user.findUnique({ where: { email } })
-  if (existing) throw Object.assign(new Error('Email already in use'), { statusCode: 409 })
-  return createLocalUser(email, await bcrypt.hash(password, 10))
+/** What a new account brings about the terms: the version the person ticked, if any. */
+export interface NewAccountOptions {
+  name?: string | null
+  termsVersion?: string | null
+  /**
+   * First-run setup creates the operator's own account. The operator is who
+   * publishes the terms, so setup does not ask, and the terms step follows at
+   * the first page like for anyone who has not accepted the current version.
+   */
+  skipTerms?: boolean
 }
 
-export async function createOtpOnlyUser(email: string, name?: string | null) {
+export async function register(email: string, password: string, opts: NewAccountOptions = {}) {
   const existing = await prisma.user.findUnique({ where: { email } })
   if (existing) throw Object.assign(new Error('Email already in use'), { statusCode: 409 })
-  return createLocalUser(email, '', name)
+  return createLocalUser(email, await bcrypt.hash(password, 10), opts)
 }
 
-async function createLocalUser(email: string, passwordHash: string, name?: string | null) {
+export async function createOtpOnlyUser(email: string, opts: NewAccountOptions = {}) {
+  const existing = await prisma.user.findUnique({ where: { email } })
+  if (existing) throw Object.assign(new Error('Email already in use'), { statusCode: 409 })
+  return createLocalUser(email, '', opts)
+}
+
+async function createLocalUser(email: string, passwordHash: string, opts: NewAccountOptions) {
+  // Every local account starts here, so this is where a closed instance and
+  // its terms are checked (signup.service.ts).
+  assertSignupAllowed(email)
+  const terms = opts.skipTerms ? {} : termsForNewAccount(opts.termsVersion)
   // Nobody becomes an operator by arriving first: see operator.service.ts.
   const user = await prisma.user.create({
-    data: { email, passwordHash, name: name ?? undefined, isGlobalAdmin: false },
+    data: { email, passwordHash, name: opts.name ?? undefined, isGlobalAdmin: false, ...terms },
     select: { id: true, email: true, isGlobalAdmin: true, createdAt: true },
   })
   return user
@@ -132,6 +149,9 @@ export async function getMe(userId: string) {
     avatarUrl: user.avatarUrl ?? null,
     // Whether the web app offers "New account" (account.service.ts).
     canCreateAccounts: user.platformRole === 'admin' || isOperatorEmail(user.email),
+    // The terms this instance asks for and whether this person accepted the
+    // current version. Null on an instance without terms.
+    terms: termsStatus(user.termsVersion),
   }
 }
 

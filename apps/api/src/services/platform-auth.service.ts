@@ -1,4 +1,5 @@
 import { prisma } from '../prisma.js'
+import { assertSignupAllowed } from './signup.service.js'
 
 // ── Inline RS256/JWKS verification (no external deps) ────────────────────────
 
@@ -146,7 +147,9 @@ export interface ResolvedIdentity {
  * provider happened to be wired.
  *
  * `autoProvision: false` means users must exist in Verba first, and someone
- * unknown gets null rather than an account.
+ * unknown gets null rather than an account. An instance closed to new
+ * accounts (VERBA_SIGNUP_OPEN=false) throws 403 `signup_closed` for someone
+ * unknown instead, so the sign-in page can say why.
  */
 export async function upsertUserFromClaims(
   claims: {
@@ -189,6 +192,10 @@ export async function upsertUserFromClaims(
   }
 
   if (opts.autoProvision === false) return null
+  // Provisioning is a sign-up, so a closed instance refuses it (403
+  // `signup_closed`) and the person is told why. Terms are not asked here:
+  // the provider's page is not ours, so the first page after sign-in asks.
+  assertSignupAllowed(email)
 
   // Nobody becomes an operator by arriving first: see operator.service.ts.
   const user = await prisma.user.create({

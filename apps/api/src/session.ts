@@ -4,6 +4,7 @@ import { sign, verify } from 'hono/jwt'
 import type { AppEnv, Ctx, SessionUser } from './http.js'
 import { prisma } from './prisma.js'
 import { syncOperatorFlag } from './services/operator.service.js'
+import { acceptedTermsVersion, termsConfig } from './services/signup.service.js'
 
 // The session is a signed JWT (HS256) in an httpOnly cookie named `token`.
 //
@@ -65,6 +66,8 @@ export interface SessionClaims {
   email: string
   plan?: string
   platformSub?: string
+  /** The terms version this person had accepted when the session was issued. */
+  terms?: string
 }
 
 /** Sign session claims. `ttlSeconds` false signs a token with no expiry (tests of legacy tokens only). */
@@ -72,6 +75,7 @@ export async function signSession(claims: SessionClaims, ttlSeconds: number | fa
   const payload: Record<string, unknown> = { userId: claims.userId, email: claims.email }
   if (claims.plan !== undefined) payload.plan = claims.plan
   if (claims.platformSub !== undefined) payload.platformSub = claims.platformSub
+  if (claims.terms !== undefined) payload.terms = claims.terms
   const iat = Math.floor(Date.now() / 1000)
   payload.iat = iat
   if (ttlSeconds !== false) payload.exp = iat + ttlSeconds
@@ -108,7 +112,22 @@ export async function issueSession(c: Ctx, claims: SessionClaims): Promise<strin
  */
 export async function startSession(c: Ctx, claims: SessionClaims): Promise<void> {
   await syncOperatorFlag(claims.userId)
+  // The accepted terms ride in the session, so the gate in `authenticate`
+  // costs no query. Read only on an instance that has terms.
+  if (termsConfig()) {
+    const accepted = await acceptedTermsVersion(claims.userId)
+    claims = { ...claims, terms: accepted ?? undefined }
+  }
   await issueSession(c, claims)
+}
+
+/**
+ * Routes a person who has not accepted the current terms may still use:
+ * everything under /auth (who they are, accepting, signing out, deleting
+ * their own account). The Worker serves the same app under /api.
+ */
+function termsExempt(path: string): boolean {
+  return /^(\/api)?\/auth(\/|$)/.test(path)
 }
 
 /** Clear a cookie with Max-Age=0 and an Expires in the past, as @fastify/cookie did. */
@@ -129,6 +148,16 @@ export const authenticate: MiddlewareHandler<AppEnv> = async (c, next) => {
   const user = token ? await verifySession(token) : null
   if (!user) return c.json({ error: 'Unauthorized' }, 401)
   c.set('user', user)
+
+  // A new VERBA_TERMS_VERSION, or a session from before this person accepted
+  // any: nothing but the /auth routes until they accept (signup.service.ts).
+  const terms = termsConfig()
+  if (terms && user.terms !== terms.version && !termsExempt(c.req.path)) {
+    return c.json(
+      { error: 'Accept the terms of service and the privacy notice to continue', code: 'terms_required', terms },
+      403,
+    )
+  }
 
   const age = Math.floor(Date.now() / 1000) - (user.iat ?? 0)
   if (age >= sessionRefreshAfterSeconds()) {

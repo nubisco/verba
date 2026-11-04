@@ -8,6 +8,22 @@ export const API_BASE = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? 
 
 const BASE = API_BASE
 
+/** A refusal from the API, with its status and body for a caller that acts on `code`. */
+export class ApiError extends Error {
+  readonly status: number
+  readonly body: Record<string, unknown> | null
+
+  constructor(message: string, status: number, body: Record<string, unknown> | null) {
+    super(message)
+    this.status = status
+    this.body = body
+  }
+
+  get code(): string | undefined {
+    return typeof this.body?.code === 'string' ? this.body.code : undefined
+  }
+}
+
 export async function apiFetch<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {
   const isGet = !options.method || options.method.toUpperCase() === 'GET'
   const headers: Record<string, string> = {
@@ -35,8 +51,13 @@ export async function apiFetch<T = unknown>(path: string, options: RequestInit =
 
   const data = await res.json()
   notePlanLimit(res.status, data)
+  // The terms changed, or this person never accepted them: the API refuses
+  // everything but /auth until they do, and this page asks.
+  if (res.status === 403 && data?.code === 'terms_required' && router.currentRoute.value.name !== 'accept-terms') {
+    void router.push({ name: 'accept-terms', query: { redirect: router.currentRoute.value.fullPath } })
+  }
   if (!res.ok) {
-    throw new Error(data?.error ?? data?.message ?? 'Request failed')
+    throw new ApiError(data?.error ?? data?.message ?? 'Request failed', res.status, data)
   }
   if (!isGet) noteWrite()
   return data as T

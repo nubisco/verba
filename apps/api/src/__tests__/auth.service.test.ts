@@ -33,6 +33,8 @@ const mockUser = {
   notificationOpenMode: 'inspector',
   avatarUrl: null,
   platformRole: null,
+  termsVersion: null,
+  termsAcceptedAt: null,
 }
 
 beforeEach(() => {

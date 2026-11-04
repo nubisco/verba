@@ -32,6 +32,7 @@ import { buildApp } from '../app.js'
 import { inject, signToken } from './inject.js'
 import { prisma } from '../prisma.js'
 import { readOnlyGuardFor } from '../read-only.js'
+import { readOnlyMessage } from '../services/plan-limits.service.js'
 
 const ACCOUNT = { id: 'acc1', name: 'Example', slug: 'example', createdAt: new Date() }
 
@@ -94,8 +95,12 @@ describe('an account over its hosted plan', () => {
       current: 2,
       over: [{ resource: 'projects', limit: 1, current: 2 }],
     })
+    // This instance has no checkout (no plans config), so the way out is sales.
     expect(res.json().error).toBe(
-      'This account is read-only. It has 2 projects, and the plan allows 1. Nothing was deleted, and everyone can still read and export. Delete some, or upgrade the plan, to make changes again.',
+      'This account is read-only. It has 2 projects, and the plan allows 1. Nothing was deleted, and everyone can still read and export. Delete some to make changes again, or contact sales to raise the limits.',
+    )
+    expect(readOnlyMessage([{ resource: 'projects', limit: 1, current: 2 }], true)).toMatch(
+      /Delete some, or upgrade the plan, to make changes again\.$/,
     )
   })
 

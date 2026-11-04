@@ -9,6 +9,7 @@
       <!-- Platform-only login (like Analytics) -->
       <template v-if="platformOnly">
         <p class="subtitle">Sign in with {{ ssoLabel }} to continue.</p>
+        <p v-if="!instanceConfig.signup.open" class="closed-note">{{ SIGNUP_CLOSED_NOTE }}</p>
         <p v-if="error" class="error">{{ error }}</p>
         <NbButton
           variant="primary"
@@ -51,6 +52,7 @@
           <span v-else-if="mode === 'otp-request'">{{ t('auth.login.magic.description') }}</span>
           <span v-else>Enter the code we sent to {{ email }}</span>
         </p>
+        <p v-if="!instanceConfig.signup.open && mode !== 'otp-verify'" class="closed-note">{{ SIGNUP_CLOSED_NOTE }}</p>
 
         <NbButton
           v-if="providerAvailable"
@@ -101,9 +103,25 @@
             <p class="hint">Check your email (or server logs in development).</p>
           </div>
 
+          <!-- A new account accepts the terms, when this instance has them:
+               always on the register tab, and on the code step once the API
+               says the address is new (409 terms_required). -->
+          <div v-if="termsAsked" class="field">
+            <p v-if="mode === 'otp-verify'" class="hint">
+              This address has no Verba account yet. Accept the terms to create one.
+            </p>
+            <TermsConsent v-model="termsAccepted" :terms="termsAsked" />
+          </div>
+
           <p v-if="error" class="error">{{ error }}</p>
 
-          <NbButton variant="primary" type="submit" size="lg" :disabled="loading || auth.loading" class="submit-btn">
+          <NbButton
+            variant="primary"
+            type="submit"
+            size="lg"
+            :disabled="loading || auth.loading || (termsAsked !== null && !termsAccepted)"
+            class="submit-btn"
+          >
             <span v-if="loading || auth.loading">{{ t('common.loading') }}</span>
             <span v-else-if="mode === 'login'">{{ t('auth.login.submit') }}</span>
             <span v-else-if="mode === 'register'">{{ t('auth.login.register.submit') }}</span>
@@ -121,6 +139,7 @@
                 mode = 'otp-request'
                 otpCode = ''
                 error = ''
+                termsForCode = null
               }
             "
           >
@@ -137,7 +156,9 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useInstanceConfigStore } from '../stores/instanceConfig'
-import { apiFetch, API_BASE } from '../api'
+import { ApiError, apiFetch, API_BASE } from '../api'
+import TermsConsent from '../components/TermsConsent.vue'
+import type { TermsConfig } from '../stores/instanceConfig'
 import { takeSsoToken } from '../utils/ssoToken'
 import { useI18n } from 'vue-i18n'
 
@@ -153,15 +174,31 @@ const mode = ref<Mode>('login')
 
 // The sign-in methods this instance offers, as tabs. Picking one clears any
 // error the previous method left behind.
+// No register tab while the instance is closed to new accounts.
 const modeTabs = computed(() => [
   ...(instanceConfig.auth.localPasswordEnabled ? [{ id: 'login', label: t('auth.login.tab.password') }] : []),
   ...(instanceConfig.auth.localOtpEnabled ? [{ id: 'otp-request', label: t('auth.login.tab.magic') }] : []),
-  ...(instanceConfig.auth.localPasswordEnabled ? [{ id: 'register', label: t('auth.login.tab.register') }] : []),
+  ...(instanceConfig.auth.localPasswordEnabled && instanceConfig.signup.open
+    ? [{ id: 'register', label: t('auth.login.tab.register') }]
+    : []),
 ])
 function switchMode(next: Mode) {
   mode.value = next
   error.value = ''
 }
+
+const SIGNUP_CLOSED_NOTE = 'Verba is not open for new accounts yet. If you already have one, sign in as usual.'
+
+// The terms a new account accepts (VERBA_TERMS_VERSION). Asked on the register
+// tab, and on the code step only once the API answers that the address is new.
+const termsForCode = ref<TermsConfig | null>(null)
+const termsAccepted = ref(false)
+const termsAsked = computed<TermsConfig | null>(() => {
+  if (mode.value === 'register') return instanceConfig.signup.terms
+  if (mode.value === 'otp-verify') return termsForCode.value
+  return null
+})
+const acceptedVersion = computed(() => (termsAccepted.value ? termsAsked.value?.version : undefined))
 const email = ref('')
 const password = ref('')
 const otpCode = ref('')
@@ -279,23 +316,32 @@ async function submit() {
       await auth.login(email.value, password.value)
       redirect()
     } else if (mode.value === 'register') {
-      await auth.register(email.value, password.value)
+      await auth.register(email.value, password.value, acceptedVersion.value)
       redirect()
     } else if (mode.value === 'otp-request') {
       await apiFetch('/auth/otp/request', {
         method: 'POST',
         body: JSON.stringify({ email: email.value }),
       })
+      termsForCode.value = null
+      termsAccepted.value = false
       mode.value = 'otp-verify'
     } else if (mode.value === 'otp-verify') {
       await apiFetch<{ id: string; email: string }>('/auth/otp/verify', {
         method: 'POST',
-        body: JSON.stringify({ email: email.value, code: otpCode.value }),
+        body: JSON.stringify({ email: email.value, code: otpCode.value, termsVersion: acceptedVersion.value }),
       })
       await auth.fetchMe()
       redirect()
     }
   } catch (e: unknown) {
+    // A new address on an instance with terms: the code is still good, so
+    // show the checkbox and let the same code through once it is ticked.
+    if (e instanceof ApiError && e.code === 'terms_required' && mode.value === 'otp-verify') {
+      termsForCode.value = (e.body?.terms as TermsConfig | undefined) ?? instanceConfig.signup.terms
+      termsAccepted.value = false
+      return
+    }
     error.value = e instanceof Error ? e.message : 'Something went wrong'
   } finally {
     loading.value = false
@@ -316,6 +362,8 @@ async function handlePlatformCallback() {
       sso_state: 'The sign-in attempt expired; try again',
       sso_token: 'Single sign-on failed; try again',
       sso_discovery: 'The identity provider could not be reached; try again shortly',
+      signup_closed:
+        'This Verba instance is not open for new accounts yet. If you already have an account, sign in with the address it uses.',
     }
     error.value = messages[platformError] ?? `Sign-in failed: ${platformError}`
     clearPlatformCallbackQuery()
@@ -472,6 +520,13 @@ function clearPlatformCallbackQuery() {
     color: var(--nb-c-text-subtle);
     margin: 0.25rem 0 0;
   }
+}
+
+.closed-note {
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+  color: var(--nb-c-text-subtle);
+  text-align: center;
 }
 
 .error {

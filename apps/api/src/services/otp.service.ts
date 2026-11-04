@@ -2,6 +2,7 @@ import crypto from 'node:crypto'
 import { prisma } from '../prisma.js'
 import { createOtpOnlyUser } from './auth.service.js'
 import { isOperatorEmail } from './operator.service.js'
+import { assertSignupAllowed, termsForNewAccount } from './signup.service.js'
 import { escapeHtml, sendEmail } from './email.service.js'
 
 const OTP_EXPIRY_MINUTES = 15
@@ -152,9 +153,12 @@ async function sendOtpEmail(email: string, code: string): Promise<void> {
 }
 
 export async function requestOtp(email: string): Promise<void> {
-  if (isDisposableEmail(email)) {
-    const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } })
-    if (!existing) {
+  const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } })
+  if (!existing) {
+    // A code for an address with no account is a sign-up. On an instance
+    // closed to new accounts it is refused here, before any code is sent.
+    assertSignupAllowed(email)
+    if (isDisposableEmail(email)) {
       throw Object.assign(new Error('Please sign up with a permanent email address'), { statusCode: 422 })
     }
   }
@@ -176,6 +180,7 @@ function invalidCode(): never {
 export async function verifyOtp(
   email: string,
   code: string,
+  opts: { termsVersion?: string | null } = {},
 ): Promise<{ userId: string; email: string; isGlobalAdmin: boolean }> {
   // Only the newest live code for this address counts, and every guess at it
   // is counted before it is compared, so parallel guesses cannot slip past the
@@ -198,14 +203,22 @@ export async function verifyOtp(
 
   if (!sameHash(otp.code, hashCode(code))) invalidCode()
 
+  // A new address is a sign-up (passwordless auto-register). Checked before
+  // the code is spent: a person asked to tick the terms sends the same code
+  // again with them, and only someone holding the code ever learns that the
+  // address is new.
+  let user = await prisma.user.findUnique({ where: { email } })
+  if (!user) {
+    assertSignupAllowed(email)
+    termsForNewAccount(opts.termsVersion)
+  }
+
   // Mark used. A count of zero means a parallel request already spent it.
   const spent = await prisma.otpToken.updateMany({ where: { id: otp.id, used: false }, data: { used: true } })
   if (spent.count === 0) invalidCode()
 
-  // Find or create user (passwordless auto-register)
-  let user = await prisma.user.findUnique({ where: { email } })
   if (!user) {
-    await createOtpOnlyUser(email)
+    await createOtpOnlyUser(email, { termsVersion: opts.termsVersion })
     user = await prisma.user.findUnique({ where: { email } })
   }
 

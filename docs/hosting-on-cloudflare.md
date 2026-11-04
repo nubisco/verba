@@ -142,7 +142,8 @@ All set with `wrangler secret put` (secrets) or `[vars]` in `wrangler.toml` (set
 | `ANALYTICS_TOKEN`                                                                                                                                                         | Secret   | Server-side product analytics.                                                                                                                             |
 | `NODE_ENV=production`, `ENABLE_EE=true`                                                                                                                                   | Var      |                                                                                                                                                            |
 | `VERBA_OPERATORS`                                                                                                                                                         | Var      | Operator emails.                                                                                                                                           |
-| `VERBA_LICENSES_URL`, `VERBA_SALES_URL`                                                                                                                                   | Var      | plans-and-billing.md.                                                                                                                                      |
+| `VERBA_LICENSES_URL`, `VERBA_SALES_URL`, `VERBA_CHECKOUT_OPEN`                                                                                                            | Var      | plans-and-billing.md. Checkout is `"false"` until the terms and pricing are published.                                                                     |
+| `VERBA_SIGNUP_OPEN`, `VERBA_TERMS_VERSION`, `VERBA_TERMS_URL`, `VERBA_PRIVACY_URL`                                                                                        | Var      | Sign-up is `"false"` until the terms are published, below. The three terms vars are unset until then.                                                      |
 | `PLATFORM_ISSUER`, `PLATFORM_APP_ID`, `PLATFORM_AUTH_ORIGIN`, `PLATFORM_SERVER_FLOW`, `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_SCOPES`, `OIDC_LABEL`, `OIDC_AUTO_PROVISION` | Var      | Sign-in through Accord.                                                                                                                                    |
 | `MAIL_FROM`, `ANALYTICS_URL`, `ANALYTICS_DOMAIN`, `SESSION_TTL_HOURS`                                                                                                     | Var      |                                                                                                                                                            |
 | `CORS_ORIGIN`, `TRUST_PROXY`, `PORT`, `DATABASE_URL`, `PLUGINS_DIR`, `SMTP_*`, `LICENSE_KEY`                                                                              | Not used | Same origin, Cloudflare's address header, a binding instead of a URL, no plugins, Resend only, and plans come from licenses rather than a self-hosted key. |
@@ -160,6 +161,15 @@ verba.nubisco.io is already proxied by Cloudflare, so the switch is a **Worker r
 5. In the same change, remove the `build-ee` and `nas` jobs from `docker.yml`. The public images keep building. On the NAS, hosted Verba's containers can be stopped.
 
 Plans switch on afterwards, when licenses has its Verba settings (plans-and-billing.md, "Switching it on"): set the two licenses secrets on the Worker and the URL in `[vars]`. Nothing else changes.
+
+### Sign-up stays closed until the terms are published
+
+The database started empty and hosted Verba has no published terms yet, so `VERBA_SIGNUP_OPEN = "false"`, as Acta was before its terms (LA-402). Nobody new gets an account by any door, an email code, Accord or OIDC. People who already have one sign in, and `VERBA_OPERATORS` addresses always can (docs/self-hosting.md, "Closing sign-up, and asking for terms"). When https://nubisco.io/products/verba/terms and https://nubisco.io/products/verba/privacy are live, in one change to `wrangler.toml`:
+
+1. Set `VERBA_TERMS_VERSION` (the date of the published terms), `VERBA_TERMS_URL` and `VERBA_PRIVACY_URL`, which are there as comments. Everyone who already has an account is asked to accept at their next page.
+2. Set `VERBA_SIGNUP_OPEN = "true"`.
+
+A later change to the terms only needs a new `VERBA_TERMS_VERSION`.
 
 ## Stages
 
