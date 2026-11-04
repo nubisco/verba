@@ -149,6 +149,8 @@ All set with `wrangler secret put` (secrets) or `[vars]` in `wrangler.toml` (set
 
 ## Cutover
 
+**Done on 2026-11-04.** D1 `verba` (WEUR, `a96b746d-61e4-4fd2-a283-a1e7d48e0572`) and the queue `verba-jobs` were created, the migrations applied, the secrets set (`JWT_SECRET` and `AI_ENCRYPTION_KEY` new, since nothing carries over, and `VERBA_OPERATORS` and `ANALYTICS_TOKEN` as the NAS had them), and the Worker deployed and checked on its workers.dev address before the route went in. `RESEND_API_KEY` is the organisation's secret, uploaded by the deploy job. The `PLATFORM_*` vars match what the NAS ran. Plans are still off.
+
 verba.nubisco.io is already proxied by Cloudflare, so the switch is a **Worker route on the existing hostname**, not a DNS change. A route takes effect in seconds, and no record, certificate or cached address is involved.
 
 1. Create the D1 database (`wrangler d1 create verba`), put its id in `apps/api/wrangler.toml` in place of the placeholder, and apply its migrations (`wrangler d1 migrations apply verba --remote`). The deploy job applies them before every deploy from then on.

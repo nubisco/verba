@@ -8,8 +8,7 @@
 # .dev.vars.example to .dev.vars, then from apps/api:
 #   pnpm exec wrangler d1 migrations apply verba --local
 #   pnpm worker:dev
-# Nothing here creates anything on Cloudflare until `wrangler deploy` and
-# `--remote` are run, which is the cutover's job.
+# Hosted deploys run from CI (the worker job in .github/workflows/docker.yml).
 name = "verba"
 main = "src/worker.ts"
 compatibility_date = "2026-10-01"
@@ -17,8 +16,9 @@ compatibility_date = "2026-10-01"
 # process.env, which the Worker fills from the vars and secrets (src/worker.ts).
 compatibility_flags = ["nodejs_compat"]
 
-# The route is added at cutover, on the hostname Cloudflare already proxies:
-# routes = [{ pattern = "verba.nubisco.io/*", zone_name = "nubisco.io" }]
+# verba.nubisco.io, on the hostname Cloudflare already proxies. Added at cutover,
+# 2026-11-04, when the NAS stopped serving it.
+routes = [{ pattern = "verba.nubisco.io/*", zone_name = "nubisco.io" }]
 
 # The web app. Only /api/* wakes the Worker. Any other path is a file from the
 # build, or index.html, so a deep link loads the app.
@@ -31,9 +31,8 @@ not_found_handling = "single-page-application"
 [[d1_databases]]
 binding = "DB"
 database_name = "verba"
-# Replaced with the real id when the database is created at cutover
-# (`wrangler d1 create verba`). A local D1 does not need one.
-database_id = "00000000-0000-0000-0000-000000000000"
+# Created at cutover on 2026-11-04 (region WEUR). A local D1 ignores it.
+database_id = "a96b746d-61e4-4fd2-a283-a1e7d48e0572"
 # Generated from prisma/schema.prisma by `pnpm db:d1:new`, checked in CI.
 migrations_dir = "prisma/d1"
 
@@ -78,10 +77,12 @@ VERBA_SALES_URL = "https://nubisco.io/contact?product=verba&need=pre-sales"
 # Sign-in codes come from auth@, kept apart from notification volume
 # (AGENTS.md, "Transactional email"). Sent through Resend (RESEND_API_KEY).
 MAIL_FROM = "Verba <auth@nubisco.io>"
-# Sign-in through Accord. Checked against the NAS settings at cutover.
+# Sign-in through Accord, the same as the NAS ran.
 PLATFORM_ISSUER = "https://auth.nubisco.io"
 PLATFORM_AUTH_ORIGIN = "https://auth.nubisco.io"
 PLATFORM_APP_ID = "nubisco-verba"
+# Server-side product analytics, with the ANALYTICS_TOKEN secret.
+ANALYTICS_URL = "https://analytics.nubisco.io"
 # Secrets, set with `wrangler secret put <NAME>`, never here:
 #   JWT_SECRET                        signs sessions (required)
 #   AI_ENCRYPTION_KEY                 seals projects' AI provider keys

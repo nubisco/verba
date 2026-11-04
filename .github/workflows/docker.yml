@@ -1,23 +1,14 @@
 name: Deploy
 
-# Builds the multi-arch images after a release on master, pushes them to GHCR, and deploys them
-# to the NAS.
+# After a release on master: deploys hosted Verba (verba.nubisco.io) to Cloudflare, and builds the
+# public multi-arch images self-hosters run, pushed to GHCR.
 #
-# Two editions of the API are built. verba-api is the public, Community Edition image anyone can
-# pull. verba-api-ee carries the Enterprise Edition (packages/ee) and is for Nubisco's hosted
-# Verba only: it goes to a private package, amd64 only, and is what the NAS runs.
+# The Worker carries the Enterprise Edition (hosted billing, EE sign-in), bundled by wrangler. It
+# is the only place EE runs as Nubisco's hosted instance, so there is no private image any more.
+# The public images (verba-api, verba-ce) are Community Edition only.
 #
-# The image builds run on GitHub's runners and are the only part that executes repository code.
-# The deploy job runs on a self-hosted runner and checks out nothing: it asks the NAS to deploy
-# the sha- tag of the commit that was built, through a key that can run one deploy script and
-# nothing else. The key and the host alias live on the runner, not in GitHub or in this
-# repository, so nothing here describes how the NAS is set up.
-#
-# There is no manual trigger on purpose: only a merge to master deploys. To build again, re-run
+# There is no manual trigger on purpose: only a merge to master deploys. To deploy again, re-run
 # the workflow from the Actions tab.
-#
-# The runner group only lets this file run from master, so a pull request or another branch
-# cannot reach the runner.
 on:
   workflow_run:
     workflows: [Release]
@@ -142,70 +133,6 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  # The hosted API image, with the Enterprise Edition compiled in (hosted billing, EE sign-in).
-  # It must stay private: the public images above are Community Edition only. It is amd64 only,
-  # the NAS's architecture. No OCI labels are added, so the package is not described as this
-  # public repository's image.
-  build-ee:
-    name: Build verba-api-ee (amd64, private)
-    needs: prepare
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ needs.prepare.outputs.sha }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Get version and tag
-        id: version
-        env:
-          SHA: ${{ needs.prepare.outputs.sha }}
-        run: |
-          echo "VERSION=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
-          echo "SHORT=sha-${SHA:0:7}" >> "$GITHUB_OUTPUT"
-
-      - name: Build and push
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: .
-          file: apps/api/Dockerfile
-          platforms: linux/amd64
-          build-args: |
-            EDITION=ee
-            APP_VERSION=${{ steps.version.outputs.VERSION }}
-            BUILD_HASH=${{ needs.prepare.outputs.sha }}
-          tags: |
-            ${{ env.REGISTRY }}/nubisco/verba-api-ee:latest
-            ${{ env.REGISTRY }}/nubisco/verba-api-ee:${{ steps.version.outputs.VERSION }}
-            ${{ env.REGISTRY }}/nubisco/verba-api-ee:${{ steps.version.outputs.SHORT }}
-          push: true
-          no-cache: true
-
-      # The deploy goes ahead only while the package is private. If it ever reads otherwise
-      # (or cannot be read), this fails and the NAS keeps the version it runs.
-      - name: Check the package is private
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          visibility=$(gh api /orgs/nubisco/packages/container/verba-api-ee --jq .visibility)
-          echo "verba-api-ee visibility: ${visibility}"
-          if [ "$visibility" != "private" ]; then
-            echo "::error::ghcr.io/nubisco/verba-api-ee is not private. Make it private in the package settings before deploying."
-            exit 1
-          fi
-
   merge:
     name: Create multi-arch manifest (${{ matrix.package }})
     runs-on: ubuntu-latest
@@ -243,7 +170,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # sha- plus 7 characters is the tag the deploy job pins, so the NAS runs one exact build.
+      # sha- plus 7 characters names the exact build a release produced.
       - name: Create manifest list and push
         working-directory: /tmp/digests
         env:
@@ -255,22 +182,71 @@ jobs:
             -t ${{ env.REGISTRY }}/nubisco/${{ matrix.package }}:sha-${SHA:0:7} \
             $(printf '${{ env.REGISTRY }}/nubisco/${{ matrix.package }}@sha256:%s ' *)
 
-  # The NAS's compose file names verba-api-ee for the API and verba-ce for the web, both at
-  # ${VERBA_VERSION}, which the deploy script sets to this sha- tag. So it waits for both.
-  nas:
-    name: Deploy to the NAS
-    needs: [prepare, merge, build-ee]
-    runs-on: [self-hosted, nas-deploy]
-    # The script's worst case is three 4-minute pull attempts, then stop, Build and the
-    # health wait.
-    timeout-minutes: 20
+  # Hosted Verba on Cloudflare (docs/hosting-on-cloudflare.md). D1 migrations are applied before
+  # the new code goes live, so the code never runs against an older schema.
+  worker:
+    name: Deploy the Cloudflare Worker
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     environment: production
     permissions:
       contents: read
     steps:
-      # The SSH key and the nas-deploy host alias live on the runner, not in GitHub, so only
-      # a job on this runner can reach the NAS.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          check-latest: true
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The web app is served from the Worker's assets, so the deploy is only as current as this
+      # build. It also generates the Prisma clients the Worker bundles.
+      - name: Build
+        run: pnpm build
+        env:
+          VITE_ANALYTICS_URL: ${{ vars.VITE_ANALYTICS_URL }}
+
+      - name: Apply D1 migrations
+        working-directory: apps/api
+        run: pnpm exec wrangler d1 migrations apply verba --remote
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          WRANGLER_SEND_METRICS: 'false'
+
+      # RESEND_API_KEY is the organisation's secret, uploaded with the version so it never passes
+      # through anyone's hands. The other secrets are set once with `wrangler secret put` and kept
+      # by every deploy. VERBA_GIT_SHA is what GET /api/version reports, so a deploy that landed
+      # can be told from one that did not.
       - name: Deploy
+        working-directory: apps/api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          SHA: ${{ needs.prepare.outputs.sha }}
+          WRANGLER_SEND_METRICS: 'false'
+        run: |
+          secrets="$RUNNER_TEMP/verba-secrets.json"
+          node -e 'console.log(JSON.stringify({ RESEND_API_KEY: process.env.RESEND_API_KEY }))' > "$secrets"
+          pnpm exec wrangler deploy --secrets-file "$secrets" --var "VERBA_GIT_SHA:${SHA:0:7}"
+          rm -f "$secrets"
+
+      - name: Check the deploy landed
         env:
           SHA: ${{ needs.prepare.outputs.sha }}
-        run: ssh -o BatchMode=yes nas-deploy "verba sha-${SHA:0:7}"
+        run: |
+          for i in 1 2 3 4 5 6; do
+            commit=$(curl -fsS https://verba.nubisco.io/api/version | node -pe 'JSON.parse(require("fs").readFileSync(0)).commit')
+            [ "$commit" = "${SHA:0:7}" ] && exit 0
+            sleep 10
+          done
+          echo "::error::verba.nubisco.io reports ${commit}, expected ${SHA:0:7}"
+          exit 1
