@@ -8,7 +8,7 @@
 
       <!-- Platform-only login (like Analytics) -->
       <template v-if="platformOnly">
-        <p class="subtitle">Sign in with {{ ssoLabel }} to continue.</p>
+        <p class="subtitle">Sign in to continue.</p>
         <p v-if="!instanceConfig.signup.open" class="closed-note">{{ SIGNUP_CLOSED_NOTE }}</p>
         <p v-if="error" class="error">{{ error }}</p>
         <NbButton
@@ -18,7 +18,7 @@
           :disabled="loading || auth.loading"
           @click="startSignIn({ loginHint })"
         >
-          Continue with {{ ssoLabel }}
+          Sign in with {{ ssoLabel }}
         </NbButton>
         <p class="toggle">
           <NbButton
@@ -225,13 +225,19 @@ const providerAvailable = computed(() => serverSso.value || instanceConfig.auth.
  * This said "Nubisco Platform" in the markup, which is right on exactly one
  * instance. A self-hoster pointing Verba at their own Okta was being told to
  * sign in with a product their users have no account on, so the name comes
- * from the server and an operator sets it with OIDC_LABEL.
+ * from the server and an operator sets it with OIDC_LABEL. Without one, the
+ * provider is Nubisco's own (PLATFORM_ISSUER), and the button names the
+ * company, never the identity service behind it (AGENTS.md, "Authentication: Accord").
  */
-const ssoLabel = computed(() => instanceConfig.auth.sso?.label ?? 'Nubisco Platform')
+const ssoLabel = computed(() => instanceConfig.auth.sso?.label ?? 'Nubisco')
 
 // Platform-only: show only the provider button when a provider is enabled
-// and no local auth methods are explicitly enabled
-const platformOnly = computed(() => providerAvailable.value && !instanceConfig.auth.localPasswordEnabled)
+// and no local auth methods are explicitly enabled, or when the instance signs
+// in through its provider only (VERBA_AUTH_MODE=platform, hosted Verba).
+const platformOnly = computed(
+  () =>
+    instanceConfig.auth.mode === 'platform' || (providerAvailable.value && !instanceConfig.auth.localPasswordEnabled),
+)
 
 // The platform launchpad opens our launch URL with ?login_hint=<email>
 // appended. Forwarding it into the SSO request makes the user land already

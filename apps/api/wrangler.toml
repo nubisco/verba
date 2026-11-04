@@ -87,9 +87,16 @@ VERBA_SIGNUP_OPEN = "false"
 # VERBA_TERMS_VERSION = "<date of the published terms>"
 # VERBA_TERMS_URL = "https://nubisco.io/products/verba/terms"
 # VERBA_PRIVACY_URL = "https://nubisco.io/products/verba/privacy"
-# Sign-in codes come from auth@, kept apart from notification volume
-# (AGENTS.md, "Transactional email"). Sent through Resend (RESEND_API_KEY).
+# Mail comes from auth@, kept apart from notification volume (AGENTS.md,
+# "Transactional email"). Sent through Resend (RESEND_API_KEY). Sign-in codes
+# are Accord's now, so this sends the rest (the database size alert).
 MAIL_FROM = "Verba <auth@nubisco.io>"
+# Accord is the only way into hosted Verba (Jose, 2026-11-04): no setup
+# wizard, no Verba email codes, no passwords. Accord already sends codes and
+# offers passkeys. An operator's first sign-in creates their user and, on an
+# empty database, the first account, named below (docs/hosting-on-cloudflare.md).
+VERBA_AUTH_MODE = "platform"
+VERBA_FIRST_ACCOUNT_NAME = "Nubisco"
 # Sign-in through Accord, the same as the NAS ran.
 PLATFORM_ISSUER = "https://auth.nubisco.io"
 PLATFORM_AUTH_ORIGIN = "https://auth.nubisco.io"
@@ -99,7 +106,7 @@ ANALYTICS_URL = "https://analytics.nubisco.io"
 # Secrets, set with `wrangler secret put <NAME>`, never here:
 #   JWT_SECRET                        signs sessions (required)
 #   AI_ENCRYPTION_KEY                 seals projects' AI provider keys
-#   RESEND_API_KEY                    one-time codes by email
+#   RESEND_API_KEY                    Verba's own email, through Resend
 #   VERBA_OPERATORS                   operator emails, comma separated
 #   VERBA_LICENSES_SERVICE_TOKEN      licenses' SERVICE_TOKEN_VERBA
 #   VERBA_ENTITLEMENT_WEBHOOK_SECRET  licenses' ENTITLEMENT_WEBHOOK_SECRET_VERBA

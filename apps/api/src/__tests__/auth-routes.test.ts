@@ -33,6 +33,7 @@ vi.mock('../services/analytics.service.js', () => ({
 
 vi.mock('../services/account.service.js', () => ({
   createOwnedAccount: vi.fn(async () => ({ id: 'acc1' })),
+  firstAccountName: vi.fn(() => 'My account'),
 }))
 
 vi.mock('../services/operator.service.js', async (importOriginal) => ({
@@ -70,6 +71,7 @@ describe('auth and setup routes', () => {
     PLATFORM_AUTH_ORIGIN: process.env.PLATFORM_AUTH_ORIGIN,
     JWT_SECRET: process.env.JWT_SECRET,
     VERBA_OPERATORS: process.env.VERBA_OPERATORS,
+    VERBA_AUTH_MODE: process.env.VERBA_AUTH_MODE,
   }
 
   beforeEach(() => {
@@ -81,6 +83,7 @@ describe('auth and setup routes', () => {
     delete process.env.PLATFORM_ISSUER
     delete process.env.PLATFORM_APP_ID
     delete process.env.PLATFORM_AUTH_ORIGIN
+    delete process.env.VERBA_AUTH_MODE
 
     vi.mocked(prisma.user.count).mockResolvedValue(0)
     vi.mocked(authService.register).mockResolvedValue({
@@ -112,6 +115,66 @@ describe('auth and setup routes', () => {
     else process.env.PLATFORM_AUTH_ORIGIN = originalEnv.PLATFORM_AUTH_ORIGIN
     process.env.JWT_SECRET = originalEnv.JWT_SECRET
     process.env.VERBA_OPERATORS = originalEnv.VERBA_OPERATORS
+    if (originalEnv.VERBA_AUTH_MODE === undefined) delete process.env.VERBA_AUTH_MODE
+    else process.env.VERBA_AUTH_MODE = originalEnv.VERBA_AUTH_MODE
+  })
+
+  // Hosted Verba (VERBA_AUTH_MODE=platform): the identity provider is the only
+  // way in. Every local door refuses, whatever the local switches say.
+  describe('signing in through the identity provider only', () => {
+    beforeEach(() => {
+      process.env.VERBA_AUTH_MODE = 'platform'
+      process.env.PLATFORM_ISSUER = 'https://auth.example.com'
+      process.env.PLATFORM_APP_ID = 'nubisco-verba'
+      // Set on purpose: the mode overrides both.
+      process.env.ENABLE_LOCAL_PASSWORD = 'true'
+    })
+
+    it('reports the mode and no local sign-in in /config', async () => {
+      const app = await buildApp()
+      const res = await inject(app, { method: 'GET', url: '/config' })
+      expect(res.json()).toMatchObject({
+        auth: { mode: 'platform', localOtpEnabled: false, localPasswordEnabled: false, platformEnabled: true },
+      })
+    })
+
+    it.each([
+      ['/auth/otp/request', { email: 'admin@example.com' }],
+      ['/auth/otp/verify', { email: 'admin@example.com', code: '123456' }],
+      ['/auth/register', { email: 'admin@example.com', password: 'password1' }],
+      ['/auth/login', { email: 'admin@example.com', password: 'password1' }],
+      ['/setup', { adminEmail: 'admin@example.com', adminPassword: 'password1' }],
+    ])('refuses POST %s', async (url, payload) => {
+      const app = await buildApp()
+      const res = await inject(app, { method: 'POST', url, payload })
+      expect(res.statusCode).toBe(404)
+      expect(res.cookies.some((cookie) => cookie.name === 'token')).toBe(false)
+      expect(vi.mocked(otpService.requestOtp)).not.toHaveBeenCalled()
+      expect(vi.mocked(otpService.verifyOtp)).not.toHaveBeenCalled()
+      expect(vi.mocked(authService.register)).not.toHaveBeenCalled()
+      expect(vi.mocked(authService.login)).not.toHaveBeenCalled()
+      expect(vi.mocked(authService.createOtpOnlyUser)).not.toHaveBeenCalled()
+      expect(vi.mocked(accountService.createOwnedAccount)).not.toHaveBeenCalled()
+    })
+
+    it('says no setup is needed, even with an empty database', async () => {
+      vi.mocked(prisma.user.count).mockResolvedValue(0)
+      const app = await buildApp()
+      const res = await inject(app, { method: 'GET', url: '/setup/status' })
+      expect(res.json()).toEqual({ needsSetup: false })
+    })
+
+    it('refuses to start with no provider to sign in through', async () => {
+      delete process.env.PLATFORM_ISSUER
+      await expect(buildApp()).rejects.toThrow(/VERBA_AUTH_MODE=platform/)
+    })
+  })
+
+  it('still offers the wizard on an empty self-hosted instance', async () => {
+    vi.mocked(prisma.user.count).mockResolvedValue(0)
+    const app = await buildApp()
+    const res = await inject(app, { method: 'GET', url: '/setup/status' })
+    expect(res.json()).toEqual({ needsSetup: true })
   })
 
   it('exposes OTP-first CE config by default', async () => {

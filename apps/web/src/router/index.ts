@@ -2,6 +2,7 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import DefaultLayout from '../layouts/DefaultLayout.vue'
 import { type RouteModule } from './router.d'
+import { firstRunRedirect } from './firstRun'
 
 // Auto-discover all route modules: flat *.routes.ts files and folder index.ts aggregators
 const modules = import.meta.glob<RouteModule>(['./modules/*.routes.ts', './modules/**/index.ts'], { eager: true })
@@ -39,18 +40,23 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
-  // Always allow the setup wizard and login pages
-  if (to.name === 'setup' || to.name === 'login') return true
+  // The login page never waits on the first-run check.
+  if (to.name === 'login') return true
 
-  // Check if first-run setup is needed
+  // Check if first-run setup is needed. An instance that signs in through its
+  // identity provider only always answers no (firstRun.ts).
+  let needsSetup: boolean | null = null
   try {
     const status = await fetch(
       `${import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? '/api' : 'http://localhost:4000')}/setup/status`,
     ).then((r) => r.json() as Promise<{ needsSetup: boolean }>)
-    if (status.needsSetup) return { path: '/setup' }
+    needsSetup = status.needsSetup === true
   } catch {
     // If the API is unreachable, proceed normally (avoids redirect loop in dev)
   }
+  const firstRun = firstRunRedirect(to.name, needsSetup)
+  if (firstRun === 'allow') return true
+  if (firstRun !== 'continue') return firstRun
 
   if (!to.meta.requiresAuth) return true
 
