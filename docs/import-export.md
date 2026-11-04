@@ -38,7 +38,7 @@ Each nested key is flattened to `namespace.key` internally:
 1. Go to your project and click **Import** in the sidebar.
 2. Select the **locale** you are importing for (e.g. `en`).
 3. Upload the JSON file.
-4. Click **Apply** to confirm.
+4. Click **Apply** to confirm. The import runs in the background, in chunks, and the button counts the rows as they are written. A large file takes a few seconds, and the run's page has the totals and any errors.
 
 > **Note:** Existing translations for the same key + locale are updated, not duplicated. Imported translations start at `IN_PROGRESS` status. They must go through the normal review workflow before they are eligible for export.
 

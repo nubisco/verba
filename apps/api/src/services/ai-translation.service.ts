@@ -84,9 +84,25 @@ export interface FillLocaleInput {
   limit: number
 }
 
-/** Fill a locale from its source strings. A translation that fails the check is skipped, never written. */
-export async function fillLocale(projectId: string, input: FillLocaleInput, userId: string, role: string) {
-  const config = await resolveAiConfig(projectId)
+/** The locales and keys an AI fill works on, found once when it is asked for. */
+export interface FillPlan {
+  localeCode: string
+  sourceCode: string
+  sourceLocaleId: string
+  targetLocaleId: string
+  targetLocaleName: string
+  onlyEmpty: boolean
+  keyIds: string[]
+}
+
+/**
+ * Check that the project can fill this locale and list the keys to fill. The
+ * filling itself runs as background jobs (fillKeys, a chunk of keys each), so
+ * a fill of hundreds of keys never runs in one request.
+ */
+export async function planFill(projectId: string, input: FillLocaleInput): Promise<FillPlan> {
+  // Refuses here, before any job, when AI is off or has no key.
+  await resolveAiConfig(projectId)
   const { localeCode, namespaceId, onlyEmpty, limit } = input
 
   const targetLocale = await prisma.locale.findUnique({
@@ -107,14 +123,38 @@ export async function fillLocale(projectId: string, input: FillLocaleInput, user
 
   const keys = await prisma.key.findMany({
     where: { projectId, deletedAt: null, ...(namespaceId ? { namespaceId } : {}) },
+    select: { id: true },
+    take: limit,
+  })
+  return {
+    localeCode,
+    sourceCode,
+    sourceLocaleId: sourceLocale.id,
+    targetLocaleId: targetLocale.id,
+    targetLocaleName: targetLocale.name,
+    onlyEmpty,
+    keyIds: keys.map((k) => k.id),
+  }
+}
+
+/** Fill some keys of a plan. A translation that fails the check is skipped, never written. */
+export async function fillKeys(
+  projectId: string,
+  plan: Omit<FillPlan, 'keyIds'>,
+  keyIds: string[],
+  userId: string,
+  role: string,
+) {
+  const config = await resolveAiConfig(projectId)
+  const keys = await prisma.key.findMany({
+    where: { projectId, id: { in: keyIds }, deletedAt: null },
     include: {
       namespace: { select: { slug: true } },
       translations: {
-        where: { localeId: { in: [sourceLocale.id, targetLocale.id] }, deletedAt: null },
+        where: { localeId: { in: [plan.sourceLocaleId, plan.targetLocaleId] }, deletedAt: null },
         select: { text: true, localeId: true },
       },
     },
-    take: limit,
   })
 
   let filled = 0
@@ -122,17 +162,17 @@ export async function fillLocale(projectId: string, input: FillLocaleInput, user
   const warnings: { key: string; message: string }[] = []
 
   for (const key of keys) {
-    const source = key.translations.find((t) => t.localeId === sourceLocale.id)?.text ?? ''
-    const target = key.translations.find((t) => t.localeId === targetLocale.id)?.text ?? ''
-    if (!source.trim() || (onlyEmpty && target.trim())) {
+    const source = key.translations.find((t) => t.localeId === plan.sourceLocaleId)?.text ?? ''
+    const target = key.translations.find((t) => t.localeId === plan.targetLocaleId)?.text ?? ''
+    if (!source.trim() || (plan.onlyEmpty && target.trim())) {
       skipped++
       continue
     }
 
     const facts = buildTranslationFacts({
       source,
-      sourceLanguage: sourceCode,
-      targetLanguage: { code: localeCode, name: targetLocale.name },
+      sourceLanguage: plan.sourceCode,
+      targetLanguage: { code: plan.localeCode, name: plan.targetLocaleName },
       key: `${key.namespace.slug}.${key.name}`,
       developerNote: key.description ?? undefined,
     })
@@ -151,11 +191,17 @@ export async function fillLocale(projectId: string, input: FillLocaleInput, user
       continue
     }
 
-    await upsertTranslation(key.id, targetLocale.id, { text: checked.text }, userId, role)
+    await upsertTranslation(key.id, plan.targetLocaleId, { text: checked.text }, userId, role)
     filled++
   }
 
   return { filled, skipped, warnings, provider: config.provider }
+}
+
+/** Fill a locale in one go: the plan, then every key. For callers outside a request, and tests. */
+export async function fillLocale(projectId: string, input: FillLocaleInput, userId: string, role: string) {
+  const { keyIds, ...plan } = await planFill(projectId, input)
+  return fillKeys(projectId, plan, keyIds, userId, role)
 }
 
 /**

@@ -3,7 +3,6 @@ import { describe, it, expect, vi } from 'vitest'
 // isXliffUpload is pure; stub prisma + downstream so importing the module is cheap.
 vi.mock('../prisma.js', () => ({ prisma: {} }))
 vi.mock('../services/translation.service.js', () => ({ upsertTranslation: vi.fn() }))
-vi.mock('../services/import-run.service.js', () => ({ updateImportRun: vi.fn() }))
 vi.mock('../events.js', () => ({ emit: vi.fn() }))
 
 import { isXliffUpload } from '../services/xliff.service.js'

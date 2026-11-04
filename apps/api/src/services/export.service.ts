@@ -2,6 +2,7 @@ import { prisma } from '../prisma.js'
 import { strToU8, zipSync } from 'fflate'
 import * as XLSX from 'xlsx'
 import { buildFullKey } from './key-identity.service.js'
+import { projectCatalog } from './key-index.service.js'
 
 function notFound(): never {
   throw Object.assign(new Error('Locale not found'), { statusCode: 404 })
@@ -13,18 +14,20 @@ export async function exportLocale(projectId: string, localeCode: string): Promi
   })
   if (!locale) notFound()
 
-  const translations = await prisma.translation.findMany({
-    where: {
-      localeId: locale.id,
-      status: 'APPROVED',
-      key: { projectId },
-    },
-    include: { key: { include: { namespace: { select: { slug: true } } } } },
-  })
+  // Flat reads joined in memory, so a big project stays within D1's query
+  // limit (key-index.service.ts).
+  const [translations, catalog] = await Promise.all([
+    prisma.translation.findMany({
+      where: { localeId: locale.id, status: 'APPROVED', key: { projectId } },
+      select: { keyId: true, text: true },
+    }),
+    projectCatalog(projectId),
+  ])
 
   const result: Record<string, string> = {}
   for (const t of translations) {
-    result[buildFullKey(t.key.name, t.key.namespace?.slug)] = t.text
+    const key = catalog.keys.get(t.keyId)
+    if (key) result[buildFullKey(key.name, key.namespaceSlug)] = t.text
   }
 
   // Sort alphabetically by key
@@ -41,22 +44,31 @@ export async function exportTranslations(
     splitByNamespace?: boolean
   },
 ): Promise<{ data: string | Buffer; contentType: string; filename: string }> {
-  const rows = await prisma.translation.findMany({
-    where: {
-      deletedAt: null,
-      key: { projectId },
-      ...(opts.locale ? { locale: { code: opts.locale } } : {}),
-      ...(opts.status ? { status: opts.status } : {}),
-    },
-    include: {
-      key: {
-        select: {
-          name: true,
-          namespace: { select: { slug: true } },
-        },
+  // Flat reads joined in memory, so a big project stays within D1's query
+  // limit (key-index.service.ts).
+  const [found, catalog] = await Promise.all([
+    prisma.translation.findMany({
+      where: {
+        deletedAt: null,
+        key: { projectId },
+        ...(opts.locale ? { locale: { code: opts.locale } } : {}),
+        ...(opts.status ? { status: opts.status } : {}),
       },
-      locale: { select: { code: true } },
-    },
+      select: { keyId: true, localeId: true, text: true, status: true },
+    }),
+    projectCatalog(projectId),
+  ])
+  const rows = found.flatMap((t) => {
+    const key = catalog.keys.get(t.keyId)
+    const code = catalog.localeCode.get(t.localeId)
+    if (!key || !code) return []
+    return [
+      {
+        ...t,
+        key: { name: key.name, namespace: key.namespaceSlug ? { slug: key.namespaceSlug } : null },
+        locale: { code },
+      },
+    ]
   })
 
   const flat = rows.map((t) => ({

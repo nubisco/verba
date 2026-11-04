@@ -267,4 +267,4 @@ If you prefer not to use a password:
 2. Enter your email and click **Send code**.
 3. Enter the 6-digit code from your email (valid for 15 minutes).
 
-> **Development mode:** When SMTP is not configured, the OTP code is printed to the API server's stdout log.
+> **Development mode:** When email (Resend) is not configured, the OTP code is printed to the API server's stdout log.

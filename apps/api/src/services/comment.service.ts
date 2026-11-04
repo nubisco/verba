@@ -67,10 +67,11 @@ export async function addComment(
     entityType: 'translation',
     entityId: translationId,
   })
+  // What changed, never the content: the tab re-reads the comments.
   live().broadcast(projectId, {
     type: 'comment.added',
     translationId,
-    comment,
+    commentId: comment.id,
   })
 
   // Fire MENTION notifications

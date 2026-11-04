@@ -52,10 +52,21 @@ export interface ExecutionContextLike {
   waitUntil(work: Promise<unknown>): void
 }
 
+/** A Queue producer binding. */
+export interface QueueLike<T> {
+  sendBatch(messages: { body: T }[]): Promise<void>
+}
+
+/** What a Queue consumer receives. */
+export interface MessageBatchLike<T> {
+  readonly messages: readonly { readonly body: T; ack(): void; retry(): void }[]
+}
+
 /** What wrangler.toml binds, beside the vars and secrets (all strings). */
 export interface WorkerEnv {
   DB: D1DatabaseLike
   LIVE: DurableObjectNamespaceLike
   ASSETS: AssetsBinding
+  JOBS: QueueLike<unknown>
   [name: string]: unknown
 }

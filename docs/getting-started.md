@@ -30,7 +30,7 @@ The `verba setup` wizard will:
 
 1. Ask whether to use **SQLite** (simple, single-file) or **PostgreSQL** (recommended for teams)
 2. Generate a secure random `JWT_SECRET`
-3. Optionally configure **SMTP** for email / OTP login
+3. Optionally configure **Resend** for email / OTP login
 4. Write `apps/api/.env` with all your settings
 5. Create the database schema (`prisma db push` on SQLite, `prisma migrate deploy` on PostgreSQL)
 

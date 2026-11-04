@@ -4,10 +4,13 @@ vi.mock('../prisma.js', () => ({
   prisma: {
     locale: {
       findUnique: vi.fn(),
+      findMany: vi.fn(),
     },
     translation: {
       findMany: vi.fn(),
     },
+    key: { findMany: vi.fn() },
+    namespace: { findMany: vi.fn() },
   },
 }))
 
@@ -16,8 +19,21 @@ import * as XLSX from 'xlsx'
 import { prisma } from '../prisma.js'
 import { exportLocale, exportTranslations } from '../services/export.service.js'
 
+// Exports read keys, namespaces and locales flat, beside the translations
+// (key-index.service.ts). These are the keys the cases below name.
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(prisma.key.findMany).mockResolvedValue(
+    [
+      ['k1', 'greeting'],
+      ['k2', 'farewell'],
+      ['k3', 'z_key'],
+      ['k4', 'a_key'],
+      ['k5', 'approved_key'],
+    ].map(([id, name]) => ({ id, name, namespaceId: 'ns1' })) as never,
+  )
+  vi.mocked(prisma.namespace.findMany).mockResolvedValue([])
+  vi.mocked(prisma.locale.findMany).mockResolvedValue([{ id: 'l1', code: 'en' }] as never)
 })
 
 describe('exportLocale', () => {
@@ -235,13 +251,22 @@ describe('exportLocale', () => {
 // Worker alike, so read them back with the same libraries.
 describe('exportTranslations files', () => {
   const rows = [
-    { text: 'Hello', status: 'APPROVED', key: { name: 'title', namespace: { slug: 'app' } }, locale: { code: 'en' } },
-    { text: 'Olá', status: 'TODO', key: { name: 'title', namespace: { slug: 'app' } }, locale: { code: 'pt-PT' } },
-    { text: 'Bye', status: 'APPROVED', key: { name: 'bye', namespace: { slug: 'app' } }, locale: { code: 'en' } },
+    { keyId: 'k-title', localeId: 'l-en', text: 'Hello', status: 'APPROVED' },
+    { keyId: 'k-title', localeId: 'l-pt', text: 'Olá', status: 'TODO' },
+    { keyId: 'k-bye', localeId: 'l-en', text: 'Bye', status: 'APPROVED' },
   ]
 
   beforeEach(() => {
     vi.mocked(prisma.translation.findMany).mockResolvedValue(rows as never)
+    vi.mocked(prisma.key.findMany).mockResolvedValue([
+      { id: 'k-title', name: 'title', namespaceId: 'ns-app' },
+      { id: 'k-bye', name: 'bye', namespaceId: 'ns-app' },
+    ] as never)
+    vi.mocked(prisma.namespace.findMany).mockResolvedValue([{ id: 'ns-app', slug: 'app' }] as never)
+    vi.mocked(prisma.locale.findMany).mockResolvedValue([
+      { id: 'l-en', code: 'en' },
+      { id: 'l-pt', code: 'pt-PT' },
+    ] as never)
   })
 
   it('writes one XLSX sheet per locale', async () => {

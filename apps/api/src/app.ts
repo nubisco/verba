@@ -24,6 +24,8 @@ import { configRoutes } from './routes/config.js'
 import { billingRoutes } from './routes/billing.js'
 import type { Api, AppEnv } from './http.js'
 import { guardEveryWrite } from './read-only.js'
+// Registers what each background job does (jobs.ts).
+import './job-runner.js'
 import type { RateLimiterSource } from './rate-limits.js'
 
 /** The largest request body, as Fastify's default bodyLimit had it: 1 MiB. */

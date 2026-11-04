@@ -116,7 +116,10 @@ export async function callModel(config: AiConfig, systemPrompt: string, userProm
   }
 
   if (config.provider === 'openai') {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    // OPENAI_BASE_URL points the OpenAI provider at any compatible endpoint (a
+    // proxy, a gateway, a local model server). The key is still the project's.
+    const base = (process.env.OPENAI_BASE_URL?.trim() || 'https://api.openai.com/v1').replace(/\/$/, '')
+    const response = await fetch(`${base}/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.apiKey}` },
       body: JSON.stringify({

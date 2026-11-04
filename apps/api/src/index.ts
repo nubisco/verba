@@ -10,6 +10,7 @@ import { createNodePrisma } from './prisma-node.js'
 import { loadPlugins } from './plugin-loader.js'
 import { migrateStoredAiKeys } from './services/ai-settings.service.js'
 import { aiEncryptionConfigured } from './services/encryption.service.js'
+import { maintenanceTick } from './services/maintenance.service.js'
 
 // The Node server: what the Docker image runs. The app itself (app.ts) knows
 // nothing of Node's HTTP server. Node's WebSockets are added here.
@@ -85,6 +86,12 @@ async function afterListening() {
   await loadPlugins(process.env.PLUGINS_DIR)
 
   await sealLegacyAiKeys()
+
+  // Hourly housekeeping (retention, expired codes, finished job chunks), as
+  // the Worker's cron does. Once now, then every hour.
+  const tick = () => void maintenanceTick().catch((err) => log.error(err, '[maintenance] failed'))
+  tick()
+  setInterval(tick, 3600_000).unref()
 }
 
 const server = serve({ fetch: app.fetch, port, hostname: '0.0.0.0' }, () => {

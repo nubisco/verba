@@ -2,6 +2,7 @@ import crypto from 'node:crypto'
 import { prisma } from '../prisma.js'
 import { createOtpOnlyUser } from './auth.service.js'
 import { isOperatorEmail } from './operator.service.js'
+import { escapeHtml, sendEmail } from './email.service.js'
 
 const OTP_EXPIRY_MINUTES = 15
 
@@ -76,14 +77,6 @@ export function isDisposableEmail(email: string, extra: string | undefined = pro
   return blocked.some((d) => domain === d || domain.endsWith(`.${d}`))
 }
 
-/**
- * Who the code comes from. MAIL_FROM, then SMTP_FROM, for both transports:
- * Resend used to send from a hard-coded address whatever was configured.
- */
-export function mailFrom(env: NodeJS.ProcessEnv = process.env): string {
-  return env.MAIL_FROM || env.SMTP_FROM || 'Verba <noreply@verba.app>'
-}
-
 function getOtpEmailHtml(code: string): string {
   return `
       <!doctype html>
@@ -119,7 +112,7 @@ function getOtpEmailHtml(code: string): string {
                 <!-- Code box -->
                 <div style="background:#f5f6fa;border-radius:8px;padding:24px;text-align:center;margin-bottom:24px;">
                   <span style="font-size:2.5rem;font-weight:700;letter-spacing:0.5rem;color:#7c3aed;font-family:monospace;">
-                    ${code}
+                    ${escapeHtml(code)}
                   </span>
                 </div>
                 <!-- Security note -->
@@ -150,46 +143,9 @@ async function sendOtpEmail(email: string, code: string): Promise<void> {
   const text = `Your one-time login code is: ${code}\n\nIt expires in ${OTP_EXPIRY_MINUTES} minutes.\n\nIf you did not request this, you can ignore this email.`
   const html = getOtpEmailHtml(code)
 
-  // Try Resend first if API key is configured
-  if (process.env.RESEND_API_KEY) {
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-      },
-      body: JSON.stringify({
-        from: mailFrom(),
-        to: email,
-        subject,
-        text,
-        html,
-      }),
-    })
-    if (!res.ok) {
-      throw new Error(`Resend API error: ${res.statusText}`)
-    }
-    return
-  }
-
-  // Fall back to SMTP if configured
-  if (process.env.SMTP_HOST) {
-    const nodemailer = await import('nodemailer')
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT ?? 587),
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } : undefined,
-    })
-    await transporter.sendMail({
-      from: mailFrom(),
-      to: email,
-      subject,
-      text,
-      html,
-    })
-    return
-  }
+  // Resend over fetch, the only transport (email.service.ts). Without a key
+  // the code goes to the server log, as in development.
+  if (await sendEmail({ to: email, subject, text, html })) return
 
   // Dev mode: log to stdout
   console.log(`[OTP] Code for ${email}: ${code}  (expires in ${OTP_EXPIRY_MINUTES}m)`)

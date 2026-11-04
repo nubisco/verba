@@ -15,6 +15,7 @@
 // a limit already, for example after a downgrade.
 
 import { prisma } from '../prisma.js'
+import { projectKeyIndex } from './key-index.service.js'
 import { eeEnabled, loadEE } from './edition.service.js'
 
 // Locales are counted as the distinct locale codes across the account's
@@ -110,11 +111,10 @@ export async function assertProjectWithinLimit(projectId: string, resource: Limi
 export async function newKeyCount(projectId: string, keys: { namespaceSlug: string; name: string }[]): Promise<number> {
   const wanted = new Set(keys.map((k) => `${k.namespaceSlug}\u0000${k.name}`))
   if (wanted.size === 0) return 0
-  const existing = await prisma.key.findMany({
-    where: { projectId, name: { in: [...new Set(keys.map((k) => k.name))] } },
-    select: { name: true, namespace: { select: { slug: true } } },
-  })
-  for (const k of existing) wanted.delete(`${k.namespace.slug}\u0000${k.name}`)
+  // One query for the whole project, never one IN list per name: an import
+  // of thousands of keys would pass D1's 100 bound parameters.
+  const existing = await projectKeyIndex(projectId)
+  for (const k of existing.keys()) wanted.delete(k)
   return wanted.size
 }
 

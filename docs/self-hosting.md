@@ -37,7 +37,7 @@ The wizard:
 
 1. Asks for database type: **SQLite** (zero-config) or **PostgreSQL** (recommended for teams)
 2. Generates (or accepts) a JWT secret
-3. Optionally configures SMTP for email / OTP delivery
+3. Optionally configures Resend for email / OTP delivery
 4. Creates the initial admin user
 5. Writes `apps/api/.env`
 6. Creates the database schema (`prisma migrate deploy` on PostgreSQL, `prisma db push` on SQLite)
@@ -140,13 +140,10 @@ Configure the API via environment variables in `apps/api/.env`:
 | `PUBLIC_API_URL`        | _(derived)_                 | Public address of this API, if it is not `<web origin>/api`        |
 | `PLATFORM_SERVER_FLOW`  | `false`                     | Run Platform sign-in server-side (register the new callback first) |
 | `LICENSE_KEY`           | _(unset)_                   | Enterprise Edition licence; required for federated sign-in         |
-| `SMTP_HOST`             | _(unset = log to stdout)_   | SMTP host for email / OTP delivery                                 |
-| `SMTP_PORT`             | `587`                       | SMTP port                                                          |
-| `MAIL_FROM`             | `SMTP_FROM`                 | From address for outgoing email, on Resend and SMTP alike          |
-| `SMTP_FROM`             | `noreply@verba.app`         | From address, when `MAIL_FROM` is not set                          |
-| `SMTP_USER`             | _(optional)_                | SMTP username                                                      |
-| `SMTP_PASS`             | _(optional)_                | SMTP password                                                      |
-| `SMTP_SECURE`           | `false`                     | Set `true` for port-465 TLS                                        |
+| `RESEND_API_KEY`        | _(unset = log to stdout)_   | Resend key for email (sign-in codes). Resend is the only transport |
+| `MAIL_FROM`             | _(required with the key)_   | From address, for example `Verba <auth@example.com>`               |
+| `AUDIT_RETENTION_DAYS`  | _(unset = keep everything)_ | Delete audit entries older than this many days, hourly             |
+| `OPENAI_BASE_URL`       | `https://api.openai.com/v1` | Any OpenAI-compatible endpoint for the OpenAI provider             |
 | `AI_ENCRYPTION_KEY`     | _(unset = AI keys refused)_ | Secret that encrypts customers' AI keys. Nothing else uses it      |
 | `VERBA_OPERATORS`       | _(unset)_                   | Emails of the instance operators, comma separated. See below       |
 | `SESSION_TTL_HOURS`     | `168` (7 days)              | How long a session lasts unused. Active sessions renew daily       |
@@ -154,7 +151,7 @@ Configure the API via environment variables in `apps/api/.env`:
 | `TRUST_PROXY`           | private ranges              | Proxies whose `X-Forwarded-For` is believed, see below             |
 | `BLOCKED_EMAIL_DOMAINS` | _(unset)_                   | Extra throwaway domains refused for new accounts, comma separated  |
 
-> **Development mode:** When `SMTP_HOST` is not set, OTP codes are printed to the API server's stdout log.
+> **No email configured:** when `RESEND_API_KEY` is not set, OTP codes are printed to the API server's stdout log. SMTP is no longer supported: email goes through Resend over HTTPS, the same on Docker and on Nubisco's hosted instance.
 
 ### Sign-in limits
 
@@ -373,7 +370,7 @@ Set `CORS_ORIGIN=https://verba.example.com` in your `.env` when behind a proxy.
 - [ ] PostgreSQL password is strong and not publicly accessible
 - [ ] API port (4000) is **not** directly accessible. Only the reverse proxy is
 - [ ] HTTPS is enabled on the reverse proxy
-- [ ] SMTP is configured (or users will need console access to retrieve OTP codes)
+- [ ] `RESEND_API_KEY` and `MAIL_FROM` are set (or users will need console access to retrieve OTP codes)
 - [ ] Database is backed up regularly (see below)
 - [ ] The database is backed up before each upgrade (the API image applies pending migrations when it starts)
 
@@ -457,6 +454,6 @@ Project-level admins manage members in **Project → Settings → Members**:
 | API returns 500 on startup | `JWT_SECRET` not set                 | Add `JWT_SECRET` to `.env`                           |
 | CORS errors in browser     | `CORS_ORIGIN` mismatch               | Set exact origin (no trailing slash)                 |
 | Migrations fail            | Database not reachable               | Check `DATABASE_URL` and DB service                  |
-| OTP codes never arrive     | SMTP not configured                  | Set `SMTP_HOST` or check server logs                 |
+| OTP codes never arrive     | Email not configured                 | Set `RESEND_API_KEY` and `MAIL_FROM`, or check logs  |
 | WebSocket disconnects      | Proxy not forwarding upgrade headers | Add `Upgrade` / `Connection` headers to proxy config |
 | Docker build fails         | Stale node_modules                   | Run `docker compose build --no-cache`                |

@@ -4,9 +4,9 @@ import { httpError } from '../http.js'
 import { authenticate } from '../session.js'
 import { requireProjectRole } from '../services/acl.service.js'
 import * as analytics from '../services/analytics.service.js'
-import { parseFile, previewImport, applyImport } from '../services/import.service.js'
-import { isXliffUpload, previewXliff, importXliff } from '../services/xliff.service.js'
-import { createImportRun, updateImportRun } from '../services/import-run.service.js'
+import { parseFile, prepareTabularImport, previewImport } from '../services/import.service.js'
+import { isXliffUpload, prepareXliffImport, previewXliff } from '../services/xliff.service.js'
+import { chunkRows, startRun } from '../services/import-job.service.js'
 import { ImportMappingSchema } from '../schemas/import.schema.js'
 import { Role } from '../types.js'
 
@@ -74,6 +74,9 @@ export function importRoutes(app: Api) {
     return c.json(await previewImport(projectId, rows, mapping))
   })
 
+  // Applying runs as background jobs (import-job.service.ts): the answer is
+  // 202 with the run, which the page follows until it is COMPLETED or FAILED.
+  // The plan is checked here, before anything is written.
   app.post('/projects/:projectId/import/apply', authenticate, uploadBody, async (c) => {
     const projectId = c.req.param('projectId')
     const userId = c.var.user.userId
@@ -81,47 +84,39 @@ export function importRoutes(app: Api) {
 
     const data = await readUpload(c)
     const buffer = data.buffer
+    const meta = { filename: data.filename, mimetype: data.mimetype }
 
-    if (isXliffUpload(data.filename, data.mimetype, buffer)) {
-      const mapping = ImportMappingSchema.parse({})
-      const importRun = await createImportRun(projectId, userId, mapping)
-      try {
-        const stats = await importXliff(projectId, buffer, userId, importRun.id)
-        return c.json({ importRunId: importRun.id, stats })
-      } catch (err) {
-        await updateImportRun(importRun.id, 'FAILED', {}, [
-          { row: 0, message: err instanceof Error ? err.message : String(err) },
-        ])
-        throw err
-      }
-    }
-
-    const mappingField = data.fields.mapping
-    if (!mappingField) throw httpError(400, 'mapping field is required')
-    const mapping = ImportMappingSchema.parse(JSON.parse(mappingField))
-
-    const importRun = await createImportRun(projectId, userId, mapping)
     try {
-      const rows = parseFile(buffer, data.mimetype, mapping)
-      const stats = await applyImport(projectId, rows, mapping, userId, importRun.id)
-      analytics.track('import_completed', {
-        userId: userId,
-        props: {
-          project_id: projectId,
-          mimetype: data.mimetype,
-          created: stats.created,
-          updated: stats.updated,
-          skipped: stats.skipped,
-          error_count: stats.errors.length,
-        },
+      if (isXliffUpload(data.filename, data.mimetype, buffer)) {
+        const { rows, targetLanguage, sourceLanguage } = await prepareXliffImport(projectId, buffer)
+        const run = await startRun({
+          projectId,
+          userId,
+          kind: 'import',
+          meta: { ...meta, format: 'xliff', targetLanguage, sourceLanguage },
+          chunks: chunkRows(rows),
+          totalRows: rows.length,
+        })
+        return c.json({ ...run, targetLanguage }, 202)
+      }
+
+      const mappingField = data.fields.mapping
+      if (!mappingField) throw httpError(400, 'mapping field is required')
+      const mapping = ImportMappingSchema.parse(JSON.parse(mappingField))
+      const { rows, skipped } = await prepareTabularImport(projectId, parseFile(buffer, data.mimetype, mapping))
+      const run = await startRun({
+        projectId,
+        userId,
+        kind: 'import',
+        meta: { ...meta, ...mapping },
+        chunks: chunkRows(rows),
+        totalRows: rows.length,
+        skipped,
       })
-      return c.json({ importRunId: importRun.id, stats })
+      return c.json(run, 202)
     } catch (err) {
-      await updateImportRun(importRun.id, 'FAILED', {}, [
-        { row: 0, message: err instanceof Error ? err.message : String(err) },
-      ])
       analytics.track('import_failed', {
-        userId: userId,
+        userId,
         props: {
           project_id: projectId,
           mimetype: data.mimetype,

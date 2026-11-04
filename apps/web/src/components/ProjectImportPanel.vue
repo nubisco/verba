@@ -98,13 +98,19 @@
       </NbDataTable>
       <div class="actions">
         <NbButton variant="primary" :disabled="loading" @click="doApply">
-          {{ loading ? t('import.applying') : t('import.applyImport') }}
+          {{
+            !loading
+              ? t('import.applyImport')
+              : progress
+                ? t('import.importing', { done: progress.done, total: progress.total })
+                : t('import.applying')
+          }}
         </NbButton>
       </div>
     </NbPanel>
 
     <NbPanel v-if="applyResult" class="section result">
-      <h3>{{ t('import.importComplete') }}</h3>
+      <h3>{{ applyResult.status === 'FAILED' ? t('import.importFailed') : t('import.importComplete') }}</h3>
       <!-- A well one step above the panel it sits in. -->
       <NbLayer as="pre" class="result-stats">{{ JSON.stringify(applyResult.stats, null, 2) }}</NbLayer>
       <NbButton
@@ -194,7 +200,30 @@ const PREVIEW_STATUS_BADGE: Record<PreviewRow['status'], 'green' | 'orange' | 'g
   update: 'orange',
   skip: 'grey',
 }
-const applyResult = ref<{ importRunId: string; stats: object } | null>(null)
+const applyResult = ref<{ importRunId: string; stats: object; status: string } | null>(null)
+const progress = ref<{ done: number; total: number } | null>(null)
+
+/** A run as the API reports it (an import, or an AI fill). */
+interface Run {
+  status: string
+  stats: string
+  errors: string
+  processedRows: number
+  totalRows: number
+}
+
+/**
+ * Applying an import or an AI fill starts a run of background jobs and answers
+ * 202. Follow the run until it is no longer running, reporting progress.
+ */
+async function followRun(runId: string): Promise<Run> {
+  for (;;) {
+    const run = await apiFetch<Run>(`/projects/${props.projectId}/import-runs/${runId}`)
+    progress.value = { done: run.processedRows, total: run.totalRows }
+    if (run.status !== 'RUNNING' && run.status !== 'PENDING') return run
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+  }
+}
 const loading = ref(false)
 const error = ref('')
 
@@ -321,13 +350,16 @@ async function doApply() {
       notePlanLimit(res.status, d)
       throw new Error(d.error ?? 'Apply failed')
     }
-    applyResult.value = await res.json()
+    const started = (await res.json()) as { importRunId: string }
+    const run = await followRun(started.importRunId)
+    applyResult.value = { importRunId: started.importRunId, stats: JSON.parse(run.stats), status: run.status }
     xliffTargetLocale.value = preview.value?.targetLanguage ?? ''
     aiFillResult.value = null
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : String(e)
   } finally {
     loading.value = false
+    progress.value = null
   }
 }
 
@@ -336,14 +368,22 @@ async function aiFill() {
   aiFilling.value = true
   aiFillError.value = ''
   try {
-    aiFillResult.value = await apiFetch(`/projects/${props.projectId}/ai/fill-locale`, {
+    const started = await apiFetch<{ importRunId: string }>(`/projects/${props.projectId}/ai/fill-locale`, {
       method: 'POST',
       body: JSON.stringify({ localeCode: xliffTargetLocale.value, onlyEmpty: true }),
     })
+    const run = await followRun(started.importRunId)
+    const stats = JSON.parse(run.stats) as { filled?: number; skipped?: number }
+    aiFillResult.value = {
+      filled: stats.filled ?? 0,
+      skipped: stats.skipped ?? 0,
+      warnings: JSON.parse(run.errors) as { key: string; message: string }[],
+    }
   } catch (e: unknown) {
     aiFillError.value = e instanceof Error ? e.message : String(e)
   } finally {
     aiFilling.value = false
+    progress.value = null
   }
 }
 </script>
