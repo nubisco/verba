@@ -1,3 +1,10 @@
+# [1.27.0](https://github.com/nubisco/verba/compare/v1.26.0...v1.27.0) (2026-11-04)
+
+
+### Features
+
+* **signup:** close sign-up until the terms are published, and switch checkout off ([6d94221](https://github.com/nubisco/verba/commit/6d9422183f66cdfd6c1568094cf25536bda6e132))
+
 # [1.26.0](https://github.com/nubisco/verba/compare/v1.25.0...v1.26.0) (2026-11-04)
 
 
