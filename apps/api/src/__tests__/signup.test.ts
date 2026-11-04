@@ -17,8 +17,18 @@ vi.mock('../prisma.js', () => ({
       create: vi.fn(),
       update: vi.fn(),
     },
+    instanceAuditLog: { create: vi.fn() },
   },
 }))
+
+/** The terms.accepted events written to the instance audit record. */
+function acceptances() {
+  return vi
+    .mocked(prisma.instanceAuditLog.create)
+    .mock.calls.map(([args]) => (args as { data: Record<string, unknown> }).data)
+    .filter((d) => d.action === 'terms.accepted')
+    .map((d) => ({ ...d, detail: JSON.parse(String(d.detail)) }))
+}
 
 import { prisma } from '../prisma.js'
 import { register } from '../services/auth.service.js'
@@ -151,6 +161,7 @@ describe('email codes', () => {
     await expect(verifyOtp('new@example.com', '123456')).resolves.toMatchObject({ userId: 'u-new' })
     const data = vi.mocked(prisma.user.create).mock.calls[0][0].data as Record<string, unknown>
     expect(data.termsVersion).toBeUndefined()
+    expect(acceptances()).toEqual([])
   })
 
   describe('with terms', () => {
@@ -190,6 +201,19 @@ describe('email codes', () => {
         termsAcceptedAt: NOW,
       })
       expect(codeSpent()).toBe(true)
+      expect(acceptances()).toEqual([
+        {
+          actorId: 'u-new',
+          action: 'terms.accepted',
+          targetUserId: 'u-new',
+          detail: { version: '2026-12-01', acceptedAt: NOW.toISOString() },
+        },
+      ])
+    })
+
+    it('records no acceptance when the terms were refused', async () => {
+      await expect(verifyOtp('new@example.com', '123456')).rejects.toMatchObject({ statusCode: 409 })
+      expect(acceptances()).toEqual([])
     })
 
     it('does not ask an existing account at sign-in (the first page does)', async () => {
@@ -200,11 +224,20 @@ describe('email codes', () => {
     it('records an acceptance of the current version only', async () => {
       await expect(acceptTerms('u1', '2026-01-01')).rejects.toMatchObject({ statusCode: 409 })
       expect(prisma.user.update).not.toHaveBeenCalled()
+      expect(acceptances()).toEqual([])
       await expect(acceptTerms('u1', '2026-12-01', NOW)).resolves.toBe('2026-12-01')
       expect(prisma.user.update).toHaveBeenCalledWith({
         where: { id: 'u1' },
         data: { termsVersion: '2026-12-01', termsAcceptedAt: NOW },
       })
+      expect(acceptances()).toEqual([
+        {
+          actorId: 'u1',
+          action: 'terms.accepted',
+          targetUserId: 'u1',
+          detail: { version: '2026-12-01', acceptedAt: NOW.toISOString() },
+        },
+      ])
       expect(termsStatus('2026-01-01')).toMatchObject({ version: '2026-12-01', accepted: false })
       expect(termsStatus('2026-12-01')).toMatchObject({ accepted: true })
     })
@@ -223,6 +256,7 @@ describe('password registration', () => {
     await expect(register('new@example.com', 'password1')).rejects.toMatchObject({ statusCode: 409 })
     await register('new@example.com', 'password1', { termsVersion: 'v2' })
     expect(vi.mocked(prisma.user.create).mock.calls[0][0].data).toMatchObject({ termsVersion: 'v2' })
+    expect(acceptances()).toMatchObject([{ targetUserId: 'u-new', detail: { version: 'v2' } }])
   })
 
   it('lets first-run setup create the operator without the terms step', async () => {
@@ -230,6 +264,7 @@ describe('password registration', () => {
     vi.stubEnv('VERBA_TERMS_VERSION', 'v2')
     await register('ops@example.com', 'password1', { skipTerms: true })
     expect(prisma.user.create).toHaveBeenCalled()
+    expect(acceptances()).toEqual([])
   })
 })
 

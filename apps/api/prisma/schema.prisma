@@ -271,7 +271,7 @@ model ImportChunk {
 model InstanceAuditLog {
   id           String   @id @default(cuid())
   actorId      String? // the operator who acted, or null when config made the change
-  action       String // operator.granted | operator.revoked | user.deactivated | user.reactivated | user.deleted
+  action       String // operator.granted | operator.revoked | user.deactivated | user.reactivated | user.deleted | terms.accepted
   targetUserId String?
   detail       String? // JSON
   createdAt    DateTime @default(now())

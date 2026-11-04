@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('../prisma.js', () => ({
   prisma: {
     user: { findUnique: vi.fn(), update: vi.fn(), count: vi.fn() },
+    instanceAuditLog: { create: vi.fn() },
     account: { findMany: vi.fn(async () => []) },
     accountMember: { findMany: vi.fn(async () => []) },
   },
@@ -105,6 +106,15 @@ describe('the terms gate', () => {
       expect(prisma.user.update).toHaveBeenCalledWith({
         where: { id: 'u1' },
         data: { termsVersion: 'v2', termsAcceptedAt: expect.any(Date) },
+      })
+      // The acceptance is an event too, kept beyond the latest on the user.
+      expect(prisma.instanceAuditLog.create).toHaveBeenCalledWith({
+        data: {
+          actorId: 'u1',
+          action: 'terms.accepted',
+          targetUserId: 'u1',
+          detail: expect.stringContaining('"version":"v2"'),
+        },
       })
       const token = tokenOf(ok)
       expect(token).toBeTruthy()

@@ -15,9 +15,15 @@
 // and the version and time are stored on the user. A different version asks
 // everyone again, and the API refuses everything but the /auth routes until
 // they accept (session.ts). Unset, there is no terms step at all.
+//
+// Every acceptance, at sign-up and again after a new version, is also an
+// event (`terms.accepted`) in the instance audit record, the way Acta records
+// the terms a workspace was created under. The user row only holds the
+// latest. The instance audit record is never pruned (maintenance.service.ts
+// only applies retention to project audit logs), so the history stays.
 
 import { prisma } from '../prisma.js'
-import { isOperatorEmail } from './operator.service.js'
+import { isOperatorEmail, recordInstanceAudit } from './operator.service.js'
 
 /** Whether strangers may create an account here. Open unless VERBA_SIGNUP_OPEN is "false". */
 export function signupOpen(env: Record<string, string | undefined> = process.env): boolean {
@@ -99,6 +105,16 @@ export async function acceptedTermsVersion(userId: string): Promise<string | nul
   return user?.termsVersion ?? null
 }
 
+/** One `terms.accepted` event: who, which version, and when. */
+export async function recordTermsAcceptance(userId: string, version: string, at: Date): Promise<void> {
+  await recordInstanceAudit({
+    actorId: userId,
+    action: 'terms.accepted',
+    targetUserId: userId,
+    detail: { version, acceptedAt: at.toISOString() },
+  })
+}
+
 /**
  * Record that a signed-in person accepted the current terms. The version they
  * ticked must be the current one, so a page left open across a change of
@@ -109,5 +125,6 @@ export async function acceptTerms(userId: string, version: string, now: Date = n
   if (!terms) throw Object.assign(new Error('This instance has no terms to accept'), { statusCode: 404 })
   if (version !== terms.version) throw termsRequiredError(terms)
   await prisma.user.update({ where: { id: userId }, data: { termsVersion: terms.version, termsAcceptedAt: now } })
+  await recordTermsAcceptance(userId, terms.version, now)
   return terms.version
 }

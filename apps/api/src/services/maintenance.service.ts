@@ -40,7 +40,11 @@ export interface MaintenanceReport {
   alerted: boolean
 }
 
-/** Delete audit entries past their retention. Returns how many. */
+/**
+ * Delete project audit entries past their retention. Returns how many. The
+ * instance audit record (InstanceAuditLog) is never pruned: it holds operator
+ * changes and every terms acceptance (`terms.accepted`), which must outlive it.
+ */
 export async function pruneAuditLogs(now: Date, env = process.env): Promise<number> {
   if (await hostedBillingEnabled()) {
     const free = await prisma.auditLog.deleteMany({
