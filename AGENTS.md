@@ -194,8 +194,8 @@ The API refuses to start with the default `JWT_SECRET` in production.
 
 ## Images and the hosted deployment
 
-- **Two API images, from one Dockerfile.** `apps/api/Dockerfile` takes `EDITION` (default `ce`). `ghcr.io/nubisco/verba-api` is the public Community Edition image: packages/ee is replaced by a stub, so no proprietary code ships in it. `ghcr.io/nubisco/verba-api-ee` (`EDITION=ee`) compiles packages/ee in, is amd64 only, and is a **private** package used by verba.nubisco.io alone. Never make it public and never point the public `docker-compose.yml` at it.
-- **Deploy** (`.github/workflows/docker.yml`): after Release on master, the public images and the EE image are built for the same pinned commit and tagged `sha-<7>`. The EE build checks that its package is private and fails otherwise. The `nas` job then runs `ssh nas-deploy "verba sha-<7>"`. Which images run is decided by the compose file on the NAS, not in this repository: hosted Verba uses `verba-api-ee` for the API and `verba-ce` for the web.
+- **One public API image, from one Dockerfile.** `apps/api/Dockerfile` takes `EDITION` (default `ce`). `ghcr.io/nubisco/verba-api` is the public Community Edition image: packages/ee is replaced by a stub, so no proprietary code ships in it. `EDITION=ee` still builds, but CI publishes no EE image: hosted Verba is the Cloudflare Worker, which bundles packages/ee itself. Never publish an EE image publicly and never point the public `docker-compose.yml` at one.
+- **Deploy** (`.github/workflows/docker.yml`): after Release on master, for one pinned commit, the `worker` job builds the web app, applies the D1 migrations and deploys the Worker to verba.nubisco.io with `VERBA_GIT_SHA`, then checks `/api/version` reports that commit. The public images are built and tagged `sha-<7>` beside it. The NAS no longer runs Verba (cutover, 2026-11-04).
 
 ## New Feature Checklist
 
