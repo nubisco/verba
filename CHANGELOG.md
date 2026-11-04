@@ -1,3 +1,10 @@
+# [1.25.0](https://github.com/nubisco/verba/compare/v1.24.0...v1.25.0) (2026-11-04)
+
+
+### Features
+
+* **api:** run imports and AI fills as chunked jobs within D1's limits ([7e56114](https://github.com/nubisco/verba/commit/7e56114dbad0edfc01ddf0b8dd28a92482b39170))
+
 # [1.24.0](https://github.com/nubisco/verba/compare/v1.23.0...v1.24.0) (2026-11-03)
 
 
