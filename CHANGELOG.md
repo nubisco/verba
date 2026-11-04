@@ -1,3 +1,10 @@
+# [1.26.0](https://github.com/nubisco/verba/compare/v1.25.0...v1.26.0) (2026-11-04)
+
+
+### Features
+
+* **deploy:** serve verba.nubisco.io from Cloudflare, retire the NAS deploy ([dbc56ca](https://github.com/nubisco/verba/commit/dbc56cabab4591f344637748d67017fcffc0f36e))
+
 # [1.25.0](https://github.com/nubisco/verba/compare/v1.24.0...v1.25.0) (2026-11-04)
 
 
