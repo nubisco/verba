@@ -1,3 +1,10 @@
+# [1.29.0](https://github.com/nubisco/verba/compare/v1.28.0...v1.29.0) (2026-11-04)
+
+
+### Features
+
+* **auth:** Accord-only sign-in for hosted Verba, with the operator provisioned at first sign-in ([23ca78a](https://github.com/nubisco/verba/commit/23ca78a11c78579db83177c8cc8451b0d63f3678))
+
 # [1.28.0](https://github.com/nubisco/verba/compare/v1.27.0...v1.28.0) (2026-11-04)
 
 
