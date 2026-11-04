@@ -1,6 +1,6 @@
 import { prisma } from '../prisma.js'
 import { assertSignupAllowed } from './signup.service.js'
-import { isOperatorEmail } from './operator.service.js'
+import { isOperatorEmail, recordInstanceAudit } from './operator.service.js'
 import { ensureFirstAccount } from './account.service.js'
 
 // ── Inline RS256/JWKS verification (no external deps) ────────────────────────
@@ -139,6 +139,21 @@ export interface ResolvedIdentity {
   created: boolean
 }
 
+/** The words a person sees when their address belongs to someone else's sign-in. */
+export const LINKED_ELSEWHERE_MESSAGE =
+  'This email address belongs to a Verba account that signs in with a different identity. Ask the instance operator to check it.'
+
+/**
+ * 409 `account_linked_elsewhere`: the provider vouched for an address whose
+ * Verba account is already bound to another subject at the same provider.
+ */
+export function linkedElsewhereError(): Error {
+  return Object.assign(new Error(LINKED_ELSEWHERE_MESSAGE), {
+    statusCode: 409,
+    details: { code: 'account_linked_elsewhere' },
+  })
+}
+
 /**
  * Map verified provider claims onto a local Verba user.
  *
@@ -147,6 +162,28 @@ export interface ResolvedIdentity {
  * to the legacy callback ends at the claims; if provisioning drifted between
  * them, the same person would get a different account depending on how their
  * provider happened to be wired.
+ *
+ * Who this is, in order (Jose, 2026-11-04, the identity Acta binds as
+ * `platform_user_id`):
+ *
+ *  1. The user bound to this provider's `iss` and `sub`. Their stored email
+ *     follows the provider's, so a person who changed address at Accord keeps
+ *     their account. If another Verba user already holds the new address, the
+ *     stored one is kept and the person still signs in as themselves.
+ *  2. Otherwise the user with this email, who is bound to this subject now.
+ *     That is how everyone created before the binding existed, and everyone
+ *     added by email, gets linked at their next sign-in. A user bound to a
+ *     different issuer (a self-hosted instance that changed provider) is
+ *     rebound, because the email is the only bridge between two providers.
+ *  3. Refused, 409 `account_linked_elsewhere`, when that user is already bound
+ *     to a different subject at the same issuer. Acta rebinds in that case.
+ *     Verba does not: once an Accord account has changed its address, a newer
+ *     Accord account holding the old one would otherwise take over the first
+ *     person's projects. An operator sorts it out instead.
+ *  4. Otherwise a new user, bound from the start.
+ *
+ * Claims without an issuer (no caller sends any today) match by email only and
+ * bind nothing.
  *
  * `autoProvision: false` means users must exist in Verba first, and someone
  * unknown gets null rather than an account. An instance closed to new
@@ -176,17 +213,89 @@ export async function upsertUserFromClaims(
   // avatar, so taking the role away in Platform takes the right away here at
   // the next sign-in. A provider that sends no role leaves it empty.
   const platformRole = typeof claims.role === 'string' && claims.role ? claims.role : null
+  const issuer = typeof claims.iss === 'string' && claims.iss ? claims.iss : null
+  const subject = issuer && typeof claims.sub === 'string' && claims.sub ? claims.sub : null
 
-  const existing = await prisma.user.findUnique({ where: { email } })
+  const bound =
+    issuer && subject
+      ? await prisma.user.findUnique({
+          where: { platformIssuer_platformSub: { platformIssuer: issuer, platformSub: subject } },
+        })
+      : null
+  const existing = bound ?? (await prisma.user.findUnique({ where: { email } }))
+
   if (existing) {
+    // Deactivated comes first, so a refusal below never tells anyone more
+    // about an account that is gone than "not a member" does.
     if (existing.deactivatedAt != null) return null
-    if (existing.avatarUrl !== avatarUrl || existing.platformRole !== platformRole) {
-      await prisma.user.update({ where: { id: existing.id }, data: { avatarUrl, platformRole } })
+    if (
+      !bound &&
+      subject &&
+      existing.platformIssuer === issuer &&
+      existing.platformSub &&
+      existing.platformSub !== subject
+    ) {
+      await recordInstanceAudit({
+        action: 'identity.link_refused',
+        targetUserId: existing.id,
+        detail: { issuer, subject, boundSubject: existing.platformSub },
+      })
+      throw linkedElsewhereError()
     }
-    await provisionOperator(existing.id, email)
+
+    const data: {
+      avatarUrl?: string | null
+      platformRole?: string | null
+      platformIssuer?: string
+      platformSub?: string
+      email?: string
+    } = {}
+    if (existing.avatarUrl !== avatarUrl || existing.platformRole !== platformRole) {
+      data.avatarUrl = avatarUrl
+      data.platformRole = platformRole
+    }
+    const linking = Boolean(subject && (existing.platformIssuer !== issuer || existing.platformSub !== subject))
+    if (linking) {
+      data.platformIssuer = issuer!
+      data.platformSub = subject!
+    }
+    let emailMoved = false
+    if (bound && bound.email !== email) {
+      const holder = await prisma.user.findUnique({ where: { email }, select: { id: true } })
+      if (holder) {
+        console.warn(`identity ${issuer} ${subject}: new email is held by user ${holder.id}, keeping the stored one`)
+      } else {
+        data.email = email
+        emailMoved = true
+      }
+    }
+    if (Object.keys(data).length > 0) {
+      await prisma.user.update({ where: { id: existing.id }, data })
+    }
+    if (linking) {
+      await recordInstanceAudit({
+        action: 'identity.linked',
+        targetUserId: existing.id,
+        detail: {
+          issuer,
+          subject,
+          ...(existing.platformIssuer ? { previousIssuer: existing.platformIssuer } : {}),
+        },
+      })
+    }
+    if (emailMoved) {
+      await recordInstanceAudit({
+        action: 'user.email_changed',
+        targetUserId: existing.id,
+        detail: { from: existing.email, to: email, source: 'identity_provider' },
+      })
+    }
+
+    const storedEmail = emailMoved ? email : existing.email
+    await provisionOperator(existing.id, storedEmail)
     return {
       userId: existing.id,
-      email: existing.email,
+      email: storedEmail,
       plan,
       platformSub: claims.sub,
       name: existing.name,
@@ -209,6 +318,7 @@ export async function upsertUserFromClaims(
       isGlobalAdmin: false,
       avatarUrl,
       platformRole,
+      ...(subject ? { platformIssuer: issuer!, platformSub: subject } : {}),
     },
     select: { id: true, email: true, name: true },
   })
@@ -240,7 +350,7 @@ async function provisionOperator(userId: string, email: string): Promise<void> {
 
 /**
  * Verify a Nubisco Platform JWT and return the corresponding local user id.
- * Upserts the user by email on first login.
+ * Matches the user by provider identity, then by email (upsertUserFromClaims).
  * Returns null if platform auth is not configured or the token is invalid.
  */
 export async function verifyPlatformToken(token: string): Promise<{

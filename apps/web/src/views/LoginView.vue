@@ -370,6 +370,8 @@ async function handlePlatformCallback() {
       sso_discovery: 'The identity provider could not be reached; try again shortly',
       signup_closed:
         'This Verba instance is not open for new accounts yet. If you already have an account, sign in with the address it uses.',
+      account_linked_elsewhere:
+        'This email address belongs to a Verba account that signs in with a different identity. Ask the instance operator to check it.',
     }
     error.value = messages[platformError] ?? `Sign-in failed: ${platformError}`
     clearPlatformCallbackQuery()

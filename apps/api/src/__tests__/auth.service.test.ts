@@ -35,6 +35,8 @@ const mockUser = {
   platformRole: null,
   termsVersion: null,
   termsAcceptedAt: null,
+  platformIssuer: null,
+  platformSub: null,
 }
 
 beforeEach(() => {

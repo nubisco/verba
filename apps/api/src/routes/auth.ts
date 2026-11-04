@@ -299,9 +299,14 @@ export function authRoutes(app: Api, rateLimiters?: RateLimiterSource) {
       })
     } catch (err) {
       // Someone the provider vouched for, on an instance closed to new
-      // accounts: the sign-in page says so rather than a generic failure.
-      if ((err as { details?: { code?: string } }).details?.code === 'signup_closed')
-        return c.redirect(ssoService.loginErrorUrl('signup_closed'))
+      // accounts, or whose address belongs to another identity: the sign-in
+      // page says so rather than a generic failure.
+      const code = (err as { details?: { code?: string } }).details?.code
+      if (code === 'signup_closed') return c.redirect(ssoService.loginErrorUrl('signup_closed'))
+      // An address whose account is bound to another subject at this
+      // provider (platform-auth.service.ts). Said plainly, since the person
+      // just proved the address is theirs.
+      if (code === 'account_linked_elsewhere') return c.redirect(ssoService.loginErrorUrl('account_linked_elsewhere'))
       throw err
     }
     // Deactivated locally, or unknown on an instance that does not provision.
