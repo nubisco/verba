@@ -1,3 +1,10 @@
+# [1.28.0](https://github.com/nubisco/verba/compare/v1.27.0...v1.28.0) (2026-11-04)
+
+
+### Features
+
+* **signup:** record every terms acceptance as an event in the instance audit record ([82f2282](https://github.com/nubisco/verba/commit/82f22827a76b12607655bb8b9c090bd4aa51dd80))
+
 # [1.27.0](https://github.com/nubisco/verba/compare/v1.26.0...v1.27.0) (2026-11-04)
 
 
