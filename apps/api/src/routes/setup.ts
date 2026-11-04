@@ -3,10 +3,10 @@
 import { readBody, type Api } from '../http.js'
 import { prisma } from '../prisma.js'
 import { createOtpOnlyUser, register } from '../services/auth.service.js'
-import { getAuthConfig } from '../services/instance-config.service.js'
+import { getAuthConfig, platformOnlyAuth } from '../services/instance-config.service.js'
 import { startSession } from '../session.js'
 import { isOperatorEmail } from '../services/operator.service.js'
-import { createOwnedAccount } from '../services/account.service.js'
+import { createOwnedAccount, firstAccountName } from '../services/account.service.js'
 import { z } from 'zod'
 
 const setupSchema = z.object({
@@ -18,12 +18,19 @@ const setupSchema = z.object({
 export function setupRoutes(app: Api) {
   /** Returns whether the instance still needs first-time setup */
   app.get('/setup/status', async (c) => {
+    // An instance that signs in through its identity provider only has no
+    // wizard, even with an empty database: the operator's first sign-in
+    // provisions them (VERBA_AUTH_MODE=platform), so the web app goes to sign-in.
+    if (platformOnlyAuth()) return c.json({ needsSetup: false })
     const count = await prisma.user.count()
     return c.json({ needsSetup: count === 0 })
   })
 
   /** First-time setup: creates the admin user. Only works when no users exist. */
   app.post('/setup', async (c) => {
+    if (platformOnlyAuth()) {
+      return c.json({ error: 'This instance has no setup wizard. Sign in with its identity provider instead' }, 404)
+    }
     const count = await prisma.user.count()
     if (count > 0) {
       return c.json({ error: 'Instance is already set up' }, 409)
@@ -56,8 +63,8 @@ export function setupRoutes(app: Api) {
 
     // The instance's first account, owned by the operator, so the first
     // project has somewhere to live. Named after the instance when setup was
-    // given a name.
-    await createOwnedAccount(user.id, { name: body.data.instanceName?.trim() || 'My account' })
+    // given a name, else VERBA_FIRST_ACCOUNT_NAME, else "My account".
+    await createOwnedAccount(user.id, { name: body.data.instanceName?.trim() || firstAccountName() })
 
     // Sign the user in straight away
     await startSession(c, { userId: user.id, email: user.email })

@@ -17,7 +17,8 @@ interface InstanceSsoConfig {
 }
 
 interface InstanceAuthConfig {
-  mode: 'local_otp' | 'local_password' | 'hybrid'
+  /** `platform`: the identity provider only (VERBA_AUTH_MODE), no wizard and no local sign-in. */
+  mode: 'local_otp' | 'local_password' | 'hybrid' | 'platform'
   localOtpEnabled: boolean
   localPasswordEnabled: boolean
   platformEnabled: boolean

@@ -21,6 +21,7 @@ import { notificationRoutes } from './routes/notifications.js'
 import { aiRoutes } from './routes/ai.js'
 import { setupRoutes } from './routes/setup.js'
 import { configRoutes } from './routes/config.js'
+import { getAuthConfig, platformOnlyAuth } from './services/instance-config.service.js'
 import { billingRoutes } from './routes/billing.js'
 import type { Api, AppEnv } from './http.js'
 import { guardEveryWrite } from './read-only.js'
@@ -50,6 +51,11 @@ export interface BuildOptions {
 export async function buildApp(options: BuildOptions = {}): Promise<Api> {
   if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
     throw new Error('JWT_SECRET must be set in production')
+  }
+  // Federated sign-in only, with no provider to sign in through, is an
+  // instance nobody can enter. Say so at start-up rather than at the login page.
+  if (platformOnlyAuth() && !getAuthConfig().platformEnabled && !process.env.OIDC_ISSUER) {
+    throw new Error('VERBA_AUTH_MODE=platform needs PLATFORM_ISSUER and PLATFORM_APP_ID (or OIDC_ISSUER)')
   }
 
   const app = new Hono<AppEnv>()

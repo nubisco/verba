@@ -3,6 +3,9 @@
 JWT_SECRET=local-dev-secret
 VERBA_OPERATORS=you@example.com
 # Password sign-in, so a local Worker can be used without Accord or email.
+# wrangler.toml sets VERBA_AUTH_MODE = "platform" for hosted Verba (Accord
+# only, no wizard). Any other value here brings back setup and local sign-in.
+VERBA_AUTH_MODE=local
 ENABLE_LOCAL_PASSWORD=true
 # Plans against a local stand-in for the licenses service. Leave these three
 # out to run without plans.

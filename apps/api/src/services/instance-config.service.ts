@@ -1,5 +1,10 @@
 export interface AuthConfig {
-  mode: 'local_otp' | 'local_password' | 'hybrid'
+  /**
+   * `platform`: federated sign-in only (VERBA_AUTH_MODE=platform). No setup
+   * wizard, no email codes, no passwords. Hosted Verba runs this way, with
+   * Accord as the identity provider.
+   */
+  mode: 'local_otp' | 'local_password' | 'hybrid' | 'platform'
   localOtpEnabled: boolean
   localPasswordEnabled: boolean
   platformEnabled: boolean
@@ -28,9 +33,24 @@ export interface PublicInstanceConfig {
   auth: AuthConfig & { sso?: SsoPublicConfig }
 }
 
+/**
+ * Whether this instance signs people in through its identity provider only
+ * (VERBA_AUTH_MODE=platform, decided by Jose on 2026-11-04 for hosted Verba).
+ *
+ * On: no first-run wizard, no email codes, no password sign-in or
+ * registration, whatever ENABLE_LOCAL_PASSWORD and DISABLE_LOCAL_OTP say. The
+ * operator's first federated sign-in provisions them instead
+ * (platform-auth.service.ts). Unset, or any other value, keeps the local
+ * methods, so a self-hosted instance is unaffected.
+ */
+export function platformOnlyAuth(env: Record<string, string | undefined> = process.env): boolean {
+  return env.VERBA_AUTH_MODE?.trim().toLowerCase() === 'platform'
+}
+
 export function getAuthConfig(): AuthConfig {
-  const localPasswordEnabled = process.env.ENABLE_LOCAL_PASSWORD === 'true'
-  const localOtpEnabled = process.env.DISABLE_LOCAL_OTP !== 'true'
+  const platformOnly = platformOnlyAuth()
+  const localPasswordEnabled = !platformOnly && process.env.ENABLE_LOCAL_PASSWORD === 'true'
+  const localOtpEnabled = !platformOnly && process.env.DISABLE_LOCAL_OTP !== 'true'
   const platformIssuer = process.env.PLATFORM_ISSUER ?? null
   const platformAppId = process.env.PLATFORM_APP_ID ?? null
   // `||`, not `??`: compose passes an unset variable through as ''.
@@ -43,6 +63,18 @@ export function getAuthConfig(): AuthConfig {
   // indistinguishable from an outage from the browser. An issuer with no app
   // id is a half-configured instance, so the button is not offered at all.
   const platformEnabled = Boolean(platformIssuer && platformAppId)
+
+  if (platformOnly) {
+    return {
+      mode: 'platform',
+      localOtpEnabled,
+      localPasswordEnabled,
+      platformEnabled,
+      platformIssuer,
+      platformAuthOrigin,
+      platformAppId,
+    }
+  }
 
   if (localPasswordEnabled && localOtpEnabled) {
     return {

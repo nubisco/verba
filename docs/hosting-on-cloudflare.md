@@ -143,6 +143,7 @@ All set with `wrangler secret put` (secrets) or `[vars]` in `wrangler.toml` (set
 | `NODE_ENV=production`, `ENABLE_EE=true`                                                                                                                                   | Var      |                                                                                                                                                            |
 | `VERBA_OPERATORS`                                                                                                                                                         | Var      | Operator emails.                                                                                                                                           |
 | `VERBA_LICENSES_URL`, `VERBA_SALES_URL`, `VERBA_CHECKOUT_OPEN`                                                                                                            | Var      | plans-and-billing.md. Checkout is `"false"` until the terms and pricing are published.                                                                     |
+| `VERBA_AUTH_MODE`, `VERBA_FIRST_ACCOUNT_NAME`                                                                                                                             | Var      | `"platform"` and `"Nubisco"`: Accord only, and the first account's name. Below.                                                                            |
 | `VERBA_SIGNUP_OPEN`, `VERBA_TERMS_VERSION`, `VERBA_TERMS_URL`, `VERBA_PRIVACY_URL`                                                                                        | Var      | Sign-up is `"false"` until the terms are published, below. The three terms vars are unset until then.                                                      |
 | `PLATFORM_ISSUER`, `PLATFORM_APP_ID`, `PLATFORM_AUTH_ORIGIN`, `PLATFORM_SERVER_FLOW`, `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_SCOPES`, `OIDC_LABEL`, `OIDC_AUTO_PROVISION` | Var      | Sign-in through Accord.                                                                                                                                    |
 | `MAIL_FROM`, `ANALYTICS_URL`, `ANALYTICS_DOMAIN`, `SESSION_TTL_HOURS`                                                                                                     | Var      |                                                                                                                                                            |
@@ -161,6 +162,10 @@ verba.nubisco.io is already proxied by Cloudflare, so the switch is a **Worker r
 5. In the same change, remove the `build-ee` and `nas` jobs from `docker.yml`. The public images keep building. On the NAS, hosted Verba's containers can be stopped.
 
 Plans switch on afterwards, when licenses has its Verba settings (plans-and-billing.md, "Switching it on"): set the two licenses secrets on the Worker and the URL in `[vars]`. Nothing else changes.
+
+### Accord is the only way in
+
+Hosted Verba sets `VERBA_AUTH_MODE = "platform"` (Jose, 2026-11-04): no setup wizard, no Verba email codes and no passwords, because Accord already signs people in with a code and a passkey. The sign-in page shows only "Sign in with Nubisco", and nobody registers anything on Verba itself. On the empty database, the first sign-in of an address in `VERBA_OPERATORS` creates that person's user and the first account, owned by them and named `VERBA_FIRST_ACCOUNT_NAME` ("Nubisco"). That works with sign-up closed, and later operators create no second account (docs/self-hosting.md, "Signing in through your identity provider only"). Accord sends the browser back to `https://verba.nubisco.io/login`, which must be among the `nubisco-verba` app's redirect URIs in Accord, and the person must be a member of that app there (or the app must allow self-service sign-up).
 
 ### Sign-up stays closed until the terms are published
 
@@ -267,7 +272,7 @@ From `apps/api`, with `pnpm install` and `pnpm build` done at the root:
 
 1. `cp .dev.vars.example .dev.vars` (local settings, never committed).
 2. `pnpm exec wrangler d1 migrations apply verba --local`
-3. `pnpm worker:dev`, then open http://localhost:8787 and run setup with an address in `VERBA_OPERATORS`.
+3. `pnpm worker:dev`, then open http://localhost:8787 and run setup with an address in `VERBA_OPERATORS`. The example `.dev.vars` sets `VERBA_AUTH_MODE=local`, which brings back the wizard and password sign-in that the hosted `platform` mode turns off.
 
 Imports and AI fills run on the local Queue (`verba-jobs`), and `wrangler dev --test-scheduled` lets you trigger the hourly cron at `/cdn-cgi/handler/scheduled`. To try AI fill without a provider, point `OPENAI_BASE_URL` at any OpenAI-compatible endpoint. To try plans locally, point `VERBA_LICENSES_URL` in `.dev.vars` at a stand-in for licenses that answers `GET /v1/entitlements/verba/:accountId`, and set the two other licenses lines. Everything stays in `.wrangler/` in the working copy. `--local` and `wrangler dev` never touch Cloudflare.
 

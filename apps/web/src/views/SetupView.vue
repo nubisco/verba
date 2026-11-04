@@ -24,6 +24,7 @@
         <h1>Create your admin account</h1>
         <p class="setup-subtitle">
           Use the address named in VERBA_OPERATORS in the server configuration. It manages accounts on this instance.
+          <template v-if="!askPassword">You sign in with a code sent to this address.</template>
         </p>
         <form class="setup-form" @submit.prevent="submit">
           <div class="field">
@@ -37,7 +38,9 @@
               placeholder="admin@example.com"
             />
           </div>
-          <div class="field">
+          <!-- Only when this instance signs in with passwords (ENABLE_LOCAL_PASSWORD):
+               otherwise the API would ignore it, and asking would be a lie. -->
+          <div v-if="askPassword" class="field">
             <NbTextInput
               id="password"
               v-model="adminPassword"
@@ -50,7 +53,7 @@
             />
           </div>
           <p v-if="error" class="setup-error">{{ error }}</p>
-          <NbButton type="submit" variant="primary" class="setup-btn" :disabled="loading">
+          <NbButton type="submit" variant="primary" class="setup-btn" :disabled="loading || !instanceConfig.ready">
             {{ loading ? 'Setting up…' : 'Create account & finish' }}
           </NbButton>
         </form>
@@ -70,13 +73,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useInstanceConfigStore } from '../stores/instanceConfig'
 import { apiFetch } from '../api'
 
 const router = useRouter()
 const auth = useAuthStore()
+const instanceConfig = useInstanceConfigStore()
+// From /api/config: a password only where password sign-in is on. With email
+// codes alone, setup makes an account that signs in by code.
+const askPassword = computed(() => instanceConfig.auth.localPasswordEnabled)
 const logoSrc = `${import.meta.env.BASE_URL}logo.svg`
 
 const step = ref<'welcome' | 'account' | 'done'>('welcome')
@@ -93,7 +101,7 @@ async function submit() {
       method: 'POST',
       body: JSON.stringify({
         adminEmail: adminEmail.value,
-        adminPassword: adminPassword.value,
+        ...(askPassword.value ? { adminPassword: adminPassword.value } : {}),
       }),
     })
     await auth.fetchMe()

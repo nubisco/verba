@@ -120,40 +120,42 @@ database has drifted from the release it was last pushed by. Restore nothing
 
 Configure the API via environment variables in `apps/api/.env`:
 
-| Variable                | Default                     | Description                                                        |
-| ----------------------- | --------------------------- | ------------------------------------------------------------------ |
-| `PORT`                  | `4000`                      | API listen port                                                    |
-| `CORS_ORIGIN`           | `http://localhost:5173`     | Exact origin of your web frontend (no trailing slash)              |
-| `DATABASE_URL`          | `file:./prisma/dev.db`      | Prisma connection string. SQLite for dev, Postgres for prod        |
-| `JWT_SECRET`            | _(required in production)_  | Random 48-byte hex string. Rotate periodically                     |
-| `ENABLE_LOCAL_PASSWORD` | `false`                     | Enable password login/register endpoints; CE defaults to OTP-only  |
-| `DISABLE_LOCAL_OTP`     | `false`                     | Disable local OTP login                                            |
-| `PLATFORM_ISSUER`       | _(unset)_                   | Nubisco Platform issuer URL. Required with `PLATFORM_APP_ID`       |
-| `PLATFORM_APP_ID`       | _(unset)_                   | The app slug this deployment is registered under on Platform       |
-| `PLATFORM_AUTH_ORIGIN`  | `PLATFORM_ISSUER`           | Platform's auth host, for sign-in and the account switcher         |
-| `OIDC_ISSUER`           | _(unset)_                   | OpenID Connect issuer URL. Required with `OIDC_CLIENT_ID`          |
-| `OIDC_CLIENT_ID`        | _(unset)_                   | The client id your identity provider issued for Verba              |
-| `OIDC_CLIENT_SECRET`    | _(unset)_                   | The client secret, for a confidential client                       |
-| `OIDC_SCOPES`           | `openid email profile`      | Scopes requested at the provider                                   |
-| `OIDC_LABEL`            | `single sign-on`            | What the sign-in button calls your provider                        |
-| `OIDC_AUTO_PROVISION`   | `true`                      | Create a Verba user on first sign-in                               |
-| `PUBLIC_API_URL`        | _(derived)_                 | Public address of this API, if it is not `<web origin>/api`        |
-| `PLATFORM_SERVER_FLOW`  | `false`                     | Run Platform sign-in server-side (register the new callback first) |
-| `LICENSE_KEY`           | _(unset)_                   | Enterprise Edition licence; required for federated sign-in         |
-| `RESEND_API_KEY`        | _(unset = log to stdout)_   | Resend key for email (sign-in codes). Resend is the only transport |
-| `MAIL_FROM`             | _(required with the key)_   | From address, for example `Verba <auth@example.com>`               |
-| `AUDIT_RETENTION_DAYS`  | _(unset = keep everything)_ | Delete audit entries older than this many days, hourly             |
-| `OPENAI_BASE_URL`       | `https://api.openai.com/v1` | Any OpenAI-compatible endpoint for the OpenAI provider             |
-| `AI_ENCRYPTION_KEY`     | _(unset = AI keys refused)_ | Secret that encrypts customers' AI keys. Nothing else uses it      |
-| `VERBA_OPERATORS`       | _(unset)_                   | Emails of the instance operators, comma separated. See below       |
-| `SESSION_TTL_HOURS`     | `168` (7 days)              | How long a session lasts unused. Active sessions renew daily       |
-| `COOKIE_SECURE`         | `true` in production        | Set `false` only to serve production over plain HTTP               |
-| `TRUST_PROXY`           | private ranges              | Proxies whose `X-Forwarded-For` is believed, see below             |
-| `BLOCKED_EMAIL_DOMAINS` | _(unset)_                   | Extra throwaway domains refused for new accounts, comma separated  |
-| `VERBA_SIGNUP_OPEN`     | open                        | `false` refuses new accounts. Existing ones still sign in, below   |
-| `VERBA_TERMS_VERSION`   | _(unset = no terms step)_   | The terms version new accounts accept. A new one asks everyone     |
-| `VERBA_TERMS_URL`       | _(unset)_                   | Link to your terms of service, shown beside the checkbox           |
-| `VERBA_PRIVACY_URL`     | _(unset)_                   | Link to your privacy notice, shown beside the checkbox             |
+| Variable                   | Default                     | Description                                                        |
+| -------------------------- | --------------------------- | ------------------------------------------------------------------ |
+| `PORT`                     | `4000`                      | API listen port                                                    |
+| `CORS_ORIGIN`              | `http://localhost:5173`     | Exact origin of your web frontend (no trailing slash)              |
+| `DATABASE_URL`             | `file:./prisma/dev.db`      | Prisma connection string. SQLite for dev, Postgres for prod        |
+| `JWT_SECRET`               | _(required in production)_  | Random 48-byte hex string. Rotate periodically                     |
+| `ENABLE_LOCAL_PASSWORD`    | `false`                     | Enable password login/register endpoints; CE defaults to OTP-only  |
+| `DISABLE_LOCAL_OTP`        | `false`                     | Disable local OTP login                                            |
+| `VERBA_AUTH_MODE`          | _(unset)_                   | `platform`: identity provider only, no wizard. See below           |
+| `VERBA_FIRST_ACCOUNT_NAME` | `My account`                | Name of the instance's first account, when setup is not given one  |
+| `PLATFORM_ISSUER`          | _(unset)_                   | Nubisco Platform issuer URL. Required with `PLATFORM_APP_ID`       |
+| `PLATFORM_APP_ID`          | _(unset)_                   | The app slug this deployment is registered under on Platform       |
+| `PLATFORM_AUTH_ORIGIN`     | `PLATFORM_ISSUER`           | Platform's auth host, for sign-in and the account switcher         |
+| `OIDC_ISSUER`              | _(unset)_                   | OpenID Connect issuer URL. Required with `OIDC_CLIENT_ID`          |
+| `OIDC_CLIENT_ID`           | _(unset)_                   | The client id your identity provider issued for Verba              |
+| `OIDC_CLIENT_SECRET`       | _(unset)_                   | The client secret, for a confidential client                       |
+| `OIDC_SCOPES`              | `openid email profile`      | Scopes requested at the provider                                   |
+| `OIDC_LABEL`               | `single sign-on`            | What the sign-in button calls your provider                        |
+| `OIDC_AUTO_PROVISION`      | `true`                      | Create a Verba user on first sign-in                               |
+| `PUBLIC_API_URL`           | _(derived)_                 | Public address of this API, if it is not `<web origin>/api`        |
+| `PLATFORM_SERVER_FLOW`     | `false`                     | Run Platform sign-in server-side (register the new callback first) |
+| `LICENSE_KEY`              | _(unset)_                   | Enterprise Edition licence; required for federated sign-in         |
+| `RESEND_API_KEY`           | _(unset = log to stdout)_   | Resend key for email (sign-in codes). Resend is the only transport |
+| `MAIL_FROM`                | _(required with the key)_   | From address, for example `Verba <auth@example.com>`               |
+| `AUDIT_RETENTION_DAYS`     | _(unset = keep everything)_ | Delete audit entries older than this many days, hourly             |
+| `OPENAI_BASE_URL`          | `https://api.openai.com/v1` | Any OpenAI-compatible endpoint for the OpenAI provider             |
+| `AI_ENCRYPTION_KEY`        | _(unset = AI keys refused)_ | Secret that encrypts customers' AI keys. Nothing else uses it      |
+| `VERBA_OPERATORS`          | _(unset)_                   | Emails of the instance operators, comma separated. See below       |
+| `SESSION_TTL_HOURS`        | `168` (7 days)              | How long a session lasts unused. Active sessions renew daily       |
+| `COOKIE_SECURE`            | `true` in production        | Set `false` only to serve production over plain HTTP               |
+| `TRUST_PROXY`              | private ranges              | Proxies whose `X-Forwarded-For` is believed, see below             |
+| `BLOCKED_EMAIL_DOMAINS`    | _(unset)_                   | Extra throwaway domains refused for new accounts, comma separated  |
+| `VERBA_SIGNUP_OPEN`        | open                        | `false` refuses new accounts. Existing ones still sign in, below   |
+| `VERBA_TERMS_VERSION`      | _(unset = no terms step)_   | The terms version new accounts accept. A new one asks everyone     |
+| `VERBA_TERMS_URL`          | _(unset)_                   | Link to your terms of service, shown beside the checkbox           |
+| `VERBA_PRIVACY_URL`        | _(unset)_                   | Link to your privacy notice, shown beside the checkbox             |
 
 > **No email configured:** when `RESEND_API_KEY` is not set, OTP codes are printed to the API server's stdout log. SMTP is no longer supported: email goes through Resend over HTTPS, the same on Docker and on Nubisco's hosted instance.
 
@@ -181,7 +183,27 @@ the proxy's address and the per-address limits apply to all of them together.
 - **Optional transitional mode:** set `ENABLE_LOCAL_PASSWORD=true` if you need password login/register
 - **Enterprise direction:** set `PLATFORM_ISSUER` to enable Nubisco Platform token verification alongside local auth
 
-For CE, the operator account can be bootstrapped without creating a permanent password.
+For CE, the operator account can be bootstrapped without creating a permanent password. The setup wizard asks for a password only when `ENABLE_LOCAL_PASSWORD=true`.
+
+### Signing in through your identity provider only
+
+`VERBA_AUTH_MODE=platform` makes the identity provider (`PLATFORM_ISSUER` with
+`PLATFORM_APP_ID`, or OpenID Connect) the only way in. There is no setup
+wizard, even on an empty database, and email codes, password sign-in and
+registration all refuse, whatever `ENABLE_LOCAL_PASSWORD` and
+`DISABLE_LOCAL_OTP` say. `/api/config` reports `auth.mode: "platform"`, and the
+sign-in page shows only the provider's button. The API refuses to start in
+this mode without a provider.
+
+The first account comes from an operator instead: when an address in
+`VERBA_OPERATORS` signs in through the provider and the instance has no
+account yet, Verba creates their user and the first account, owned by them and
+named `VERBA_FIRST_ACCOUNT_NAME`. This works while sign-up is closed
+(`VERBA_SIGNUP_OPEN=false`), because operators are always let through. A second
+operator, or the same one signing in again, creates no second account.
+Nubisco's hosted Verba runs this way.
+
+Leave `VERBA_AUTH_MODE` unset to keep the wizard and local sign-in.
 
 ### AI provider keys
 
@@ -223,7 +245,9 @@ are not a member of, the same as anyone else.
 
 The first-run setup wizard only signs up an address already in
 `VERBA_OPERATORS`, and creates the instance's first account, owned by that
-operator and named after the instance. Adding or removing an address takes effect on the next request
+operator and named after the instance (or `VERBA_FIRST_ACCOUNT_NAME`). With
+`VERBA_AUTH_MODE=platform` there is no wizard, and the operator's first
+sign-in through the provider does the same. Adding or removing an address takes effect on the next request
 for every decision, and the change is recorded (`operator.granted`,
 `operator.revoked`) in the instance audit record at that person's next sign-in.
 Terms acceptances are recorded there too (`terms.accepted`, see below).
@@ -264,7 +288,7 @@ a year) applies only to project audit logs.
 
 ### Platform SSO for EE
 
-When both `PLATFORM_ISSUER` and `PLATFORM_APP_ID` are configured, the login screen exposes a **Continue with Nubisco Platform** action. Setting only the issuer is treated as a half-configured instance and the action stays hidden: the app id is the slug Platform knows your deployment by, it is not derivable from the product name, and sending the wrong one gets `unknown_app` back from Platform rather than a login screen. Nubisco's own instance is registered as `nubisco-verba`.
+When both `PLATFORM_ISSUER` and `PLATFORM_APP_ID` are configured, the login screen exposes a **Continue with Nubisco** action (**Sign in with Nubisco** when it is the only way in). Setting only the issuer is treated as a half-configured instance and the action stays hidden: the app id is the slug Platform knows your deployment by, it is not derivable from the product name, and sending the wrong one gets `unknown_app` back from Platform rather than a login screen. Nubisco's own instance is registered as `nubisco-verba`.
 
 Find the slug in the Platform admin UI under **Apps**, and register this redirect URI for the same app:
 

@@ -1,5 +1,7 @@
 import { prisma } from '../prisma.js'
 import { assertSignupAllowed } from './signup.service.js'
+import { isOperatorEmail } from './operator.service.js'
+import { ensureFirstAccount } from './account.service.js'
 
 // ── Inline RS256/JWKS verification (no external deps) ────────────────────────
 
@@ -181,6 +183,7 @@ export async function upsertUserFromClaims(
     if (existing.avatarUrl !== avatarUrl || existing.platformRole !== platformRole) {
       await prisma.user.update({ where: { id: existing.id }, data: { avatarUrl, platformRole } })
     }
+    await provisionOperator(existing.id, email)
     return {
       userId: existing.id,
       email: existing.email,
@@ -209,6 +212,7 @@ export async function upsertUserFromClaims(
     },
     select: { id: true, email: true, name: true },
   })
+  await provisionOperator(user.id, email)
 
   return {
     userId: user.id,
@@ -218,6 +222,20 @@ export async function upsertUserFromClaims(
     name: user.name,
     created: true,
   }
+}
+
+/**
+ * An operator signing in through the identity provider gets the instance's
+ * first account when there is none yet. On an instance without the setup
+ * wizard (VERBA_AUTH_MODE=platform) this is how an empty database gets its
+ * first account: the operator signs in, and nobody registers anything. Checked
+ * at every operator sign-in, not only the first, so a sign-in that created
+ * the user but failed before the account is repaired by the next one. Anyone
+ * else is left alone: an account is never created for a stranger.
+ */
+async function provisionOperator(userId: string, email: string): Promise<void> {
+  if (!isOperatorEmail(email)) return
+  await ensureFirstAccount(userId)
 }
 
 /**

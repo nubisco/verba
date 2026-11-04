@@ -161,6 +161,30 @@ export async function createOwnedAccount(ownerId: string, data: CreateAccountInp
   return { id: account.id, name: account.name, slug: account.slug, role: AccountRole.OWNER, projectCount: 0 }
 }
 
+/**
+ * What the instance's first account is called when nobody named it:
+ * VERBA_FIRST_ACCOUNT_NAME, else "My account". Hosted Verba sets "Nubisco"
+ * (apps/api/wrangler.toml), so the company's name lives in configuration, not here.
+ */
+export function firstAccountName(env: Record<string, string | undefined> = process.env): string {
+  return env.VERBA_FIRST_ACCOUNT_NAME?.trim() || 'My account'
+}
+
+/**
+ * The instance's first account, owned by this operator, when the instance
+ * has none yet. Nothing when any account exists, so a second operator, or the
+ * same one signing in again, creates nothing.
+ *
+ * First-run setup does this on a self-hosted instance. An instance without the
+ * wizard (VERBA_AUTH_MODE=platform) does it at an operator's federated sign-in
+ * (platform-auth.service.ts), which is how hosted Verba gets its first account
+ * from an empty database.
+ */
+export async function ensureFirstAccount(operatorId: string) {
+  if ((await prisma.account.count()) > 0) return null
+  return createOwnedAccount(operatorId, { name: firstAccountName() })
+}
+
 /** The account as its members see it: name, the caller's role, and the people in it. */
 export async function getAccount(userId: string, accountId: string) {
   const membership = await requireAccountRole(userId, accountId, AccountRole.MEMBER)
