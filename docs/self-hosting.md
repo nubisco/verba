@@ -226,6 +226,7 @@ The first-run setup wizard only signs up an address already in
 operator and named after the instance. Adding or removing an address takes effect on the next request
 for every decision, and the change is recorded (`operator.granted`,
 `operator.revoked`) in the instance audit record at that person's next sign-in.
+Terms acceptances are recorded there too (`terms.accepted`, see below).
 Operator actions on accounts are recorded there too, readable at
 `GET /api/admin/audit`.
 
@@ -253,6 +254,13 @@ provider, or who accepted an older version, is asked on the first page after
 sign-in, and the API refuses everything but signing in, out and their own
 account (`/auth`) until they accept. Change the version to ask everyone again.
 Unset, there is no terms step at all.
+
+The user row keeps only the latest acceptance. Every acceptance, at sign-up
+and each time a new version is accepted, is also recorded as a
+`terms.accepted` event in the instance audit record (`GET /api/admin/audit`),
+with the person, the version and the time. That record is never pruned:
+audit retention (`AUDIT_RETENTION_DAYS`, and the hosted plans' 30 days and
+a year) applies only to project audit logs.
 
 ### Platform SSO for EE
 

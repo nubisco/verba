@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs'
 import { prisma } from '../prisma.js'
 import { isOperatorEmail, recordInstanceAudit } from './operator.service.js'
-import { assertSignupAllowed, termsForNewAccount, termsStatus } from './signup.service.js'
+import { assertSignupAllowed, recordTermsAcceptance, termsForNewAccount, termsStatus } from './signup.service.js'
 
 function unauthorized(): never {
   throw Object.assign(new Error('Invalid email or password'), {
@@ -47,6 +47,7 @@ async function createLocalUser(email: string, passwordHash: string, opts: NewAcc
     data: { email, passwordHash, name: opts.name ?? undefined, isGlobalAdmin: false, ...terms },
     select: { id: true, email: true, isGlobalAdmin: true, createdAt: true },
   })
+  if ('termsVersion' in terms) await recordTermsAcceptance(user.id, terms.termsVersion, terms.termsAcceptedAt)
   return user
 }
 

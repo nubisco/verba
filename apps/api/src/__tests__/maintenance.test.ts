@@ -9,7 +9,7 @@ vi.mock('../prisma.js', () => ({
     otpToken: { deleteMany: vi.fn() },
     importChunk: { deleteMany: vi.fn() },
     importRun: { updateMany: vi.fn() },
-    instanceAuditLog: { findFirst: vi.fn(), create: vi.fn() },
+    instanceAuditLog: { findFirst: vi.fn(), create: vi.fn(), deleteMany: vi.fn() },
   },
 }))
 const hosted = vi.fn()
@@ -51,6 +51,17 @@ describe('audit retention', () => {
     expect(prisma.auditLog.deleteMany).not.toHaveBeenCalled()
     await pruneAuditLogs(NOW, { AUDIT_RETENTION_DAYS: '90' })
     expect(prisma.auditLog.deleteMany).toHaveBeenCalledWith({ where: { createdAt: { lt: daysAgo(90) } } })
+  })
+})
+
+describe('terms acceptances outlive audit retention', () => {
+  it('never prunes the instance audit record, where every terms.accepted event lives', async () => {
+    for (const isHosted of [true, false]) {
+      hosted.mockResolvedValue(isHosted)
+      await pruneAuditLogs(NOW, { AUDIT_RETENTION_DAYS: '1' })
+    }
+    await maintenanceTick({ now: NOW, env: { AUDIT_RETENTION_DAYS: '1' }, sizeBytes: async () => 1024 })
+    expect(prisma.instanceAuditLog.deleteMany).not.toHaveBeenCalled()
   })
 })
 
