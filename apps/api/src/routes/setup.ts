@@ -51,8 +51,8 @@ export function setupRoutes(app: Api) {
       return c.json({ error: 'adminPassword is required when password auth is enabled' }, 400)
     }
     const user = authConfig.localPasswordEnabled
-      ? await register(adminEmail, adminPassword ?? '')
-      : await createOtpOnlyUser(adminEmail)
+      ? await register(adminEmail, adminPassword ?? '', { skipTerms: true })
+      : await createOtpOnlyUser(adminEmail, { skipTerms: true })
 
     // The instance's first account, owned by the operator, so the first
     // project has somewhere to live. Named after the instance when setup was

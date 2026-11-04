@@ -173,7 +173,43 @@ describe('an instance that sells plans', () => {
     })
   })
 
+  it('reports checkout closed in /config until VERBA_CHECKOUT_OPEN is true', async () => {
+    const config = (await inject(app, { method: 'GET', url: '/config' })).json()
+    expect(config.features.checkout).toBe(false)
+    expect(config.salesUrl).toBeNull()
+    vi.stubEnv('VERBA_CHECKOUT_OPEN', 'true')
+    vi.stubEnv('VERBA_SALES_URL', 'https://sales.test')
+    await start()
+    const open = (await inject(app, { method: 'GET', url: '/config' })).json()
+    expect(open.features.checkout).toBe(true)
+    expect(open.salesUrl).toBe('https://sales.test')
+  })
+
+  it('refuses a checkout while checkout is closed, and never asks licenses', async () => {
+    vi.stubEnv('VERBA_SALES_URL', 'https://sales.test')
+    await start()
+    cookies = { token: await signToken({ userId: 'u-admin', email: 'a@example.com' }) }
+    const res = await inject(app, {
+      method: 'POST',
+      url: '/accounts/acc-a/billing/checkout',
+      cookies,
+      payload: { billing: 'monthly' },
+    })
+    expect(res.statusCode).toBe(403)
+    expect(res.json()).toMatchObject({ code: 'checkout_closed', salesUrl: 'https://sales.test' })
+    expect(licensesCalls).toHaveLength(0)
+  })
+
+  it('still shows the plan while checkout is closed, and says checkout is closed', async () => {
+    cookies = { token: await signToken({ userId: 'u-admin', email: 'a@example.com' }) }
+    const res = await inject(app, { method: 'GET', url: '/accounts/acc-a/billing', cookies })
+    expect(res.statusCode).toBe(200)
+    expect(res.json()).toMatchObject({ plan: 'pro', checkoutOpen: false })
+  })
+
   it('leaves JSON parsing of every other route as it was', async () => {
+    vi.stubEnv('VERBA_CHECKOUT_OPEN', 'true')
+    await start()
     cookies = { token: await signToken({ userId: 'u-admin', email: 'a@example.com' }) }
     // The webhook reads its body as raw text. The checkout, outside its scope,
     // still gets parsed JSON: the period is read and licenses is asked. This

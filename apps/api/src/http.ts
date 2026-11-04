@@ -15,6 +15,8 @@ export interface SessionUser {
   email: string
   plan?: string
   platformSub?: string
+  /** The terms version accepted when the session was issued (session.ts). */
+  terms?: string
   iat?: number
   exp?: number
 }

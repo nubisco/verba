@@ -1,13 +1,20 @@
 import { getCookie, setCookie } from 'hono/cookie'
 import type { Api, Ctx } from '../http.js'
 import { readBody } from '../http.js'
-import { RegisterSchema, LoginSchema, OtpRequestSchema, OtpVerifySchema } from '../schemas/auth.schema.js'
+import {
+  AcceptTermsSchema,
+  RegisterSchema,
+  LoginSchema,
+  OtpRequestSchema,
+  OtpVerifySchema,
+} from '../schemas/auth.schema.js'
 import * as authService from '../services/auth.service.js'
 import * as otpService from '../services/otp.service.js'
 import * as platformAuthService from '../services/platform-auth.service.js'
 import * as bundleService from '../services/identity-bundle.service.js'
 import * as analytics from '../services/analytics.service.js'
 import * as ssoService from '../services/sso.service.js'
+import * as signupService from '../services/signup.service.js'
 import { prisma } from '../prisma.js'
 import { getAuthConfig } from '../services/instance-config.service.js'
 import { randomBytes } from 'node:crypto'
@@ -18,6 +25,7 @@ import {
   clearSession,
   cookieMaxAge,
   credentialCookieOptions,
+  issueSession,
   startSession,
 } from '../session.js'
 
@@ -70,7 +78,7 @@ export function authRoutes(app: Api, rateLimiters?: RateLimiterSource) {
       return c.json({ error: 'Password registration is disabled for this instance' }, 404)
     }
     const body = RegisterSchema.parse(await readBody(c))
-    const user = await authService.register(body.email, body.password)
+    const user = await authService.register(body.email, body.password, { termsVersion: body.termsVersion })
     await startSession(c, { userId: user.id, email: user.email })
     return c.json({ id: user.id, email: user.email }, 201)
   })
@@ -93,6 +101,11 @@ export function authRoutes(app: Api, rateLimiters?: RateLimiterSource) {
 
   app.get('/auth/me', authenticate, async (c) => {
     const me = await authService.getMe(c.var.user.userId)
+    // Accepted in another browser since this session was issued: bring the
+    // session up to date, so the gate in session.ts lets it through.
+    if (me.terms?.accepted && c.var.user.terms !== me.terms.version) {
+      await issueSession(c, { ...c.var.user, terms: me.terms.version })
+    }
     // The platform subject this session was issued for (multi-account
     // sessions): lets the account switcher mark the current identity by sub.
     return c.json({ ...me, platformSub: c.var.user.platformSub ?? null })
@@ -129,6 +142,16 @@ export function authRoutes(app: Api, rateLimiters?: RateLimiterSource) {
     return c.json(await authService.updateProfile(c.var.user.userId, body))
   })
 
+  // Accepting the current terms (VERBA_TERMS_VERSION), the first time or
+  // after they change. The session is reissued with the version, which is
+  // what lets every other route through again (session.ts).
+  app.post('/auth/me/terms', authenticate, async (c) => {
+    const { version } = AcceptTermsSchema.parse(await readBody(c))
+    const accepted = await signupService.acceptTerms(c.var.user.userId, version)
+    await issueSession(c, { ...c.var.user, terms: accepted })
+    return c.json(await authService.getMe(c.var.user.userId))
+  })
+
   app.post('/auth/me/deactivate', authenticate, async (c) => {
     await authService.deactivateUser(c.var.user.userId, c.var.user.userId)
     clearSession(c)
@@ -151,8 +174,8 @@ export function authRoutes(app: Api, rateLimiters?: RateLimiterSource) {
     if (!authConfig.localOtpEnabled) {
       return c.json({ error: 'OTP login is disabled for this instance' }, 404)
     }
-    const { email, code } = OtpVerifySchema.parse(await readBody(c))
-    const payload = await otpService.verifyOtp(email.toLowerCase().trim(), code.trim())
+    const { email, code, termsVersion } = OtpVerifySchema.parse(await readBody(c))
+    const payload = await otpService.verifyOtp(email.toLowerCase().trim(), code.trim(), { termsVersion })
     await startSession(c, { userId: payload.userId, email: payload.email })
     return c.json({ id: payload.userId, email: payload.email })
   })
@@ -269,9 +292,18 @@ export function authRoutes(app: Api, rateLimiters?: RateLimiterSource) {
 
     clearSsoCookies(c)
 
-    const identity = await platformAuthService.upsertUserFromClaims(claims, {
-      autoProvision: runtime.config.autoProvision,
-    })
+    let identity: Awaited<ReturnType<typeof platformAuthService.upsertUserFromClaims>>
+    try {
+      identity = await platformAuthService.upsertUserFromClaims(claims, {
+        autoProvision: runtime.config.autoProvision,
+      })
+    } catch (err) {
+      // Someone the provider vouched for, on an instance closed to new
+      // accounts: the sign-in page says so rather than a generic failure.
+      if ((err as { details?: { code?: string } }).details?.code === 'signup_closed')
+        return c.redirect(ssoService.loginErrorUrl('signup_closed'))
+      throw err
+    }
     // Deactivated locally, or unknown on an instance that does not provision.
     // One answer for both on purpose: which of the two it is tells an outsider
     // whether an address has an account here.

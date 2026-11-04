@@ -204,6 +204,23 @@ describe('federated sign-in routes', () => {
     expect(cookiesOf(res).token).toBeUndefined()
   })
 
+  it('tells someone new that sign-up is closed, and starts no session', async () => {
+    ssoRuntimeFromEnv.mockReturnValue(handoverRuntime(async () => ({ sub: 'p-3', email: 'new@example.com' })))
+    vi.mocked(platformAuthService.upsertUserFromClaims).mockRejectedValue(
+      Object.assign(new Error('closed'), { statusCode: 403, details: { code: 'signup_closed' } }),
+    )
+
+    const app = await buildApp()
+    const res = await inject(app, {
+      method: 'GET',
+      url: '/auth/sso/callback?token=tok&state=st',
+      cookies: { verba_sso_state: 'st' },
+    })
+
+    expect(res.headers.location).toBe(`${WEB}/login?error=signup_closed`)
+    expect(cookiesOf(res).token).toBeUndefined()
+  })
+
   it('advertises the provider and its name on the public config', async () => {
     ssoRuntimeFromEnv.mockReturnValue(handoverRuntime(async () => ({})))
     const app = await buildApp()

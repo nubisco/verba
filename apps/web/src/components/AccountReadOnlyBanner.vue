@@ -5,10 +5,14 @@
   <div v-if="status?.readOnly" class="read-only-banner">
     <NbBanner status="warning" variant="callout" title="This account is read-only">
       {{ status.summary }} After the change of plan nothing was deleted, and everyone can still read and export.
-      <template v-if="accounts.canManage"> Delete some, or upgrade the plan, to make changes again. </template>
+      <template v-if="!checkout"> Delete some to make changes again, or contact sales to raise the limits. </template>
+      <template v-else-if="accounts.canManage"> Delete some, or upgrade the plan, to make changes again. </template>
       <template v-else> An owner or admin can upgrade the plan, or delete some, to make changes again. </template>
-      <template v-if="accounts.canManage" #action>
+      <template v-if="checkout && accounts.canManage" #action>
         <NbButton variant="secondary" size="sm" @click="seePlans">See plans</NbButton>
+      </template>
+      <template v-else-if="!checkout && salesUrl" #action>
+        <NbButton variant="secondary" size="sm" :href="salesUrl" target="_blank" rel="noopener">Contact sales</NbButton>
       </template>
     </NbBanner>
   </div>
@@ -20,7 +24,7 @@
  * navigation, when a write is refused by the plan and after every write the
  * API accepted, so the banner goes as soon as the account is back under.
  */
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { apiFetch } from '../api'
 import { onPlanLimit, onWrite } from '../planLimit'
@@ -37,6 +41,9 @@ const router = useRouter()
 const accounts = useAccountsStore()
 const instanceConfig = useInstanceConfigStore()
 const status = ref<PlanStatus | null>(null)
+// Checkout closed (VERBA_CHECKOUT_OPEN): no See plans, Contact sales instead.
+const checkout = computed(() => instanceConfig.hasFeature('checkout'))
+const salesUrl = computed(() => instanceConfig.salesUrl)
 
 let asked = 0
 async function refresh(): Promise<void> {

@@ -44,3 +44,21 @@ export async function hostedBillingEnabled(): Promise<boolean> {
   const ee = await loadEE()
   return Boolean(typeof ee?.plansConfig === 'function' && ee.plansConfig())
 }
+
+/** Where "Contact sales" points on an instance that sells hosted plans, else null. */
+export async function hostedSalesUrl(): Promise<string | null> {
+  if (!eeEnabled()) return null
+  const ee = await loadEE()
+  return (typeof ee?.plansConfig === 'function' && ee.plansConfig()?.salesUrl) || null
+}
+
+/**
+ * Whether accounts may start a checkout, for the web app's /config: hosted
+ * billing on, and VERBA_CHECKOUT_OPEN="true". Never on a self-hosted
+ * instance, which has no billing.
+ */
+export async function hostedCheckoutOpen(): Promise<boolean> {
+  if (!eeEnabled()) return false
+  const ee = await loadEE()
+  return Boolean(typeof ee?.plansConfig === 'function' && ee.plansConfig()?.checkoutOpen)
+}

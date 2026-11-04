@@ -78,6 +78,11 @@ router.beforeEach(async (to) => {
   if (!auth.user) {
     return { path: '/login', query: { redirect: to.fullPath } }
   }
+  // The current terms first (VERBA_TERMS_VERSION): the API refuses the rest
+  // until they are accepted.
+  if (auth.user.terms && !auth.user.terms.accepted) {
+    return { name: 'accept-terms', query: { redirect: to.fullPath } }
+  }
   return true
 })
 

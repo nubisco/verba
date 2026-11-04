@@ -18,6 +18,12 @@ export interface PlansConfig {
   webhookSecret: string | null
   /** Where "Contact sales" points, if anywhere. */
   salesUrl: string | null
+  /**
+   * Whether accounts may start a checkout (VERBA_CHECKOUT_OPEN="true"). Off
+   * otherwise: plans, limits and the billing page work without it, and hosted
+   * Verba keeps it off until its terms and pricing are published.
+   */
+  checkoutOpen: boolean
   fetchImpl: typeof fetch
 }
 
@@ -40,6 +46,7 @@ export function configFromEnv(
     serviceToken,
     webhookSecret: env.VERBA_ENTITLEMENT_WEBHOOK_SECRET?.trim() || null,
     salesUrl: env.VERBA_SALES_URL?.trim() || null,
+    checkoutOpen: env.VERBA_CHECKOUT_OPEN?.trim().toLowerCase() === 'true',
     // Called as cfg.fetchImpl(...), the global fetch would get cfg as `this`,
     // which some runtimes reject with "Illegal invocation" (Acta hit it on
     // Workers). Calling it as a plain function keeps `this` unset, the way

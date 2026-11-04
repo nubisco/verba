@@ -2,8 +2,8 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { apiFetch } from '../api'
 
-// Instance feature flags from /config. Empty today: accounts, the last one,
-// are always on. Kept so a future flag has somewhere to go.
+// Instance feature flags from /config: `billing` (hosted plans on) and
+// `checkout` (accounts may buy a plan, VERBA_CHECKOUT_OPEN).
 interface InstanceFeatures {
   [key: string]: boolean
 }
@@ -29,8 +29,25 @@ interface InstanceAuthConfig {
   sso: InstanceSsoConfig
 }
 
+/** The legal documents a new account accepts (VERBA_TERMS_VERSION and its links). */
+export interface TermsConfig {
+  version: string
+  termsUrl: string | null
+  privacyUrl: string | null
+}
+
+/** Whether a new address may create an account here, and the terms it accepts. */
+interface InstanceSignupConfig {
+  open: boolean
+  terms: TermsConfig | null
+}
+
 interface InstanceConfig {
   features: InstanceFeatures
+  // Optional on the wire: an API that predates the sign-up switch omits it.
+  signup?: InstanceSignupConfig
+  /** Where "Contact sales" points, on an instance that sells hosted plans. */
+  salesUrl?: string | null
   // `sso` is optional on the wire: an API that predates server-side federated
   // sign-in omits the block, and the store fills in the disabled default.
   // `platformAuthOrigin` is optional too: an API that predates it omits it,
@@ -53,12 +70,16 @@ export const useInstanceConfigStore = defineStore('instanceConfig', () => {
     platformAppId: null,
     sso: { enabled: false, mode: null, label: null },
   })
+  const signup = ref<InstanceSignupConfig>({ open: true, terms: null })
+  const salesUrl = ref<string | null>(null)
   const ready = ref(false)
 
   async function fetch() {
     try {
       const config = await apiFetch<InstanceConfig>('/config')
       features.value = config.features
+      signup.value = config.signup ?? { open: true, terms: null }
+      salesUrl.value = config.salesUrl ?? null
       // An older API that predates server-side SSO omits the block entirely,
       // so default it rather than letting every read of it throw.
       auth.value = {
@@ -77,5 +98,5 @@ export const useInstanceConfigStore = defineStore('instanceConfig', () => {
     return features.value[flag] ?? false
   }
 
-  return { features, auth, ready, fetch, hasFeature }
+  return { features, auth, signup, salesUrl, ready, fetch, hasFeature }
 })

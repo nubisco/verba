@@ -39,6 +39,11 @@ model User {
   // Platform sign-in. "admin" may create accounts (account.service.ts).
   // Null for a person who has never signed in through Platform.
   platformRole         String?
+  // The terms version (VERBA_TERMS_VERSION) this person last accepted, and
+  // when. Null for someone who never accepted any, or on an instance without
+  // terms. A new version asks everyone again (services/signup.service.ts).
+  termsVersion         String?
+  termsAcceptedAt      DateTime?
 
   memberships            Membership[]
   comments               Comment[]

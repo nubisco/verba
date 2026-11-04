@@ -7,7 +7,9 @@
  * - POST /billing/entitlement: the signed entitlement.updated webhook from
  *   licenses. Authenticated by its HMAC, not by a session.
  * - GET /accounts/:accountId/billing, POST .../billing/checkout and
- *   .../billing/portal: account owners and admins only. The page reads the
+ *   .../billing/portal: account owners and admins only. Checkout also needs
+ *   VERBA_CHECKOUT_OPEN="true", and is refused with 403 `checkout_closed`
+ *   without it. The page reads the
  *   plan and usage, and the actions go through licenses, never to Paddle.
  *   Checkout itself runs on nubisco.io, the only domain Paddle allows it on:
  *   .../billing/checkout answers with that page's address and the browser
@@ -167,6 +169,8 @@ export function plansPlugin(app: Hono<PlansEnv>, deps: PlansDeps): void {
       limits: hostedLimits(row),
       usage: await deps.accountUsage(accountId),
       salesUrl: config.salesUrl,
+      // Whether the page offers the upgrade (VERBA_CHECKOUT_OPEN).
+      checkoutOpen: config.checkoutOpen,
       // What Pro raises the limits to, for the upgrade panel. Verba's plan
       // table matches the Paddle product (account totals).
       proLimits: {
@@ -181,6 +185,13 @@ export function plansPlugin(app: Hono<PlansEnv>, deps: PlansDeps): void {
   app.post('/accounts/:accountId/billing/checkout', deps.authenticate, async (c) => {
     const accountId = await admin(c)
     const config = configured()
+    // Checkout stays shut until it is switched on (VERBA_CHECKOUT_OPEN). The
+    // plan, its limits and Manage billing keep working without it.
+    if (!config.checkoutOpen)
+      throw httpError(403, 'Upgrading is not open yet. Contact sales to change the plan.', {
+        code: 'checkout_closed',
+        salesUrl: config.salesUrl,
+      })
     const parsed = zCheckout.safeParse(await jsonBody(c))
     if (!parsed.success) throw httpError(400, 'billing must be monthly or yearly')
     let res: Awaited<ReturnType<typeof startCheckout>>

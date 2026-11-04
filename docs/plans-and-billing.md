@@ -22,7 +22,7 @@ The code is `packages/ee/src/plans`. The API loads it from `apps/api/src/service
 
 ## Limits
 
-On a hosted plan, creating past a limit is refused with `402` and a `plan_limit` body: `{ error, code: "plan_limit", resource, limit, current, adding }`, where `resource` is `projects`, `members`, `keys` or `locales`. The web app opens one upgrade prompt for any of these, in the server's words, with **See plans** for the account's owners and admins.
+On a hosted plan, creating past a limit is refused with `402` and a `plan_limit` body: `{ error, code: "plan_limit", resource, limit, current, adding }`, where `resource` is `projects`, `members`, `keys` or `locales`. The web app opens one upgrade prompt for any of these, in the server's words, with **See plans** for the account's owners and admins. While checkout is closed (below), the prompt still explains the limit, and offers **Contact sales** (`VERBA_SALES_URL`) instead of See plans.
 
 - **Projects**: creating one. There is no other project cap: a self-hosted instance has no plan limits at all.
 - **Members**: adding a person to the account, directly or by adding them to one of its projects.
@@ -43,6 +43,8 @@ The guard is `apps/api/src/read-only.ts`, added to every route as it is register
 
 ## Upgrading
 
+Checkout is its own switch, `VERBA_CHECKOUT_OPEN`, off unless it is `"true"`. With plans on and checkout off, everything above applies (limits, read-only, the billing page with the plan and usage, Manage billing for an account that has a subscription), but nothing offers to buy: `POST .../billing/checkout` answers `403` with `code: "checkout_closed"`, `/config` reports `features.checkout: false`, and the web app hides See plans and the upgrade panel and points at Contact sales. Hosted Verba keeps it off until its terms and pricing are published. A self-hosted instance has no billing, so the switch does nothing there.
+
 Paddle runs a checkout only on `nubisco.io`. It refuses one on any product's own domain ("Transaction checkout creation is blocked for this vendor"), so Verba never loads Paddle.js.
 
 1. An account owner or admin opens **Settings, Billing** and chooses monthly or yearly.
@@ -55,7 +57,7 @@ A downgrade, a failed payment or a cancel never deletes anything.
 
 ## Configuration
 
-All four are read by the API. Leave them unset on a self-hosted instance.
+All of these are read by the API. Leave them unset on a self-hosted instance.
 
 | Variable                           | What it is                                                                                                                                      |
 | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -64,6 +66,7 @@ All four are read by the API. Leave them unset on a self-hosted instance.
 | `VERBA_LICENSES_SERVICE_TOKEN`     | Secret. The same value as `SERVICE_TOKEN_VERBA` in licenses.                                                                                    |
 | `VERBA_ENTITLEMENT_WEBHOOK_SECRET` | Secret. The same value as `ENTITLEMENT_WEBHOOK_SECRET_VERBA` in licenses. Unset, the webhook answers 404 and the copy is only kept by fetching. |
 | `VERBA_SALES_URL`                  | Optional. Where **Contact sales** points.                                                                                                       |
+| `VERBA_CHECKOUT_OPEN`              | `true` lets accounts start a checkout. Anything else keeps it closed (see Upgrading).                                                           |
 
 Secrets go in the deployment's environment, never in a tracked file.
 
@@ -71,4 +74,6 @@ Secrets go in the deployment's environment, never in a tracked file.
 
 1. In licenses, give any account that must not fall to the Free limits an override first (`POST /v1/admin/billing/overrides`), Nubisco's own included. Otherwise it is held to Free the moment plans switch on.
 2. In licenses, set `CHECKOUT_URL_VERBA` to `https://nubisco.io/products/verba` and `ENTITLEMENT_WEBHOOK_URL_VERBA` to `https://<verba host>/api/billing/entitlement`, and make sure the nubisco.io page opens `?_ptxn=` and accepts a return address on the Verba host.
-3. In Verba, set the variables above and restart. The API logs `Hosted billing: plans come from the licenses service`, and `/config` reports `features.billing: true`.
+3. In Verba, set the variables above and restart. The API logs `Hosted billing: plans come from the licenses service`, and `/config` reports `features.billing: true`. Limits apply from here, with checkout still closed.
+4. Publish Verba's terms and pricing on nubisco.io, and open sign-up (docs/hosting-on-cloudflare.md, "Sign-up stays closed until the terms are published").
+5. Set `VERBA_CHECKOUT_OPEN = "true"` and deploy. `/config` reports `features.checkout: true`, and owners and admins see See plans and the upgrade panel.

@@ -150,6 +150,10 @@ Configure the API via environment variables in `apps/api/.env`:
 | `COOKIE_SECURE`         | `true` in production        | Set `false` only to serve production over plain HTTP               |
 | `TRUST_PROXY`           | private ranges              | Proxies whose `X-Forwarded-For` is believed, see below             |
 | `BLOCKED_EMAIL_DOMAINS` | _(unset)_                   | Extra throwaway domains refused for new accounts, comma separated  |
+| `VERBA_SIGNUP_OPEN`     | open                        | `false` refuses new accounts. Existing ones still sign in, below   |
+| `VERBA_TERMS_VERSION`   | _(unset = no terms step)_   | The terms version new accounts accept. A new one asks everyone     |
+| `VERBA_TERMS_URL`       | _(unset)_                   | Link to your terms of service, shown beside the checkbox           |
+| `VERBA_PRIVACY_URL`     | _(unset)_                   | Link to your privacy notice, shown beside the checkbox             |
 
 > **No email configured:** when `RESEND_API_KEY` is not set, OTP codes are printed to the API server's stdout log. SMTP is no longer supported: email goes through Resend over HTTPS, the same on Docker and on Nubisco's hosted instance.
 
@@ -224,6 +228,31 @@ for every decision, and the change is recorded (`operator.granted`,
 `operator.revoked`) in the instance audit record at that person's next sign-in.
 Operator actions on accounts are recorded there too, readable at
 `GET /api/admin/audit`.
+
+### Closing sign-up, and asking for terms
+
+Anyone who can receive a sign-in code at an address gets an account on first
+sign-in, as before. Two settings change that, and both are off unless you set
+them.
+
+**`VERBA_SIGNUP_OPEN=false`** closes the instance to new accounts, by every
+door: a code for an address with no account is refused with a message saying
+so (and no code is sent), password registration is refused and its tab is
+hidden, and a federated sign-in (Platform or OpenID Connect with
+`OIDC_AUTO_PROVISION`) does not create anyone. People who already have an
+account sign in as usual. Addresses in `VERBA_OPERATORS` can always create
+theirs, and the first-run setup works the same. Adding people to an account or
+a project only ever adds someone who already has an account, so while sign-up
+is closed a new colleague cannot be added until it opens.
+
+**`VERBA_TERMS_VERSION`** (with `VERBA_TERMS_URL` and `VERBA_PRIVACY_URL`)
+asks for your terms. A new account ticks a checkbox with the two links before
+it is created, and the version and the time are stored on the person
+(`User.termsVersion`, `User.termsAcceptedAt`). Someone who signs in through a
+provider, or who accepted an older version, is asked on the first page after
+sign-in, and the API refuses everything but signing in, out and their own
+account (`/auth`) until they accept. Change the version to ask everyone again.
+Unset, there is no terms step at all.
 
 ### Platform SSO for EE
 

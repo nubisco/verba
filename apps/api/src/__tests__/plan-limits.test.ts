@@ -19,7 +19,12 @@ vi.mock('../prisma.js', () => ({
 }))
 
 const accountLimits = vi.fn()
-vi.mock('@nubisco/verba-ee', () => ({ accountLimits: (...args: unknown[]) => accountLimits(...args) }))
+// Checkout open unless a test closes it (VERBA_CHECKOUT_OPEN).
+let checkoutOpen = true
+vi.mock('@nubisco/verba-ee', () => ({
+  accountLimits: (...args: unknown[]) => accountLimits(...args),
+  plansConfig: () => ({ checkoutOpen }),
+}))
 
 import { prisma } from '../prisma.js'
 import { assertWithinLimit, newKeyCount, planLimitMessage } from '../services/plan-limits.service.js'
@@ -85,6 +90,17 @@ describe('on a hosted plan', () => {
       message: "This account's plan allows 10 projects, and it has 10. Upgrade the plan to add more.",
       details: { code: 'plan_limit', resource: 'projects', limit: 10, current: 10, adding: 1 },
     })
+  })
+
+  it('points at sales, not an upgrade, while checkout is closed', async () => {
+    checkoutOpen = false
+    vi.mocked(prisma.project.count).mockResolvedValue(10)
+    await expect(assertWithinLimit('acc1', 'projects')).rejects.toMatchObject({
+      statusCode: 402,
+      message: "This account's plan allows 10 projects, and it has 10. Contact sales to raise the limit.",
+      details: { code: 'plan_limit', resource: 'projects' },
+    })
+    checkoutOpen = true
   })
 
   it('counts what a change adds, not only one', async () => {
