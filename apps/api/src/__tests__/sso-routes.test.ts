@@ -221,6 +221,23 @@ describe('federated sign-in routes', () => {
     expect(cookiesOf(res).token).toBeUndefined()
   })
 
+  it('tells someone whose address is bound to another identity, and starts no session', async () => {
+    ssoRuntimeFromEnv.mockReturnValue(handoverRuntime(async () => ({ sub: 'p-4', email: 'taken@example.com' })))
+    vi.mocked(platformAuthService.upsertUserFromClaims).mockRejectedValue(
+      Object.assign(new Error('linked'), { statusCode: 409, details: { code: 'account_linked_elsewhere' } }),
+    )
+
+    const app = await buildApp()
+    const res = await inject(app, {
+      method: 'GET',
+      url: '/auth/sso/callback?token=tok&state=st',
+      cookies: { verba_sso_state: 'st' },
+    })
+
+    expect(res.headers.location).toBe(`${WEB}/login?error=account_linked_elsewhere`)
+    expect(cookiesOf(res).token).toBeUndefined()
+  })
+
   it('advertises the provider and its name on the public config', async () => {
     ssoRuntimeFromEnv.mockReturnValue(handoverRuntime(async () => ({})))
     const app = await buildApp()

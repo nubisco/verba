@@ -44,6 +44,14 @@ model User {
   // terms. A new version asks everyone again (services/signup.service.ts).
   termsVersion         String?
   termsAcceptedAt      DateTime?
+  // Who this person is at their identity provider: the token's `iss` and
+  // `sub` (Accord on hosted Verba, the instance's own OIDC provider on a
+  // self-hosted one). Bound at the first federated sign-in and matched first
+  // from then on, so a changed email address still reaches the same account
+  // (services/platform-auth.service.ts). Null for someone who has never
+  // signed in through a provider.
+  platformIssuer       String?
+  platformSub          String?
 
   memberships            Membership[]
   comments               Comment[]
@@ -54,6 +62,8 @@ model User {
   assignedTranslations   Translation[]   @relation("AssignedTranslations")
   notifications          Notification[]  @relation("NotificationRecipient")
   triggeredNotifications Notification[]  @relation("NotificationActor")
+
+  @@unique([platformIssuer, platformSub])
 }
 
 // The tenant: an account holds projects, and its members are the people who

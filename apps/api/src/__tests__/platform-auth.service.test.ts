@@ -9,6 +9,7 @@ vi.mock('../prisma.js', () => ({
       create: vi.fn(),
       update: vi.fn(),
     },
+    instanceAuditLog: { create: vi.fn() },
   },
 }))
 
@@ -119,6 +120,8 @@ describe('upsertUserFromClaims avatar', () => {
       name: 'Alice',
       deactivatedAt: null,
       avatarUrl: null,
+      platformIssuer: ISSUER,
+      platformSub: 'p-1',
     } as never)
     const picture = `${ISSUER}/api/avatars/abc`
     await upsertUserFromClaims({ sub: 'p-1', email: 'alice@example.com', iss: ISSUER, picture })
@@ -133,6 +136,8 @@ describe('upsertUserFromClaims avatar', () => {
       name: 'Alice',
       deactivatedAt: null,
       avatarUrl: picture,
+      platformIssuer: ISSUER,
+      platformSub: 'p-1',
     } as never)
     await upsertUserFromClaims({ sub: 'p-1', email: 'alice@example.com', iss: ISSUER })
     expect(prisma.user.update).toHaveBeenLastCalledWith({
@@ -150,6 +155,8 @@ describe('upsertUserFromClaims avatar', () => {
       deactivatedAt: null,
       avatarUrl: picture,
       platformRole: null,
+      platformIssuer: ISSUER,
+      platformSub: 'p-1',
     } as never)
     await upsertUserFromClaims({ sub: 'p-1', email: 'alice@example.com', iss: ISSUER, picture })
     expect(prisma.user.update).not.toHaveBeenCalled()
@@ -159,7 +166,15 @@ describe('upsertUserFromClaims avatar', () => {
 describe('upsertUserFromClaims platform role', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  const alice = { id: 'u1', email: 'alice@example.com', name: 'Alice', deactivatedAt: null, avatarUrl: null }
+  const alice = {
+    id: 'u1',
+    email: 'alice@example.com',
+    name: 'Alice',
+    deactivatedAt: null,
+    avatarUrl: null,
+    platformIssuer: ISSUER,
+    platformSub: 'p-1',
+  }
 
   it('stores the app-level role claim, which decides who may create accounts', async () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValue({ ...alice, platformRole: null } as never)
