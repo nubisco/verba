@@ -1,3 +1,10 @@
+## [1.29.1](https://github.com/nubisco/verba/compare/v1.29.0...v1.29.1) (2026-11-05)
+
+
+### Bug Fixes
+
+* **auth:** name the refused identity and make switching accounts the main action ([99c2842](https://github.com/nubisco/verba/commit/99c2842cc4208c9eebdc746dd2eab39cd2808e28))
+
 # [1.29.0](https://github.com/nubisco/verba/compare/v1.28.0...v1.29.0) (2026-11-04)
 
 
