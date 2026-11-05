@@ -1,38 +1,35 @@
 <template>
+  <!-- The project page: Overview, Import, Export and History, each a child
+       route. The trail already names the project, with its logo, and switches
+       to another (utils/trail.ts), so the page does not repeat it in a
+       heading (fleet standard, "The trail names the page, so the page does not
+       repeat it"). Its tabs sit in the shell's fixedbar, where Settings keeps
+       its own. -->
   <div>
-    <NbSkeleton v-if="store.loading" variant="block" :height="120" radius="md" label="Loading project" />
-    <template v-else-if="store.project">
-      <div class="page-header">
-        <div class="header-main">
-          <ProjectAvatar :avatar="store.project.avatar" :name="store.project.name" size="lg" />
-          <div>
-            <h2>{{ store.project.name }}</h2>
-            <span class="slug">{{ store.project.slug }}</span>
-          </div>
-        </div>
-      </div>
-
+    <component :is="fixedbar.Outlet">
       <NbTabs
         :model-value="String(route.name)"
         :items="tabs"
         aria-label="Project"
-        class="tab-bar"
+        variant="line"
         @update:model-value="router.push({ name: $event, params: { id: projectId } })"
       />
+    </component>
 
-      <RouterView />
-    </template>
+    <NbSkeleton v-if="store.loading" variant="block" :height="120" radius="md" label="Loading project" />
+    <RouterView v-else-if="store.project" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useShellSlot } from '@nubisco/ui'
 import { useProjectStore } from '../stores/project'
-import ProjectAvatar from '../components/ProjectAvatar.vue'
 
 const route = useRoute()
 const router = useRouter()
+const fixedbar = useShellSlot('fixedbar')
 
 // Each tab is a child route, so the URL stays the source of truth. Settings
 // is not one of them: it is its own page, the last item of the project's group
@@ -54,32 +51,3 @@ watch(
   { immediate: true },
 )
 </script>
-
-<style lang="scss" scoped>
-.page-header {
-  margin-bottom: 1rem;
-  h2 {
-    margin: 0.25rem 0 0.2rem;
-    font-size: 1.4rem;
-  }
-  .slug {
-    font-size: 0.8rem;
-    color: var(--nb-c-text-subtle);
-  }
-}
-
-.header-main {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.project-avatar-lg {
-  font-size: 2rem;
-  line-height: 1;
-}
-
-.tab-bar {
-  margin-bottom: 1.5rem;
-}
-</style>

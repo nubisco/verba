@@ -145,6 +145,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useAccountsStore, type AccountSummary } from '../stores/accounts'
+import { useProjectListStore } from '../stores/projectList'
 import { apiFetch } from '../api'
 import { useI18n } from 'vue-i18n'
 import { usePhoneLayout } from '@nubisco/ui'
@@ -279,6 +280,7 @@ async function createProject() {
       ...projectsByAccount.value,
       [accountId]: [project, ...(projectsByAccount.value[accountId] ?? [])],
     }
+    useProjectListStore().invalidate(accountId)
     showForm.value = false
     newName.value = ''
     newSlug.value = ''
@@ -289,10 +291,6 @@ async function createProject() {
 </script>
 
 <style lang="scss" scoped>
-.home-view {
-  max-width: 960px;
-}
-
 .topbar-actions {
   display: flex;
   gap: var(--nb-spacing-8);

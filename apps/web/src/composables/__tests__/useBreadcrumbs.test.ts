@@ -15,7 +15,8 @@ const accounts = reactive({ accounts: [] as AccountSummary[], current: null as A
 vi.mock('vue-router', () => ({ useRoute: () => route }))
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
 vi.mock('../../stores/accounts', () => ({ useAccountsStore: () => accounts }))
-vi.mock('../../stores/project', () => ({ useProjectStore: () => ({ project: { name: 'Website' } }) }))
+vi.mock('../../stores/project', () => ({ useProjectStore: () => ({ project: { id: 'p1', name: 'Website' } }) }))
+vi.mock('../../stores/projectList', () => ({ useProjectListStore: () => ({ ensure: vi.fn(), forAccount: () => [] }) }))
 vi.mock('../../stores/keyName', () => ({ useKeyNameStore: () => ({ resolve: vi.fn(), getName: (k: string) => k }) }))
 
 const { useBreadcrumbs } = await import('../useBreadcrumbs')

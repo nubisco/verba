@@ -79,12 +79,14 @@ import { useRouter } from 'vue-router'
 import { useConfirm, useToast } from '@nubisco/ui'
 import { apiFetch } from '../../api'
 import { useProjectStore, type ProjectData } from '../../stores/project'
+import { useProjectListStore } from '../../stores/projectList'
 import { LOGO_ACCEPT, LOGO_MAX_BYTES, isLogo, toLogoDataUrl } from '../../utils/logo'
 
 const props = defineProps<{ projectId: string }>()
 
 const router = useRouter()
 const store = useProjectStore()
+const projectList = useProjectListStore()
 const toast = useToast()
 const confirm = useConfirm()
 
@@ -110,6 +112,7 @@ async function save(): Promise<void> {
       body: JSON.stringify({ name: name.value.trim() }),
     })
     if (store.project) store.project.name = updated.name
+    projectList.invalidate(project.value.accountId)
     toast.success('Saved')
   } catch (e) {
     nameError.value = e instanceof Error ? e.message : 'Could not rename the project'
@@ -129,6 +132,7 @@ async function setAvatar(avatar: string | null): Promise<void> {
       body: JSON.stringify({ avatar }),
     })
     if (store.project) store.project.avatar = updated.avatar ?? null
+    projectList.invalidate(project.value.accountId)
   } catch (e) {
     toast.error(e instanceof Error ? e.message : 'Could not save the logo')
   } finally {
@@ -168,7 +172,9 @@ async function deleteProject(): Promise<void> {
       await apiFetch(`/projects/${props.projectId}`, { method: 'DELETE' })
     },
   })
-  if (done) void router.replace({ name: 'dashboard' })
+  if (!done) return
+  projectList.invalidate(project.value.accountId)
+  void router.replace({ name: 'dashboard' })
 }
 </script>
 
