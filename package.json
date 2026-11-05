@@ -1,6 +1,6 @@
 {
   "name": "@nubisco/verba",
-  "version": "1.29.1",
+  "version": "1.30.0",
   "private": true,
   "packageManager": "pnpm@9.15.9",
   "scripts": {

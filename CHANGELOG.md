@@ -1,3 +1,11 @@
+# [1.30.0](https://github.com/nubisco/verba/compare/v1.29.1...v1.30.0) (2026-11-05)
+
+
+### Features
+
+* **web:** a trail that switches, and pages that do not repeat it ([bfc2570](https://github.com/nubisco/verba/commit/bfc2570318f5902f8eefb13683315a0fc799bfc2))
+* **web:** settings as tabs in the fixedbar, the shape Acta's Settings set ([5ef6dc1](https://github.com/nubisco/verba/commit/5ef6dc116579b89c4de9ff77c31dc26f59e6c154))
+
 ## [1.29.1](https://github.com/nubisco/verba/compare/v1.29.0...v1.29.1) (2026-11-05)
 
 
