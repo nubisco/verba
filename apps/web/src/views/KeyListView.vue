@@ -32,9 +32,11 @@
 
   <!-- Main content -->
   <NbGrid dir="col" gap="md" class="key-list-view">
-    <h2>{{ t('keys.list.title') }}</h2>
-    <!-- Topbar: teleported into #verba-topbar. On a phone it stays here, under
-           the title, where the search and New Key fit without scrolling sideways. -->
+    <!-- No title: the trail already names the page (fleet standard, "The
+         trail names the page, so the page does not repeat it").
+         Topbar: teleported into #verba-topbar. On a phone it stays here, at
+         the top of the page, where the search and New Key fit without
+         scrolling sideways. -->
     <Teleport defer to="#verba-topbar" :disabled="phone">
       <NbGrid align="center" gap="md" class="keys-toolbar">
         <span v-if="!loading" class="topbar-meta">{{ t('keys.list.total', { count: total }) }}</span>

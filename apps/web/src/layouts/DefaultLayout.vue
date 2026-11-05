@@ -125,7 +125,7 @@
 
     <!-- ═══ Topbar ═══ -->
     <template #topbar-left>
-      <AppBreadcrumbs />
+      <AppBreadcrumbs :rail-collapsed="!phone && nav.variant.value === 'compact'" />
     </template>
     <template #topbar-right>
       <div id="verba-topbar" />
@@ -145,7 +145,7 @@
 <script setup lang="ts">
 import { computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useSidebarVariant } from '@nubisco/ui'
+import { usePhoneLayout, useSidebarVariant } from '@nubisco/ui'
 import { useAuthStore } from '../stores/auth'
 import { useNavigationStore } from '../stores/navigation'
 import { useProjectStore } from '../stores/project'
@@ -171,6 +171,8 @@ const { inspectorVisible } = useLayoutSlots()
 // Expanded or collapsed rail: the person's choice, remembered under a namespaced
 // key and starting expanded. Never derived from the route.
 const nav = useSidebarVariant({ storageKey: 'verba.sidebar' })
+// On a phone the rail is a drawer and the trail shows its last crumb alone.
+const { phone } = usePhoneLayout()
 
 // ── Account menu wiring (NbUserMenu) ──────────────────────────────────────
 // The standardized menu is presentation-only; identity data and the SSO

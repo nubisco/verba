@@ -6,24 +6,19 @@ import type { BreadcrumbSegment } from '../router/router.d'
 import { useProjectStore } from '../stores/project'
 import { useKeyNameStore } from '../stores/keyName'
 import { useAccountsStore } from '../stores/accounts'
+import { useProjectListStore } from '../stores/projectList'
+import { buildTrail } from '../utils/trail'
 
 /**
- * Builds the breadcrumb trail for the current route reactively.
+ * The breadcrumb trail for the current route, reactively.
  *
- * Each route declares its full trail via `meta.breadcrumb: BreadcrumbSegment[]`.
- * Vue Router merges meta from matched routes (child wins), so the leaf route's
- * breadcrumb is what `route.meta.breadcrumb` reflects.
- *
- * Dynamic segments:
- *  - `account` → the current account's name from useAccountsStore, which
- *                follows the open project. Shown only to a person with more
- *                than one account: with one, there is nothing to tell apart
- *                and the crumb is noise. Left out until it is known.
- *  - `project` → reads project name from useProjectStore (must be loaded by DefaultLayout)
- *  - `key`     → lazily fetched by useKeyNameStore; shows raw keyId until resolved
- *
- * The result is NbBreadcrumbs `items`: each parent carries a `to`, so it
- * renders as a real link, and the last crumb is the current page, as text.
+ * Each route declares its full trail in `meta.breadcrumb` (Vue Router merges
+ * meta, so the leaf route's trail wins), and utils/trail.ts turns it into
+ * NbBreadcrumbs `items`: the account for someone with several, the project
+ * (a switcher to the same page of another project of its account), the page,
+ * and a key, drawn as a key. This composable only feeds it: the project from
+ * useProjectStore (loaded by DefaultLayout), its siblings from
+ * useProjectListStore, and key names from useKeyNameStore, fetched on demand.
  */
 export function useBreadcrumbs() {
   const route = useRoute()
@@ -31,68 +26,33 @@ export function useBreadcrumbs() {
   const projectStore = useProjectStore()
   const keyNameStore = useKeyNameStore()
   const accountsStore = useAccountsStore()
+  const projectList = useProjectListStore()
 
-  // Trigger key name resolution whenever keyId changes: side effect outside computed
+  // Side effects outside the computed: a key's name, and the project's siblings.
   watchEffect(() => {
     const keyId = route.params.keyId as string | undefined
     const projectId = route.params.id as string | undefined
-    if (keyId && projectId) {
-      keyNameStore.resolve(projectId, keyId)
-    }
+    if (keyId && projectId) void keyNameStore.resolve(projectId, keyId)
+  })
+  watchEffect(() => {
+    if (route.params.id) void projectList.ensure(projectStore.project?.accountId)
   })
 
   const crumbs = computed<IBreadcrumbItem[]>(() => {
     const segments = route.meta.breadcrumb as BreadcrumbSegment[] | undefined
     if (!segments?.length) return []
-
-    // Every crumb of a project trail shares the route's project id.
-    const projectId = route.params.id as string | undefined
-
-    return segments.flatMap((seg): IBreadcrumbItem[] => {
-      if (seg.type === 'static') {
-        const to = seg.to && projectId ? { name: seg.to, params: { id: projectId } } : undefined
-        return [{ label: t(seg.label), to }]
-      }
-      if (seg.type === 'account') {
-        const current = accountsStore.current
-        if (seg.switch) {
-          // The page is about the account: it always says which one, and the
-          // crumb switches to the same page for another (?account=, the tab
-          // kept), which is what the picker on the page used to do.
-          if (!current) return []
-          const others = accountsStore.accounts
-          const tab = typeof route.query?.tab === 'string' ? { tab: route.query.tab } : {}
-          return [
-            {
-              label: current.name,
-              ...(others.length > 1 && {
-                value: current.id,
-                options: others.map((a) => ({
-                  label: a.name,
-                  value: a.id,
-                  to: { name: String(route.name), query: { ...tab, account: a.slug } },
-                })),
-                switchLabel: 'Switch account',
-                searchPlaceholder: 'Find an account',
-                noResultsLabel: 'No account matches',
-              }),
-            },
-          ]
-        }
-        if (accountsStore.accounts.length < 2) return []
-        return current ? [{ label: current.name, to: { name: 'dashboard' } }] : []
-      }
-      if (seg.type === 'project') {
-        return [
-          {
-            label: projectStore.project?.name ?? '…',
-            to: projectId ? { name: 'project-overview', params: { id: projectId } } : undefined,
-          },
-        ]
-      }
-      // seg.type === 'key'
-      const keyId = route.params.keyId as string | undefined
-      return [{ label: keyId ? keyNameStore.getName(keyId) : '…' }]
+    const project = projectStore.project
+    return buildTrail({
+      segments,
+      name: String(route.name ?? ''),
+      params: route.params,
+      query: route.query ?? {},
+      t,
+      accounts: accountsStore.accounts,
+      account: accountsStore.current,
+      project,
+      projects: projectList.forAccount(project?.accountId),
+      keyName: (keyId) => keyNameStore.getName(keyId),
     })
   })
 

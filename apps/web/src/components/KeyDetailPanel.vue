@@ -904,10 +904,9 @@ function assignedUserLabel(t: Translation | undefined): string {
 
 <style lang="scss" scoped>
 .key-detail-panel {
-  max-width: 800px;
-
+  // The page uses the width the frame gives it (fleet standard, "Content
+  // uses the whole width it is given"), as the inspector does.
   &.compact {
-    max-width: none;
     padding: 1rem;
   }
 }

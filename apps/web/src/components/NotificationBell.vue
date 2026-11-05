@@ -46,10 +46,23 @@
       :body="commentExcerpt(n) || undefined"
       :time="n.createdAt"
       :read="n.isRead"
-      :icon="n.type === 'MENTION' ? 'at' : 'chat-circle'"
+      :icon="n.actor ? null : n.type === 'MENTION' ? 'at' : 'chat-circle'"
       variant="info"
       @select="onClickNotification(n)"
-    />
+    >
+      <!-- The person who acted, by their face (fleet standard, "A person is
+           an avatar", and Acta's bell). The sentence already says what kind
+           of event it was. -->
+      <template v-if="n.actor" #media>
+        <NbAvatar
+          :name="n.actor.name ?? undefined"
+          :email="n.actor.email"
+          :picture="n.actor.avatarUrl"
+          :size="24"
+          decorative
+        />
+      </template>
+    </NbNotificationCenterItem>
   </NbNotificationCenter>
 </template>
 
@@ -63,6 +76,7 @@ interface NotifActor {
   id: string
   name: string | null
   email: string
+  avatarUrl?: string | null
 }
 
 interface NotifKey {

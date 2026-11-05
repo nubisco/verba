@@ -32,7 +32,7 @@ export async function listNotifications(userId: string, unreadOnly = false) {
     orderBy: { createdAt: 'desc' },
     take: 50,
     include: {
-      actor: { select: { id: true, name: true, email: true } },
+      actor: { select: { id: true, name: true, email: true, avatarUrl: true } },
       key: {
         select: { id: true, name: true, namespace: { select: { slug: true } } },
       },
