@@ -13,10 +13,10 @@ importers:
         version: 10.0.1(eslint@10.2.0(jiti@2.6.1))
       '@nubisco/docs-sdk':
         specifier: ^0.1.7
-        version: 0.1.7(@algolia/client-search@5.60.0)(@nubisco/ui@5.41.1(pixi.js@8.19.0)(vue-i18n@11.3.1(vue@3.5.44(typescript@5.9.3)))(vue@3.5.44(typescript@5.9.3)))(@types/node@25.5.2)(lightningcss@1.33.0)(postcss@8.5.31)(sass@1.99.0)(search-insights@2.17.3)(typescript@5.9.3)(vite@5.4.21(@types/node@25.5.2)(lightningcss@1.33.0)(sass-embedded@1.99.0)(sass@1.99.0))(vue@3.5.44(typescript@5.9.3))
+        version: 0.1.7(@algolia/client-search@5.60.0)(@nubisco/ui@5.47.0(pixi.js@8.19.0)(vue-i18n@11.3.1(vue@3.5.44(typescript@5.9.3)))(vue@3.5.44(typescript@5.9.3)))(@types/node@25.5.2)(lightningcss@1.33.0)(postcss@8.5.31)(sass@1.99.0)(search-insights@2.17.3)(typescript@5.9.3)(vite@5.4.21(@types/node@25.5.2)(lightningcss@1.33.0)(sass-embedded@1.99.0)(sass@1.99.0))(vue@3.5.44(typescript@5.9.3))
       '@nubisco/ui':
-        specifier: ^5.41.1
-        version: 5.41.1(pixi.js@8.19.0)(vue-i18n@11.3.1(vue@3.5.44(typescript@5.9.3)))(vue@3.5.44(typescript@5.9.3))
+        specifier: ^5.47.0
+        version: 5.47.0(pixi.js@8.19.0)(vue-i18n@11.3.1(vue@3.5.44(typescript@5.9.3)))(vue@3.5.44(typescript@5.9.3))
       '@semantic-release/changelog':
         specifier: ^6.0.3
         version: 6.0.3(semantic-release@25.0.3(typescript@5.9.3))
@@ -155,8 +155,8 @@ importers:
   apps/web:
     dependencies:
       '@nubisco/ui':
-        specifier: ^5.41.1
-        version: 5.41.1(pixi.js@8.19.0)(vue-i18n@11.3.1(vue@3.5.44(typescript@5.9.3)))(vue@3.5.44(typescript@5.9.3))
+        specifier: ^5.47.0
+        version: 5.47.0(pixi.js@8.19.0)(vue-i18n@11.3.1(vue@3.5.44(typescript@5.9.3)))(vue@3.5.44(typescript@5.9.3))
       '@nubisco/verba-shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -1498,8 +1498,8 @@ packages:
       '@nubisco/ui': ^5.40.0
       vue: ^3.5.0
 
-  '@nubisco/ui@5.41.1':
-    resolution: {integrity: sha512-pmxWy7gG9HQ1PyLxBvIUuloyVjk6yowCUe4eMxBqwshF8NiICMfSi9lubNYS7PEbqI/O5ArTf9w4aH5Fbaus0g==}
+  '@nubisco/ui@5.47.0':
+    resolution: {integrity: sha512-Ac1pTh1N6tjSKmOzMpf5octh35lomv6gPCS+ji5RrR1w1/yG3LBMNPbtaL6lJTsiFqxwBMJP3xdVGRxivUKr8w==}
     engines: {node: '>=20.0.0'}
     peerDependencies:
       pixi.js: ^8.0.0
@@ -6929,11 +6929,11 @@ snapshots:
 
   '@nodable/entities@3.1.0': {}
 
-  '@nubisco/docs-sdk@0.1.7(@algolia/client-search@5.60.0)(@nubisco/ui@5.41.1(pixi.js@8.19.0)(vue-i18n@11.3.1(vue@3.5.44(typescript@5.9.3)))(vue@3.5.44(typescript@5.9.3)))(@types/node@25.5.2)(lightningcss@1.33.0)(postcss@8.5.31)(sass@1.99.0)(search-insights@2.17.3)(typescript@5.9.3)(vite@5.4.21(@types/node@25.5.2)(lightningcss@1.33.0)(sass-embedded@1.99.0)(sass@1.99.0))(vue@3.5.44(typescript@5.9.3))':
+  '@nubisco/docs-sdk@0.1.7(@algolia/client-search@5.60.0)(@nubisco/ui@5.47.0(pixi.js@8.19.0)(vue-i18n@11.3.1(vue@3.5.44(typescript@5.9.3)))(vue@3.5.44(typescript@5.9.3)))(@types/node@25.5.2)(lightningcss@1.33.0)(postcss@8.5.31)(sass@1.99.0)(search-insights@2.17.3)(typescript@5.9.3)(vite@5.4.21(@types/node@25.5.2)(lightningcss@1.33.0)(sass-embedded@1.99.0)(sass@1.99.0))(vue@3.5.44(typescript@5.9.3))':
     dependencies:
       '@fontsource/fira-code': 5.3.0
       '@fontsource/plus-jakarta-sans': 5.3.0
-      '@nubisco/ui': 5.41.1(pixi.js@8.19.0)(vue-i18n@11.3.1(vue@3.5.44(typescript@5.9.3)))(vue@3.5.44(typescript@5.9.3))
+      '@nubisco/ui': 5.47.0(pixi.js@8.19.0)(vue-i18n@11.3.1(vue@3.5.44(typescript@5.9.3)))(vue@3.5.44(typescript@5.9.3))
       markdown-it-container: 4.0.0
       mermaid: 12.2.0
       sass-embedded: 1.99.0
@@ -6972,7 +6972,7 @@ snapshots:
       - universal-cookie
       - vite
 
-  '@nubisco/ui@5.41.1(pixi.js@8.19.0)(vue-i18n@11.3.1(vue@3.5.44(typescript@5.9.3)))(vue@3.5.44(typescript@5.9.3))':
+  '@nubisco/ui@5.47.0(pixi.js@8.19.0)(vue-i18n@11.3.1(vue@3.5.44(typescript@5.9.3)))(vue@3.5.44(typescript@5.9.3))':
     dependencies:
       pixi.js: 8.19.0
       vue: 3.5.44(typescript@5.9.3)
