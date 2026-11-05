@@ -28,7 +28,7 @@ export function parseLocales(raw: string): string[] {
 export async function listMembers(projectId: string) {
   const members = await prisma.membership.findMany({
     where: { projectId },
-    include: { user: { select: { id: true, email: true } } },
+    include: { user: { select: { id: true, email: true, name: true, avatarUrl: true } } },
   })
   return members.map((m) => ({
     ...m,

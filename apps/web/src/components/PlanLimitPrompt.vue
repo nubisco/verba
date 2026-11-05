@@ -49,7 +49,7 @@ onUnmounted(() => stop?.())
 
 function seePlans(): void {
   limit.value = null
-  void router.push({ name: 'account-settings', query: { section: 'billing' } })
+  void router.push({ name: 'account-settings', query: { tab: 'billing' } })
 }
 </script>
 

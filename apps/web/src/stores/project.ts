@@ -42,7 +42,7 @@ export interface Member {
   userId: string
   role: string
   assignedLocales?: string[]
-  user: { email: string }
+  user: { id?: string; email: string; name?: string | null; avatarUrl?: string | null }
 }
 
 export interface Task {

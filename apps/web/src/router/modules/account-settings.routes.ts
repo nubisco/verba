@@ -2,14 +2,17 @@ import type { RouteRecordRaw } from 'vue-router'
 import AccountSettingsView from '../../views/AccountSettingsView.vue'
 
 // The account's Settings, reached from the gear at the foot of the rail
-// (DefaultLayout). ?section= picks members or plan.
+// (DefaultLayout). ?tab= picks the tab and ?account= the account (useSettingsTab).
 export const protectedRoutes: RouteRecordRaw[] = [
   {
     path: 'settings',
     name: 'account-settings',
     component: AccountSettingsView,
     meta: {
-      breadcrumb: [{ type: 'account' }, { type: 'static', label: 'nav.accountSettings' }],
+      breadcrumb: [
+        { type: 'account', switch: true },
+        { type: 'static', label: 'nav.accountSettings' },
+      ],
     },
   },
   // Old addresses keep working. The Organizations page sat behind

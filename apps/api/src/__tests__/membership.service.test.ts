@@ -54,6 +54,18 @@ describe('listMembers', () => {
     const members = await listMembers('p1')
     expect(members[0].namespaces).toEqual(['ns1'])
   })
+
+  // A person is an avatar (fleet standard): the member list carries the name
+  // and the Accord picture, never only the email.
+  it('selects the name and picture of each member', async () => {
+    vi.mocked(prisma.membership.findMany).mockResolvedValue([])
+    await listMembers('p1')
+    expect(prisma.membership.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: { user: { select: { id: true, email: true, name: true, avatarUrl: true } } },
+      }),
+    )
+  })
 })
 
 describe('addMember', () => {

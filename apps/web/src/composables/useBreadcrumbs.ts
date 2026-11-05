@@ -54,9 +54,33 @@ export function useBreadcrumbs() {
         return [{ label: t(seg.label), to }]
       }
       if (seg.type === 'account') {
+        const current = accountsStore.current
+        if (seg.switch) {
+          // The page is about the account: it always says which one, and the
+          // crumb switches to the same page for another (?account=, the tab
+          // kept), which is what the picker on the page used to do.
+          if (!current) return []
+          const others = accountsStore.accounts
+          const tab = typeof route.query?.tab === 'string' ? { tab: route.query.tab } : {}
+          return [
+            {
+              label: current.name,
+              ...(others.length > 1 && {
+                value: current.id,
+                options: others.map((a) => ({
+                  label: a.name,
+                  value: a.id,
+                  to: { name: String(route.name), query: { ...tab, account: a.slug } },
+                })),
+                switchLabel: 'Switch account',
+                searchPlaceholder: 'Find an account',
+                noResultsLabel: 'No account matches',
+              }),
+            },
+          ]
+        }
         if (accountsStore.accounts.length < 2) return []
-        const name = accountsStore.current?.name
-        return name ? [{ label: name, to: { name: 'dashboard' } }] : []
+        return current ? [{ label: current.name, to: { name: 'dashboard' } }] : []
       }
       if (seg.type === 'project') {
         return [

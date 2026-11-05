@@ -34,10 +34,11 @@ import ProjectAvatar from '../components/ProjectAvatar.vue'
 const route = useRoute()
 const router = useRouter()
 
-// Each tab is a child route, so the URL stays the source of truth.
+// Each tab is a child route, so the URL stays the source of truth. Settings
+// is not one of them: it is its own page, the last item of the project's group
+// in the rail.
 const tabs = [
   { id: 'project-overview', label: 'Overview' },
-  { id: 'project-settings', label: 'Settings' },
   { id: 'project-import', label: 'Import' },
   { id: 'project-export', label: 'Export' },
   { id: 'project-history', label: 'History' },

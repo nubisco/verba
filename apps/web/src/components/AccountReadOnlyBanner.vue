@@ -62,7 +62,7 @@ async function refresh(): Promise<void> {
 }
 
 function seePlans(): void {
-  void router.push({ name: 'account-settings', query: { section: 'billing' } })
+  void router.push({ name: 'account-settings', query: { tab: 'billing' } })
 }
 
 watch(

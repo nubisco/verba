@@ -1,343 +1,334 @@
 <template>
-  <div>
-    <NbPanel class="card">
-      <h3>{{ platformEnabled ? t('profile.preferences') : t('profile.accountDetails') }}</h3>
+  <!-- What belongs to the person alone, reached from the user menu's "Your
+       settings" (fleet standard, "Settings live at three levels"). One tab
+       strip in the shell's fixedbar, as in Acta's Your settings, with the tab
+       in the URL. Name, picture and passkeys are the identity provider's
+       when this instance signs in through it, so "Your account" then holds
+       only what Verba keeps. -->
+  <div class="settings">
+    <component :is="fixedbar.Outlet">
+      <NbTabs v-model="tab" :items="tabs" aria-label="Your settings sections" variant="line" />
+    </component>
 
-      <!-- Name, email and password are the person's identity. On an instance
-           that signs in through Nubisco Platform they belong to Platform,
-           which the user menu's Profile opens, so only an instance with its
-           own accounts edits them here. -->
-      <div v-if="!platformEnabled" class="field">
-        <NbTextInput
-          v-model="name"
-          :label="t('profile.name')"
-          type="text"
-          :placeholder="t('profile.namePlaceholder')"
-        />
-      </div>
+    <template v-if="tab === 'preferences'">
+      <NbPanel class="settings__section">
+        <header>
+          <h2 class="type-heading-01">{{ t('profile.preferences') }}</h2>
+          <p class="settings__lede">How Verba works for you, on every device you sign in on.</p>
+        </header>
+        <form class="settings__form" @submit.prevent="savePreferences">
+          <LocaleMultiSelect
+            id="preferred-locales"
+            v-model="preferredLocales"
+            :label="t('profile.preferredLocales')"
+            :helper="t('profile.preferredLocalesHint')"
+            :options="KNOWN_LOCALES"
+            value-field="code"
+          />
+          <NbRadio
+            v-model="notificationOpenMode"
+            name="notification-open-mode"
+            label="Open notifications with"
+            direction="horizontal"
+            :options="[
+              { label: 'Inspector', value: 'inspector' },
+              { label: 'Modal', value: 'modal' },
+            ]"
+          />
+          <div class="settings__actions">
+            <NbButton type="submit" variant="primary" :loading="savingPreferences">Save</NbButton>
+          </div>
+        </form>
+      </NbPanel>
+    </template>
 
-      <div v-if="!platformEnabled" class="field">
-        <NbTextInput
-          v-model="email"
-          :label="t('profile.email')"
-          type="email"
-          :placeholder="t('profile.emailPlaceholder')"
-        />
-      </div>
-
-      <div class="field">
-        <LocaleMultiSelect
-          v-model="preferredLocales"
-          :label="t('profile.preferredLocales')"
-          :options="KNOWN_LOCALES"
-          value-field="code"
-        />
-      </div>
-
-      <div class="field">
-        <NbRadio
-          v-model="notificationOpenMode"
-          name="notification-open-mode"
-          label="Open notifications with"
-          direction="horizontal"
-          :options="[
-            { label: 'Inspector', value: 'inspector' },
-            { label: 'Modal', value: 'modal' },
-          ]"
-        />
-      </div>
-
-      <template v-if="!platformEnabled">
-        <div class="section-divider">{{ t('profile.changePassword') }}</div>
-        <p class="section-hint">{{ t('profile.changePasswordHint') }}</p>
-
-        <div class="field">
+    <template v-else-if="tab === 'account'">
+      <NbPanel class="settings__section">
+        <header>
+          <h2 class="type-heading-01">{{ platformEnabled ? 'Your account' : t('profile.accountDetails') }}</h2>
+          <p v-if="platformEnabled" class="settings__lede">
+            Your name, picture and passkeys are your Nubisco profile's, which the user menu's Profile opens.
+          </p>
+        </header>
+        <NbDefinitionList :items="accountItems" />
+        <form v-if="!platformEnabled" class="settings__form" @submit.prevent="saveIdentity">
           <NbTextInput
+            id="profile-name"
+            v-model="name"
+            :label="t('profile.name')"
+            :placeholder="t('profile.namePlaceholder')"
+          />
+          <NbTextInput
+            id="profile-email"
+            v-model="email"
+            :label="t('profile.email')"
+            type="email"
+            :placeholder="t('profile.emailPlaceholder')"
+            required
+          />
+          <div class="settings__actions">
+            <NbButton type="submit" variant="primary" :loading="savingIdentity" :disabled="!identityDirty">
+              Save
+            </NbButton>
+          </div>
+        </form>
+      </NbPanel>
+
+      <NbPanel v-if="!platformEnabled" class="settings__section">
+        <header>
+          <h2 class="type-heading-01">Password</h2>
+        </header>
+        <form class="settings__form" @submit.prevent="savePassword">
+          <NbBanner v-if="passwordError" status="error" variant="inline" :title="passwordError" />
+          <NbTextInput
+            id="current-password"
             v-model="currentPassword"
             :label="t('profile.currentPassword')"
             type="password"
             autocomplete="current-password"
+            required
           />
-        </div>
-        <div class="field">
           <NbTextInput
+            id="new-password"
             v-model="newPassword"
             :label="t('profile.newPassword')"
             type="password"
             autocomplete="new-password"
+            helper="At least 8 characters."
+            required
           />
-        </div>
-        <div class="field">
           <NbTextInput
+            id="confirm-password"
             v-model="confirmPassword"
             :label="t('profile.confirmPassword')"
             type="password"
             autocomplete="new-password"
+            required
           />
-        </div>
-      </template>
+          <div class="settings__actions">
+            <NbButton type="submit" variant="primary" :loading="savingPassword" :disabled="!newPassword">
+              {{ t('profile.changePasswordBtn') }}
+            </NbButton>
+          </div>
+        </form>
+      </NbPanel>
 
-      <NbBanner v-if="error" status="error" class="alert">{{ error }}</NbBanner>
-      <NbBanner v-if="success" status="success" class="alert">{{ success }}</NbBanner>
-
-      <div class="form-actions">
-        <NbButton variant="primary" :disabled="saving" @click="save">
-          {{ saving ? t('profile.savingProfile') : t('profile.saveProfile') }}
-        </NbButton>
-      </div>
-    </NbPanel>
-
-    <NbPanel class="card info-card">
-      <h3>{{ t('profile.accountInfo') }}</h3>
-      <dl>
-        <dt>{{ t('profile.role') }}</dt>
-        <dd>
-          {{ auth.user?.isGlobalAdmin ? t('profile.globalAdmin') : t('profile.user') }}
-        </dd>
-      </dl>
-    </NbPanel>
-
-    <NbPanel class="card danger-card">
-      <h3>{{ t('profile.dangerZone') }}</h3>
-      <p class="section-hint">{{ t('profile.dangerHint') }}</p>
-      <NbButton variant="danger" @click="deactivateAccount">
-        {{ t('profile.deactivate') }}
-      </NbButton>
-    </NbPanel>
+      <NbPanel class="settings__section">
+        <header class="settings__head">
+          <div>
+            <h2 class="type-heading-01">Deactivate your account</h2>
+            <p class="settings__lede">{{ t('profile.dangerHint') }}</p>
+          </div>
+          <NbButton variant="danger" @click="deactivateAccount">{{ t('profile.deactivate') }}</NbButton>
+        </header>
+      </NbPanel>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useConfirm, useShellSlot, useToast } from '@nubisco/ui'
 import { useAuthStore } from '../stores/auth'
 import { useInstanceConfigStore } from '../stores/instanceConfig'
 import { apiFetch } from '../api'
 import LocaleMultiSelect from '../components/LocaleMultiSelect.vue'
-import { useI18n } from 'vue-i18n'
+import { KNOWN_LOCALES } from '../utils/localeUtils'
+import { useSettingsTab, type SettingsTab } from '../composables/useSettingsTab'
+
+interface Me {
+  id: string
+  email: string
+  name: string | null
+  isGlobalAdmin: boolean
+  preferredLocales?: string[]
+  notificationOpenMode?: string
+}
 
 const auth = useAuthStore()
 const instanceConfig = useInstanceConfigStore()
 const { t } = useI18n()
+const toast = useToast()
+const confirm = useConfirm()
+const fixedbar = useShellSlot('fixedbar')
 
-const KNOWN_LOCALES = [
-  { id: 'en', code: 'en', name: 'English' },
-  { id: 'en_US', code: 'en_US', name: 'English (United States)' },
-  { id: 'en_GB', code: 'en_GB', name: 'English (United Kingdom)' },
-  { id: 'pt', code: 'pt', name: 'Portuguese' },
-  { id: 'pt_PT', code: 'pt_PT', name: 'Portuguese (Portugal)' },
-  { id: 'pt_BR', code: 'pt_BR', name: 'Portuguese (Brazil)' },
-  { id: 'es', code: 'es', name: 'Spanish' },
-  { id: 'es_ES', code: 'es_ES', name: 'Spanish (Spain)' },
-  { id: 'es_MX', code: 'es_MX', name: 'Spanish (Mexico)' },
-  { id: 'fr', code: 'fr', name: 'French' },
-  { id: 'fr_FR', code: 'fr_FR', name: 'French (France)' },
-  { id: 'de', code: 'de', name: 'German' },
-  { id: 'de_DE', code: 'de_DE', name: 'German (Germany)' },
-  { id: 'it', code: 'it', name: 'Italian' },
-  { id: 'ja', code: 'ja', name: 'Japanese' },
-  { id: 'ko', code: 'ko', name: 'Korean' },
-  { id: 'zh', code: 'zh', name: 'Chinese' },
-  { id: 'zh_CN', code: 'zh_CN', name: 'Chinese (Simplified)' },
-  { id: 'zh_TW', code: 'zh_TW', name: 'Chinese (Traditional)' },
-  { id: 'ru', code: 'ru', name: 'Russian' },
-  { id: 'ar', code: 'ar', name: 'Arabic' },
-  { id: 'nl', code: 'nl', name: 'Dutch' },
-  { id: 'pl', code: 'pl', name: 'Polish' },
-  { id: 'sv', code: 'sv', name: 'Swedish' },
-  { id: 'da', code: 'da', name: 'Danish' },
-  { id: 'fi', code: 'fi', name: 'Finnish' },
-  { id: 'nb', code: 'nb', name: 'Norwegian (Bokmål)' },
-  { id: 'tr', code: 'tr', name: 'Turkish' },
-  { id: 'cs', code: 'cs', name: 'Czech' },
-  { id: 'sk', code: 'sk', name: 'Slovak' },
-  { id: 'hu', code: 'hu', name: 'Hungarian' },
-  { id: 'ro', code: 'ro', name: 'Romanian' },
-  { id: 'uk', code: 'uk', name: 'Ukrainian' },
-  { id: 'el', code: 'el', name: 'Greek' },
-  { id: 'he', code: 'he', name: 'Hebrew' },
-  { id: 'vi', code: 'vi', name: 'Vietnamese' },
-  { id: 'th', code: 'th', name: 'Thai' },
-  { id: 'id', code: 'id', name: 'Indonesian' },
-  { id: 'ms', code: 'ms', name: 'Malay' },
-  { id: 'hi', code: 'hi', name: 'Hindi' },
-  { id: 'bn', code: 'bn', name: 'Bengali' },
-]
+// The identity fields are the identity provider's when this instance signs in
+// through it.
+const platformEnabled = computed(() => instanceConfig.auth.platformEnabled)
 
-const name = ref(auth.user?.name ?? '')
-const email = ref(auth.user?.email ?? '')
-const currentPassword = ref('')
-const newPassword = ref('')
-const confirmPassword = ref('')
+const tabs = ref<SettingsTab[]>([
+  { id: 'preferences', label: 'Preferences' },
+  { id: 'account', label: 'Your account' },
+])
+const tab = useSettingsTab(tabs)
+
+/** One PATCH /auth/me, then the signed-in user follows what the server kept. */
+async function patchMe(body: Record<string, unknown>): Promise<Me> {
+  const updated = await apiFetch<Me>('/auth/me', { method: 'PATCH', body: JSON.stringify(body) })
+  auth.user = {
+    ...auth.user!,
+    email: updated.email,
+    name: updated.name,
+    isGlobalAdmin: updated.isGlobalAdmin,
+    notificationOpenMode: updated.notificationOpenMode ?? 'inspector',
+  }
+  return updated
+}
+
+// ── Preferences ────────────────────────────────────────────────────────────
 const preferredLocales = ref<string[]>([])
 const notificationOpenMode = ref<'inspector' | 'modal'>('inspector')
+const savingPreferences = ref(false)
 
-const saving = ref(false)
-const success = ref('')
-const error = ref('')
-
-async function save() {
-  error.value = ''
-  success.value = ''
-
-  if (newPassword.value && newPassword.value !== confirmPassword.value) {
-    error.value = 'New passwords do not match.'
-    return
-  }
-  if (newPassword.value && newPassword.value.length < 8) {
-    error.value = 'New password must be at least 8 characters.'
-    return
-  }
-
-  saving.value = true
+async function savePreferences(): Promise<void> {
+  savingPreferences.value = true
   try {
-    const body: Record<string, unknown> = {}
-    if (name.value !== (auth.user?.name ?? '')) body.name = name.value
-    if (email.value !== auth.user?.email) body.email = email.value
-    if (newPassword.value) {
-      body.currentPassword = currentPassword.value
-      body.newPassword = newPassword.value
-    }
-    const parsedLocales = preferredLocales.value
-    body.preferredLocales = parsedLocales
-    body.notificationOpenMode = notificationOpenMode.value
-
-    const updated = await apiFetch<{
-      id: string
-      email: string
-      name: string | null
-      isGlobalAdmin: boolean
-      preferredLocales: string[]
-      notificationOpenMode?: string
-    }>('/auth/me', {
-      method: 'PATCH',
-      body: JSON.stringify(body),
+    const updated = await patchMe({
+      preferredLocales: preferredLocales.value,
+      notificationOpenMode: notificationOpenMode.value,
     })
-
-    auth.user = {
-      ...auth.user!,
-      email: updated.email,
-      name: updated.name,
-      isGlobalAdmin: updated.isGlobalAdmin,
-      notificationOpenMode: updated.notificationOpenMode ?? 'inspector',
-    }
-    name.value = updated.name ?? ''
-    email.value = updated.email
     preferredLocales.value = updated.preferredLocales ?? []
     notificationOpenMode.value = (updated.notificationOpenMode as 'inspector' | 'modal') ?? 'inspector'
-    currentPassword.value = ''
-    newPassword.value = ''
-    confirmPassword.value = ''
-    success.value = 'Profile updated successfully.'
-  } catch (e: unknown) {
-    error.value = e instanceof Error ? e.message : 'Failed to update profile.'
+    toast.success('Saved')
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : 'Could not save your preferences')
   } finally {
-    saving.value = false
+    savingPreferences.value = false
   }
 }
 
 onMounted(async () => {
   try {
-    const me = await apiFetch<{
-      preferredLocales?: string[]
-      notificationOpenMode?: string
-    }>('/auth/me')
+    const me = await apiFetch<Me>('/auth/me')
     preferredLocales.value = me.preferredLocales ?? []
     notificationOpenMode.value = (me.notificationOpenMode as 'inspector' | 'modal') ?? 'inspector'
   } catch {
-    // non-critical
+    // The form keeps its defaults, and saving still works.
   }
 })
 
-async function deactivateAccount() {
-  if (!window.confirm(t('profile.deleteAccountConfirm'))) return
+// ── Your account ───────────────────────────────────────────────────────────
+const accountItems = computed(() => [
+  ...(platformEnabled.value ? [{ term: t('profile.email'), value: auth.user?.email ?? '' }] : []),
+  // An operator named in VERBA_OPERATORS manages this instance's accounts.
+  { term: 'On this instance', value: auth.user?.isGlobalAdmin ? 'Operator' : 'Member' },
+])
+
+const name = ref(auth.user?.name ?? '')
+const email = ref(auth.user?.email ?? '')
+const savingIdentity = ref(false)
+const identityDirty = computed(
+  () => name.value !== (auth.user?.name ?? '') || (email.value.trim() !== '' && email.value !== auth.user?.email),
+)
+
+async function saveIdentity(): Promise<void> {
+  savingIdentity.value = true
   try {
-    await apiFetch('/auth/me/deactivate', { method: 'POST' })
-    auth.user = null
-    window.location.href = '/login'
-  } catch (e: unknown) {
-    alert(e instanceof Error ? e.message : 'Failed to deactivate account.')
+    const body: Record<string, unknown> = {}
+    if (name.value !== (auth.user?.name ?? '')) body.name = name.value
+    if (email.value !== auth.user?.email) body.email = email.value
+    const updated = await patchMe(body)
+    name.value = updated.name ?? ''
+    email.value = updated.email
+    toast.success('Saved')
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : 'Could not save your details')
+  } finally {
+    savingIdentity.value = false
   }
 }
 
-// Platform owns the identity fields when this instance signs in through it.
-const platformEnabled = computed(() => instanceConfig.auth.platformEnabled)
+const currentPassword = ref('')
+const newPassword = ref('')
+const confirmPassword = ref('')
+const savingPassword = ref(false)
+const passwordError = ref('')
+
+async function savePassword(): Promise<void> {
+  passwordError.value = ''
+  if (newPassword.value !== confirmPassword.value) {
+    passwordError.value = 'The new passwords do not match.'
+    return
+  }
+  if (newPassword.value.length < 8) {
+    passwordError.value = 'The new password needs at least 8 characters.'
+    return
+  }
+  savingPassword.value = true
+  try {
+    await patchMe({ currentPassword: currentPassword.value, newPassword: newPassword.value })
+    currentPassword.value = ''
+    newPassword.value = ''
+    confirmPassword.value = ''
+    toast.success(t('profile.passwordChanged'))
+  } catch (e) {
+    passwordError.value = e instanceof Error ? e.message : 'Could not change the password'
+  } finally {
+    savingPassword.value = false
+  }
+}
+
+async function deactivateAccount(): Promise<void> {
+  const done = await confirm({
+    title: 'Deactivate your account',
+    subjectLabel: 'Account',
+    subject: auth.user?.email ?? '',
+    message: t('profile.dangerHint'),
+    confirmLabel: t('profile.deactivate'),
+    onConfirm: async () => {
+      await apiFetch('/auth/me/deactivate', { method: 'POST' })
+    },
+  })
+  if (!done) return
+  auth.user = null
+  window.location.href = '/login'
+}
 </script>
 
-<style lang="scss" scoped>
-.page-header {
-  margin-bottom: 1.25rem;
-  h2 {
-    margin: 0;
-    font-size: 1.4rem;
-  }
-}
-
-.card {
-  padding: 1.5rem;
-  margin-bottom: 1.25rem;
-  h3 {
-    margin: 0 0 1.25rem;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--nb-c-text-muted);
-  }
-}
-
-.section-divider {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--nb-c-text-subtle);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin: 1.25rem 0 0.25rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid var(--nb-c-border);
-}
-.section-hint {
-  font-size: 0.8rem;
-  color: var(--nb-c-text-subtle);
-  margin: 0 0 0.75rem;
-}
-
-.field {
+<style scoped lang="scss">
+.settings {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
-  margin-bottom: 0.9rem;
-}
+  gap: var(--nb-spacing-24);
+  padding-block-end: var(--nb-spacing-32);
 
-.alert {
-  margin-bottom: 0.75rem;
-}
-
-.form-actions {
-  margin-top: 0.5rem;
-}
-
-.info-card {
-  dl {
-    display: grid;
-    grid-template-columns: 1fr 2fr;
-    gap: 0.5rem 1rem;
-    margin: 0;
+  &__section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--nb-spacing-16);
   }
-  dt {
-    font-size: 0.8rem;
-    font-weight: 600;
+
+  &__head {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: var(--nb-spacing-16);
+  }
+
+  &__form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--nb-spacing-16);
+  }
+
+  &__lede {
+    max-width: 68ch;
+    margin: var(--nb-spacing-4) 0 0;
     color: var(--nb-c-text-subtle);
-    align-self: center;
+    font-size: var(--nb-type-body-sm-size);
   }
-  dd {
-    font-size: 0.9rem;
-    margin: 0;
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
   }
 }
 
-.danger-card {
-  border-color: var(--nb-c-danger-surface-border);
-  h3 {
-    color: var(--nb-c-status-error);
+// A phone: the deactivate button goes under its description.
+@include variables.phone {
+  .settings__head {
+    flex-wrap: wrap;
   }
 }
 </style>
