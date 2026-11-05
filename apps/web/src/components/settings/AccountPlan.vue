@@ -8,39 +8,39 @@
     <NbMessage v-else-if="store.error" variant="error">{{ store.error }}</NbMessage>
 
     <template v-else-if="store.data">
-      <section class="section">
-        <h3>Active plan</h3>
+      <NbPanel class="section">
+        <h2 class="type-heading-01">Active plan</h2>
         <NbDefinitionList :items="planItems" />
         <div class="badges">
           <NbBadge variant="purple">{{ store.data.plan.name }}</NbBadge>
           <NbBadge v-if="store.data.hasOverride" variant="orange">override active</NbBadge>
         </div>
-      </section>
+      </NbPanel>
 
-      <section v-if="store.data.subscription" class="section">
-        <h3>Subscription</h3>
+      <NbPanel v-if="store.data.subscription" class="section">
+        <h2 class="type-heading-01">Subscription</h2>
         <NbDefinitionList :items="subscriptionItems" />
-      </section>
+      </NbPanel>
 
-      <section v-if="store.data.licenseState.status !== 'none'" class="section">
-        <h3>License</h3>
+      <NbPanel v-if="store.data.licenseState.status !== 'none'" class="section">
+        <h2 class="type-heading-01">License</h2>
         <NbDefinitionList :items="licenseItems" />
-      </section>
+      </NbPanel>
 
-      <section class="section">
-        <h3>Feature entitlements</h3>
+      <NbPanel class="section">
+        <h2 class="type-heading-01">Feature entitlements</h2>
         <p v-if="store.data.entitlements.features.length === 0" class="empty-note">
           No EE features enabled on this plan.
         </p>
         <div v-else class="badges">
           <NbBadge v-for="f in store.data.entitlements.features" :key="f" variant="green">{{ f }}</NbBadge>
         </div>
-      </section>
+      </NbPanel>
 
-      <section class="section">
-        <h3>Resource limits</h3>
+      <NbPanel class="section">
+        <h2 class="type-heading-01">Resource limits</h2>
         <NbDefinitionList :items="limitItems" />
-      </section>
+      </NbPanel>
     </template>
   </div>
 </template>
@@ -132,16 +132,16 @@ const limitItems = computed(() => {
   gap: var(--nb-spacing-24);
 }
 
-.section h3 {
-  margin: 0 0 var(--nb-spacing-12);
-  font-size: var(--nb-type-body-md-size);
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nb-spacing-12);
 }
 
 .badges {
   display: flex;
   flex-wrap: wrap;
   gap: var(--nb-spacing-8);
-  margin-top: var(--nb-spacing-12);
 }
 
 .empty-note {

@@ -152,6 +152,7 @@ Invalid transitions return HTTP 422. Implemented in `canTransitionStatus()` in `
 - One `.vue` file per route, lives in `src/views/`.
 - `apiFetch<T>(path, init?)` in `api.ts` is the only way to call the API. Do not use `fetch()` directly.
 - Navigation is in `DefaultLayout.vue` (sidebar). Route definitions are in `router/index.ts`.
+- Settings pages (the account's at `/settings`, a project's at `/projects/:id/settings`, the person's at `/me`) are one `NbTabs variant="line"` in the shell's fixedbar (`useShellSlot('fixedbar')`) with the tab in `?tab=` (`composables/useSettingsTab.ts`), each tab a component under `components/settings/`, the shape Acta's Settings set. Never a vertical list of section buttons. A section is an `NbPanel` or an `NbDataTable` with its title, description and one primary action in its header, and a dialog (`NbModal`) for adding. Destroying goes through `useConfirm()`, saving says so with `useToast()`: no `window.alert` or `window.confirm`.
 - Auth state is in the `auth` Pinia store (`stores/auth.ts`). Access it with `useAuthStore()`.
 - SCSS is scoped per component. Global styles go in `src/style.scss` (or equivalent).
 - Status badge colors: `badge-grey` (TODO), `badge-blue` (IN_PROGRESS), `badge-orange` (SUBMITTED), `badge-green` (APPROVED).

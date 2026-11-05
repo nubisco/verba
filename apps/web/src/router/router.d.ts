@@ -6,7 +6,9 @@ import { type RouteRecordRaw } from 'vue-router'
  * - `static` : translated string, e.g. "History". With `to` (a route name) it
  *   links there when it is a parent, carrying the current project id.
  * - `account`: the name of the account the project belongs to, linking to
- *   Home, where projects are grouped by account
+ *   Home, where projects are grouped by account. With `switch`, the page is
+ *   about the account itself (its Settings): the crumb always shows, and it
+ *   switches to the same page, on the same tab, for another account
  * - `project`: current project's display name, resolved from useProjectStore,
  *   linking to the project's dashboard
  * - `key`    : key name, resolved lazily from useKeyNameStore
@@ -16,7 +18,7 @@ import { type RouteRecordRaw } from 'vue-router'
  */
 export type BreadcrumbSegment =
   | { type: 'static'; label: string; to?: string }
-  | { type: 'account' }
+  | { type: 'account'; switch?: boolean }
   | { type: 'project' }
   | { type: 'key' }
 

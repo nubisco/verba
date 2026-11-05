@@ -4,5 +4,5 @@ import type { RouteRecordRaw } from 'vue-router'
 export const route: RouteRecordRaw = {
   path: 'admin/entitlements',
   name: 'admin-entitlements',
-  redirect: { name: 'account-settings', query: { section: 'plan' } },
+  redirect: { name: 'account-settings', query: { tab: 'plan' } },
 }

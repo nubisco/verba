@@ -42,12 +42,12 @@
     "role": "Role",
     "assignLocales": "Assign locales",
     "noLocalesAssigned": "All locales",
-    "editLocales": "🌐",
+    "editLocales": "Choose locales",
     "save": "Save locales",
     "cancel": "Cancel",
     "remove": "Remove member",
     "confirmRemove": "Remove this member from the project?",
-    "leaveUnchecked": "Leave all unchecked to allow all locales."
+    "leaveUnchecked": "Pick none to let them translate every locale."
   },
   "settings": {
     "title": "Project Settings",
