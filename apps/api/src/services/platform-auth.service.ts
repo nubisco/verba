@@ -261,7 +261,38 @@ export async function verifyPlatformToken(token: string): Promise<{
   const claims = await verifyPlatformJwt(token, issuer, appId)
   if (!claims) return null
 
-  return upsertUserFromClaims(claims)
+  let identity: ResolvedIdentity | null
+  try {
+    identity = await upsertUserFromClaims(claims)
+  } catch (err) {
+    throw withRefusedEmail(err, claims.email)
+  }
+  if (!identity) throw refusedSignIn('not_a_member', claims.email)
+  return identity
+}
+
+// ── Refusals ──────────────────────────────────────────────────────────────────
+//
+// The provider vouched for someone and Verba turned them away. The person may
+// be signed in to the provider as an identity they did not mean to use, so
+// the sign-in page names it and offers another account. The address is the
+// verified claim, and it goes only to the browser that holds the token
+// carrying it: in this response body, or in a short-lived httpOnly cookie on
+// the redirect flow (routes/auth.ts). Never in a URL.
+
+/** 403 `not_a_member`, carrying the address that was refused. */
+export function refusedSignIn(code: 'not_a_member', email: string): Error {
+  return Object.assign(new Error('That account cannot sign in to this Verba instance'), {
+    statusCode: 403,
+    details: { code, email },
+  })
+}
+
+/** Adds the refused address to a 403 `signup_closed`. Anything else passes through untouched. */
+function withRefusedEmail(err: unknown, email: string): unknown {
+  const details = (err as { details?: Record<string, unknown> } | null)?.details
+  if (details?.code !== 'signup_closed') return err
+  return Object.assign(err as Error, { details: { ...details, email } })
 }
 
 /** Returns true when platform auth is configured (issuer and app id, together). */

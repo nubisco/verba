@@ -81,6 +81,43 @@ describe('verifyPlatformToken audience', () => {
   })
 })
 
+describe('verifyPlatformToken refusals', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.stubEnv('PLATFORM_ISSUER', ISSUER)
+    vi.stubEnv('PLATFORM_APP_ID', 'nubisco-verba')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Response.json({ keys: [{ ...publicKey.export({ format: 'jwk' }), kid: KID }] })),
+    )
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+  })
+
+  // The page names the identity the provider sent, so the person can see they
+  // are signed in as an address they did not mean to use.
+  it('names the address it refused when sign-up is closed', async () => {
+    vi.stubEnv('VERBA_SIGNUP_OPEN', 'false')
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(null)
+    const err = await verifyPlatformToken(sign(claims({ app: 'nubisco-verba' }))).catch((e: unknown) => e)
+    expect(err).toMatchObject({ statusCode: 403, details: { code: 'signup_closed', email: 'alice@example.com' } })
+    expect(prisma.user.create).not.toHaveBeenCalled()
+  })
+
+  it('refuses a deactivated account as not_a_member, naming the address', async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      id: 'u1',
+      email: 'alice@example.com',
+      deactivatedAt: new Date(),
+    } as never)
+    const err = await verifyPlatformToken(sign(claims({ app: 'nubisco-verba' }))).catch((e: unknown) => e)
+    expect(err).toMatchObject({ statusCode: 403, details: { code: 'not_a_member', email: 'alice@example.com' } })
+  })
+})
+
 describe('tokenNamesApp', () => {
   it('matches the app slug or the audience, as a string or a list', () => {
     expect(tokenNamesApp({ app: 'verba' }, 'verba')).toBe(true)

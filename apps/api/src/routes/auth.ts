@@ -43,6 +43,14 @@ const SSO_HANDSHAKE_COOKIE = 'verba_oidc_handshake'
 const SSO_LANDING_COOKIE = 'verba_sso_landing'
 const SSO_COOKIE_TTL_SECONDS = 600
 
+// The address the provider vouched for when Verba refused it, so the sign-in
+// page can say who the person is signed in as. httpOnly and short-lived, read
+// once through GET /auth/sso/refused and cleared there, because the house rule
+// is that personal data never rides in a URL.
+const SSO_REFUSED_COOKIE = 'verba_sso_refused'
+const SSO_REFUSED_TTL_SECONDS = 120
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+$/
+
 function ssoCookieOptions() {
   return {
     httpOnly: true,
@@ -54,6 +62,10 @@ function ssoCookieOptions() {
     secure: credentialCookieOptions().secure,
     maxAge: SSO_COOKIE_TTL_SECONDS,
   }
+}
+
+function rememberRefusedEmail(c: Ctx, email: string): void {
+  setCookie(c, SSO_REFUSED_COOKIE, email, { ...ssoCookieOptions(), maxAge: SSO_REFUSED_TTL_SECONDS })
 }
 
 function clearSsoCookies(c: Ctx): void {
@@ -190,6 +202,8 @@ export function authRoutes(app: Api, rateLimiters?: RateLimiterSource) {
     const runtime = await ssoService.getSsoRuntime()
     if (!runtime) return c.json({ error: 'Single sign-on is not configured on this instance' }, 404)
 
+    // A new attempt: whoever was refused last time is no longer the answer.
+    if (getCookie(c, SSO_REFUSED_COOKIE) !== undefined) clearCookie(c, SSO_REFUSED_COOKIE)
     const redirectUri = ssoService.ssoCallbackUrl()
     const landing = c.req.query('redirect')
     if (typeof landing === 'string') {
@@ -300,14 +314,19 @@ export function authRoutes(app: Api, rateLimiters?: RateLimiterSource) {
     } catch (err) {
       // Someone the provider vouched for, on an instance closed to new
       // accounts: the sign-in page says so rather than a generic failure.
-      if ((err as { details?: { code?: string } }).details?.code === 'signup_closed')
+      if ((err as { details?: { code?: string } }).details?.code === 'signup_closed') {
+        rememberRefusedEmail(c, claims.email)
         return c.redirect(ssoService.loginErrorUrl('signup_closed'))
+      }
       throw err
     }
     // Deactivated locally, or unknown on an instance that does not provision.
     // One answer for both on purpose: which of the two it is tells an outsider
     // whether an address has an account here.
-    if (!identity) return c.redirect(ssoService.loginErrorUrl('not_a_member'))
+    if (!identity) {
+      rememberRefusedEmail(c, claims.email)
+      return c.redirect(ssoService.loginErrorUrl('not_a_member'))
+    }
 
     let bundleKey = readBundleKey(c)
     if (!bundleKey) {
@@ -340,6 +359,15 @@ export function authRoutes(app: Api, rateLimiters?: RateLimiterSource) {
 
   // Platform auth callback: validates a Nubisco Platform JWT and issues a local verba session.
   // Only active when PLATFORM_ISSUER env var is set.
+  // Who the provider said the person was, the last time Verba refused them.
+  // Read once: the cookie is cleared here, so a reload shows the plain page.
+  app.get('/auth/sso/refused', (c) => {
+    const raw = getCookie(c, SSO_REFUSED_COOKIE)
+    if (raw !== undefined) clearCookie(c, SSO_REFUSED_COOKIE)
+    const email = typeof raw === 'string' && raw.length <= 254 && EMAIL_SHAPE.test(raw) ? raw : null
+    return c.json({ email })
+  })
+
   app.post('/auth/platform/callback', limits.federatedCallback, async (c) => {
     if (!platformAuthService.isPlatformAuthEnabled()) {
       return c.json({ error: 'Platform auth is not configured' }, 404)
